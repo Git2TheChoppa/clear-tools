@@ -302,6 +302,100 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
   #tRanks{ margin-top:8px; } #tRanks .emb{ width:32px; height:32px; } #tRanks div{ font-size:13px; } #tRanks b{ font-size:14px; }
 }
 
+/* shared screen header */
+.scr-head{ position:relative; z-index:1; }
+.scr-head h2{ text-shadow:0 2px 3px rgba(0,0,0,.6); }
+.scr-head .btn.sm{ min-height:44px; min-width:44px; }
+/* play */
+#scr-play{ display:none; flex-direction:column; }
+#scr-play.on{ display:flex; }
+#scr-play .modes{ flex:1; min-height:0; display:flex; flex-wrap:nowrap; align-items:center; justify-content:safe center; gap:16px; overflow-x:auto; overflow-y:hidden; overscroll-behavior:contain; scroll-snap-type:x mandatory; touch-action:pan-x; padding:6px 4px 10px; scrollbar-width:none; }
+#scr-play .modes::-webkit-scrollbar{ display:none; }
+#scr-play .mode{ flex:0 0 clamp(200px, 17vw, 260px); min-height:0; height:min(440px, 100%); padding:0; gap:0; overflow:hidden; scroll-snap-align:center; background:linear-gradient(180deg, rgba(58,40,27,.96), rgba(26,17,11,.97)); border:1px solid rgba(185,119,59,.6); transform:none; transition:transform .14s, border-color .14s, box-shadow .14s; }
+#scr-play .mode:hover,#scr-play .mode:focus-visible{ transform:translateY(-4px); border-color:var(--gold); box-shadow:0 12px 30px rgba(0,0,0,.45), inset 0 0 0 1px rgba(245,192,69,.35); }
+#scr-play .mode:active{ transform:scale(.97); border-color:var(--gold); }
+.mart{ position:relative; display:block; flex:none; height:42%; min-height:96px; background:radial-gradient(ellipse 60% 75% at 50% 62%, color-mix(in srgb, var(--mc) 55%, transparent), transparent 72%), linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,0)); border-bottom:1px solid rgba(224,165,96,.3); }
+@supports not (background:color-mix(in srgb, red 50%, transparent)){ .mart{ background:radial-gradient(ellipse 60% 75% at 50% 62%, rgba(224,165,96,.4), transparent 72%); } }
+.mart svg{ position:absolute; left:8%; top:10%; width:84%; height:84%; filter:drop-shadow(0 6px 8px rgba(0,0,0,.5)); }
+.mart::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:3px; background:var(--mc); opacity:.85; }
+.mbody{ flex:1; min-height:0; display:flex; flex-direction:column; gap:6px; padding:12px 16px 14px; }
+.mhead{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+#scr-play .mode .mn{ font-size:clamp(22px, 2.1vw, 30px); line-height:1; }
+#scr-play .mode .ms{ font-size:19px; color:var(--mc); white-space:nowrap; }
+#scr-play .mode p{ font-size:16px; line-height:1.25; overflow:hidden; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; }
+#scr-play .mode .mr{ padding-top:8px; border-top:1px solid rgba(255,255,255,.08); font-size:17px; line-height:1.1; }
+#scr-play .mode .mr.un{ min-height:52px; color:var(--sand); }
+.pips{ display:inline-flex; gap:4px; margin-right:6px; vertical-align:1px; }
+.pips u{ width:8px; height:8px; transform:rotate(45deg); border:1px solid var(--gold); } .pips u.on{ background:var(--gold); }
+.mtag,.mlast{ position:absolute; top:10px; padding:2px 8px; font-style:normal; font-size:12px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; line-height:1.4; }
+.mtag{ right:10px; color:#fff; background:linear-gradient(180deg, #a35ae0, #6a2aa8); }
+.mlast{ left:10px; color:#2a1606; background:var(--sand); }
+@media (max-height:520px){
+  #scr-play .modes{ gap:10px; padding-bottom:4px; }
+  #scr-play .mode{ flex-basis:196px; height:100%; }
+  .mart{ height:34%; min-height:70px; } .mbody{ padding:8px 12px 10px; gap:4px; }
+  #scr-play .mode .mn{ font-size:22px; } #scr-play .mode .ms{ font-size:16px; }
+  #scr-play .mode p{ font-size:14px; -webkit-line-clamp:3; } #scr-play .mode .mr{ font-size:15px; padding-top:5px; } #scr-play .mode .mr .emb{ width:34px; height:34px; }
+}
+@media (orientation:portrait) and (max-width:760px){
+  #scr-play .modes{ flex-direction:column; align-items:stretch; justify-content:flex-start; overflow-x:hidden; overflow-y:auto; scroll-snap-type:none; touch-action:pan-y; gap:10px; padding:2px 0 12px; }
+  #scr-play .mode{ flex:none; height:auto; min-height:124px; flex-direction:row; }
+  .mart{ flex:0 0 32%; height:auto; min-height:0; border-bottom:0; border-right:1px solid rgba(224,165,96,.3); }
+  .mart::after{ left:auto; top:0; width:3px; height:auto; }
+  .mart svg{ top:12%; }
+  .mbody{ padding:10px 12px 10px 14px; gap:3px; }
+  #scr-play .mode .mn{ font-size:23px; } #scr-play .mode p{ font-size:15px; -webkit-line-clamp:2; } #scr-play .mode .mr{ padding-top:5px; font-size:15px; } #scr-play .mode .mr .emb{ width:34px; height:34px; } #scr-play .mode .mr.un{ min-height:0; }
+  .mart svg{ left:2%; width:96%; }
+  .mtag,.mlast{ left:6px; right:auto; font-size:10px; padding:1px 6px; }
+  .mlast{ top:6px; } .mtag{ top:auto; bottom:6px; }
+  #scr-play .scr-head h2{ font-size:26px; }
+}
+.mode .mr .emb{ margin:0; flex:none; }
+/* armory */
+#scr-armory{ padding:0; }
+.arm-stage{ position:absolute; inset:0; touch-action:none; cursor:grab; }
+#scr-armory .wrap{ z-index:1; left:calc(14px + var(--sal)); top:calc(14px + var(--sat)); bottom:calc(14px + var(--sab)); width:min(540px, 46vw); padding:14px 16px 0; background:linear-gradient(180deg, rgba(30,20,13,.95), rgba(20,13,8,.95)); border:1px solid rgba(185,119,59,.55); box-shadow:0 18px 50px rgba(0,0,0,.5); clip-path:polygon(14px 0,100% 0,100% calc(100% - 14px),calc(100% - 14px) 100%,0 100%,0 14px); }
+#scr-armory .scr-head{ margin-bottom:10px; }
+.arm-count{ margin-left:auto; font-weight:700; font-size:16px; color:var(--sand); white-space:nowrap; }
+#armTabs{ flex:none; flex-wrap:nowrap; gap:6px; margin:0 -16px 8px; padding:0 16px 4px; overflow-x:auto; overflow-y:hidden; touch-action:pan-x; scrollbar-width:none; overscroll-behavior:contain; }
+#armTabs::-webkit-scrollbar{ display:none; }
+#armTabs .tab{ position:relative; flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:46px; padding:2px 14px; line-height:1.05; white-space:nowrap; color:var(--marble); }
+#armTabs .tab small{ font-size:12px; font-weight:700; opacity:.7; }
+#armTabs .tab.hasnew::after{ content:""; position:absolute; right:4px; top:4px; width:8px; height:8px; border-radius:50%; background:var(--blood); box-shadow:0 0 0 2px rgba(20,12,7,.9); }
+.arm-note{ flex:none; min-height:22px; margin:0 0 8px; font-size:15px; line-height:1.25; color:var(--dim); }
+.arm-note b{ color:var(--marble); } .arm-note.ok b{ color:var(--gold); }
+.arm-note.lockd{ color:var(--marble); padding:5px 10px; border-left:3px solid var(--rc,#aaa); background:rgba(0,0,0,.3); } .arm-note.lockd span{ color:var(--sand); }
+#armGrid{ grid-template-columns:repeat(auto-fill, minmax(124px,1fr)); gap:10px; padding:2px 4px 18px 2px; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:rgba(224,165,96,.4) transparent; }
+#armGrid .item{ min-height:150px; padding:8px 10px 10px; justify-content:flex-start; align-items:center; text-align:center; gap:2px; border:1px solid color-mix(in srgb, var(--rc) 55%, rgba(0,0,0,.4)); background:radial-gradient(ellipse 80% 60% at 50% 34%, color-mix(in srgb, var(--rc) 26%, transparent), transparent 70%), linear-gradient(180deg, rgba(52,36,24,.98), rgba(26,17,11,.98)); transition:transform .12s, border-color .12s; }
+@supports not (border-color:color-mix(in srgb, red 50%, blue)){ #armGrid .item{ border-color:var(--rc); background:linear-gradient(180deg, rgba(52,36,24,.98), rgba(26,17,11,.98)); } }
+#armGrid .item::before{ height:4px; }
+#armGrid .item:active{ transform:scale(.96); }
+#armGrid .icw{ position:relative; display:grid; place-items:center; width:64px; height:64px; margin:6px 0 4px; }
+#armGrid .item .ic{ position:static; width:60px; height:60px; opacity:1; filter:drop-shadow(0 3px 4px rgba(0,0,0,.5)); }
+#armGrid .item b{ font-size:16px; } #armGrid .item small{ font-size:13px; text-transform:uppercase; letter-spacing:.06em; }
+#armGrid .item em{ font-style:normal; font-size:12px; color:var(--dim); line-height:1.1; }
+#armGrid .item.locked{ opacity:1; background:linear-gradient(180deg, rgba(36,26,19,.98), rgba(20,14,10,.98)); border-style:dashed; }
+#armGrid .item.locked .ic{ opacity:.38; filter:none; }
+#armGrid .item.locked b{ color:#cbbfa8; }
+#armGrid .lk{ position:absolute; right:-4px; bottom:-2px; width:26px; height:26px; padding:4px; fill:none; stroke:#f3e9d6; stroke-width:2; stroke-linejoin:round; background:rgba(20,12,7,.92); border:1px solid rgba(243,233,214,.4); border-radius:50%; }
+#armGrid .item.pv{ border-style:solid; border-color:var(--rc); box-shadow:0 0 0 1px var(--rc), 0 0 18px color-mix(in srgb, var(--rc) 45%, transparent); }
+#armGrid .item.eq::after{ content:none; }
+#armGrid .eqm{ position:absolute; left:0; right:0; bottom:0; padding:2px 0; font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#2a1606; background:var(--gold); }
+#armGrid .item.eq{ padding-bottom:22px; }
+@media (max-height:520px){
+  #scr-armory .wrap{ top:calc(8px + var(--sat)); bottom:calc(8px + var(--sab)); width:min(470px, 54vw); padding:8px 12px 0; }
+  #scr-armory .scr-head{ margin-bottom:6px; } #armTabs{ margin:0 -12px 4px; padding:0 12px 2px; } #armTabs .tab{ min-height:44px; padding:2px 10px; font-size:15px; }
+  .arm-note{ font-size:13px; margin-bottom:5px; min-height:0; }
+  #armGrid{ grid-template-columns:repeat(auto-fill, minmax(104px,1fr)); gap:7px; } #armGrid .item{ min-height:118px; } #armGrid .icw{ width:48px; height:48px; margin:2px 0; } #armGrid .item .ic{ width:46px; height:46px; } #armGrid .item b{ font-size:14px; } #armGrid .item em{ display:none; }
+}
+@media (orientation:portrait) and (max-width:760px){
+  #scr-armory .wrap{ left:0; right:0; top:42%; bottom:0; width:auto; padding:12px calc(12px + var(--sar)) 0 calc(12px + var(--sal)); clip-path:none; border-width:1px 0 0; box-shadow:0 -12px 40px rgba(0,0,0,.55); }
+  #scr-armory .wrap::before{ content:""; position:absolute; left:50%; top:5px; width:40px; height:4px; margin-left:-20px; border-radius:2px; background:rgba(243,233,214,.25); }
+  #scr-armory .scr-head h2{ font-size:26px; }
+  #armTabs{ margin:0 -12px 6px; padding:0 12px 2px; }
+  #armGrid{ grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; padding-bottom:calc(14px + var(--sab)); } #armGrid .item{ min-height:132px; padding:6px 6px 8px; } #armGrid .icw{ width:52px; height:52px; } #armGrid .item .ic{ width:50px; height:50px; } #armGrid .item b{ font-size:15px; }
+}
+
 /* ---------- results */
 #scr-results{ overflow-y:auto; touch-action:pan-y; }
 .res{ width:min(1060px, 96vw); margin:0 auto; display:flex; flex-direction:column; gap:14px; }
@@ -442,8 +536,6 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
   .card{ padding:10px 12px 12px; } .card h3{ margin-bottom:6px; font-size:15px; }
   .chal li{ font-size:15px; } .ranks{ margin-top:8px; }
   .hint{ display:none; }
-  .modes{ grid-template-columns:repeat(4, minmax(0,1fr)); gap:10px; }
-  .mode{ min-height:0; padding:12px; } .mode .mn{ font-size:22px; } .mode .ms{ font-size:18px; } .mode p{ font-size:15px; }
   .scr-head{ margin-bottom:8px; } .scr-head h2{ font-size:26px; }
   .scorebug{ top:calc(6px + var(--sat)); } .sb-team{ height:38px; min-width:112px; } .sb-score{ font-size:30px; } .sb-clock{ height:38px; min-width:84px; } #sbClock{ font-size:26px; } .sb-name{ font-size:15px; }
   .res-top h2{ font-size:44px; } .res-grid{ gap:10px; } .board{ font-size:16px; } .board td{ padding:3px 6px; }
@@ -453,9 +545,7 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
   .tbtn[data-b=lock]{ right:calc(190px + var(--sar)); }
 }
 @media (max-width:760px){
-  .modes{ grid-template-columns:repeat(2, minmax(0,1fr)); }
   .res-grid{ grid-template-columns:1fr; }
-  #scr-armory .wrap{ width:auto; right:calc(22px + var(--sar)); bottom:45%; }
 }
 @media (prefers-reduced-motion: reduce){
   .ann,.acc,.icard,.feed div,.chatlog div{ animation:none; }
@@ -504,14 +594,16 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
 
   <section id="scr-play" class="screen menu scrim-full">
     <header class="scr-head"><button class="btn sm" data-go="title"><span>Back</span></button><h2>Choose a playlist</h2></header>
-    <div class="modes" id="modes"></div>
+    <div class="modes stag up" id="modes"></div>
   </section>
 
   <section id="scr-armory" class="screen menu">
+    <div class="arm-stage" id="armStage" aria-hidden="true"></div>
     <div class="wrap">
-      <header class="scr-head"><button class="btn sm" data-go="title"><span>Back</span></button><h2>Armory</h2></header>
+      <header class="scr-head"><button class="btn sm" data-go="title"><span>Back</span></button><h2>Armory</h2><span class="arm-count" id="armCount"></span></header>
       <div class="tabs" id="armTabs"></div>
-      <div class="grid" id="armGrid"></div>
+      <div class="arm-note" id="armNote"></div>
+      <div class="grid stag up" id="armGrid"></div>
     </div>
   </section>
 
@@ -4924,6 +5016,7 @@ const UI = (() => {
     if (n === 'title') renderTitle(); if (n === 'play') renderModes(); if (n === 'armory') renderArmory(); if (n === 'career') renderCareer(); if (n === 'settings') renderSettings();
     if (n === 'title' || n === 'play' || n === 'career' || n === 'settings') Cam.set('menu'); if (n === 'armory') Cam.set('armory');
     if (display) display.root.visible = ['title', 'play', 'armory', 'career', 'settings'].includes(n) && !Match.active;
+    if (prevScr === 'armory' && n !== 'armory') refreshDisplay();
     setTimeout(() => { const f = scr(n) && scr(n).querySelector('.btn.primary, .mode, .btn, .item'); if (f && Input.device !== 'touch') f.focus({ preventScroll: true }); }, 30);
     if (display && display.fakeG) { const G = display.fakeG; if (n !== 'armory' && n !== 'reveal') { endPreview(); DSP.drag = 0; DSP.spin = 0; } if (emoteT <= 0) G.basePose = 'present'; }
     requestAnimationFrame(frameMenu); setTimeout(frameMenu, 260);
@@ -4981,21 +5074,61 @@ const UI = (() => {
     }
     let i = 0; for (const b of list.children) b.style.setProperty('--i', i++);
   }
+  // playlist art: inline SVG drawn once per mode (helmets for the team sizes, mask + laurel for Spectacle, a straw dummy for Training)
+  const MODEC = { duel: '#e0a560', doubles: '#5aa6ff', standard: '#ff6a3a', spectacle: '#c77dff', training: '#9fc46a', def: '#e0a560' };
+  const helm = (k, x, y, s, dim) => `<g transform="translate(${x} ${y}) scale(${s})"${dim ? ' opacity=".78"' : ''}><path d="M20 7 Q31 3 36 12" stroke="${MODEC[k] || '#c9312a'}" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M7 27 Q6 9 20 8 Q34 9 33 27 L37 30 L30 31 L29 36 H11 L10 31 L3 30 Z" fill="url(#hg-${k})" stroke="#2a1606" stroke-width="1.3"/><path d="M12 18.5 H28 V24.5 H12 Z" fill="#1a0f08"/><path d="M16 18.5 V24.5 M20 18.5 V24.5 M24 18.5 V24.5" stroke="#8a6030" stroke-width="1"/><path d="M10 14 Q20 9 30 14" stroke="#fff2c4" stroke-opacity=".55" stroke-width="1.4" fill="none"/></g>`;
+  const leaves = (s) => { let o = ''; for (let i = 0; i < 6; i++) { const t = i / 5.5, x = 60 + s * (26 - 30 * t * t + 8 * t), y = 70 - 56 * t, a = s * (-70 + 70 * t); o += `<ellipse cx="${(x - s * 4).toFixed(1)}" cy="${y.toFixed(1)}" rx="6" ry="2.6" transform="rotate(${a.toFixed(0)} ${(x - s * 4).toFixed(1)} ${y.toFixed(1)})" fill="#d9b545"/><ellipse cx="${(x + s * 4).toFixed(1)}" cy="${(y + 2).toFixed(1)}" rx="6" ry="2.6" transform="rotate(${(-a).toFixed(0)} ${(x + s * 4).toFixed(1)} ${(y + 2).toFixed(1)})" fill="#b8902e"/>`; } return o; };
+  function modeArt(k, m) {
+    const defs = `<defs><linearGradient id="hg-${k}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff0c0"/><stop offset=".45" stop-color="#d9a046"/><stop offset="1" stop-color="#7a4a16"/></linearGradient></defs>`;
+    let g;
+    if (k === 'spectacle') g = `${leaves(-1)}${leaves(1)}<path d="M42 20 Q60 12 78 20 Q81 44 60 60 Q39 44 42 20 Z" fill="url(#hg-${k})" stroke="#2a1606" stroke-width="1.4"/><path d="M48 30 q4.5 -4.5 9 0 M63 30 q4.5 -4.5 9 0" stroke="#2a1606" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M50 42 q10 9 20 0" stroke="#2a1606" stroke-width="2.6" fill="#5a1a10" stroke-linecap="round"/>`;
+    else if (k === 'training') g = `<path d="M40 76 H80 L73 69 H47 Z" fill="#5a3a1c"/><rect x="57" y="30" width="6" height="42" fill="#8a5a2b"/><rect x="32" y="36" width="56" height="6" rx="3" fill="#a06a32"/><path d="M48 42 H72 L68 66 H52 Z" fill="#cfa752" stroke="#7a5a22" stroke-width="1.2"/><path d="M50 50 H70 M51 58 H69" stroke="#8a6a2a" stroke-width="1.4"/><circle cx="60" cy="22" r="11" fill="#d9b36a" stroke="#7a5a22" stroke-width="1.3"/><path d="M55 18 l4 4 M59 18 l-4 4 M62 18 l4 4 M66 18 l-4 4" stroke="#5a3a14" stroke-width="1.6"/><circle cx="60" cy="54" r="5" fill="none" stroke="#c9312a" stroke-width="2"/>`;
+    else { const n = m.size || 1; g = n >= 3 ? helm(k, 4, 16, 1.05, 1) + helm(k, 74, 16, 1.05, 1) + helm(k, 33, 8, 1.4) : n === 2 ? helm(k, 12, 12, 1.3) + helm(k, 56, 12, 1.3) : helm(k, 28, 6, 1.65); }
+    return `<svg viewBox="0 0 120 80" aria-hidden="true">${defs}${g}</svg>`;
+  }
   function renderModes() {
     const S = Prog.S;
-    $('#modes').innerHTML = Object.entries(Prog.MODES).map(([k, m]) => {
-      const ranked = k !== 'training', pl = ranked && S.games[k] >= 3;
-      return `<button class="mode plaque" data-mode="${k}"><span class="mn">${m.n}</span><span class="ms">${m.s}</span><p>${m.d}</p>${ranked ? `<span class="mr">${Prog.rankSVG(S.mmr[k], 40, pl)}<span>${pl ? Prog.rankOf(S.mmr[k]).name : 'Unranked'}<small>${pl ? S.mmr[k] + ' MMR' : `${S.games[k]}/3 placement`}</small></span></span>` : '<span class="mr"><span>No clock<small>Dummies fight back never</small></span></span>'}</button>`;
+    $('#modes').innerHTML = Object.entries(Prog.MODES).map(([k, m], i) => {
+      const ranked = S.mmr[k] != null, gm = (S.games && S.games[k]) || 0, pl = ranked && gm >= 3, train = k === 'training';
+      const pips = [0, 1, 2].map((j) => `<u class="${j < gm ? 'on' : ''}"></u>`).join('');
+      const foot = ranked ? `<span class="mr">${Prog.rankSVG(S.mmr[k], 44, pl)}<span>${pl ? esc(Prog.rankOf(S.mmr[k]).name) : 'Placement'}<small>${pl ? S.mmr[k] + ' MMR' : `<span class="pips">${pips}</span>${gm}/3 matches`}</small></span></span>`
+        : `<span class="mr un"><span>${train ? 'Free practice' : 'Unranked'}<small>${train ? 'No clock · no rank' : 'XP and spoils still count'}</small></span></span>`;
+      return `<button class="mode plaque${ranked ? ' ranked' : ''}" data-mode="${k}" style="--i:${i};--mc:${(MODEC[k] || MODEC.def)}"><span class="mart">${modeArt(k, m)}</span><span class="mbody"><span class="mhead"><span class="mn">${esc(m.n)}</span><span class="ms">${esc(m.s)}</span></span><p>${esc(m.d)}</p>${foot}</span>${m.tag ? `<em class="mtag">${esc(m.tag)}</em>` : ''}${S.lastMode === k ? '<em class="mlast">Last played</em>' : ''}</button>`;
     }).join('');
     for (const b of $$('#modes .mode')) b.onclick = () => { Sound.S.ui('click'); Match.queue(b.dataset.mode); };
   }
   function renderArmory() {
     const S = Prog.S;
-    $('#armTabs').innerHTML = Prog.SLOTS.map((s) => `<button class="tab${s.id === armTab ? ' on' : ''}" data-t="${s.id}">${s.n}</button>`).join('');
-    for (const b of $$('#armTabs .tab')) b.onclick = () => { armTab = b.dataset.t; Sound.S.ui('click'); renderArmory(); };
+    if (!Prog.SLOTS.some((s) => s.id === armTab)) armTab = Prog.SLOTS[0].id;
+    const cnt = (sl) => { const all = Prog.ITEMS.filter((i) => i.slot === sl); return [all.filter((i) => i.id in S.own).length, all.length, all.some((i) => S.own[i.id] === 1 && S.equip[i.slot] !== i.id)]; };
+    $('#armTabs').innerHTML = Prog.SLOTS.map((s) => { const [o, n, nw] = cnt(s.id); return `<button class="tab${s.id === armTab ? ' on' : ''}${nw ? ' hasnew' : ''}" data-t="${s.id}">${esc(s.n)}<small>${o}/${n}</small></button>`; }).join('');
+    for (const b of $$('#armTabs .tab')) b.onclick = () => { if (armTab === b.dataset.t) return; armTab = b.dataset.t; Sound.S.ui('click'); endPreview(); refreshDisplay(); DSP.drag = 0; renderArmory(); frameMenu(); };
+    const on = $('#armTabs .tab.on'); if (on && on.scrollIntoView) { const p = on.parentNode; p.scrollLeft = Math.max(0, on.offsetLeft - p.clientWidth / 2 + on.offsetWidth / 2); }
+    const [o, n] = cnt(armTab); $('#armCount').textContent = `${o} / ${n} owned`;
     const items = Prog.ITEMS.filter((i) => i.slot === armTab).sort((a, b) => ((b.id in S.own) - (a.id in S.own)) || a.r - b.r);
-    $('#armGrid').innerHTML = items.map((i) => { const own = i.id in S.own, eq = S.equip[i.slot] === i.id; return `<button class="item${own ? '' : ' locked'}${eq ? ' eq' : ''}" data-id="${i.id}" style="--rc:${Prog.RAR[i.r].c}">${Prog.icon(i)}${own && S.own[i.id] === 1 && !eq ? '<span class="new">NEW</span>' : ''}<b>${esc(i.name)}</b><small>${own ? Prog.RAR[i.r].n : 'Locked · ' + Prog.RAR[i.r].n}</small></button>`; }).join('');
-    for (const b of $$('#armGrid .item')) b.onclick = () => { const id = b.dataset.id; if (!(id in S.own)) { Sound.S.ui('back'); return; } equip(id); renderArmory(); const nb = $(`#armGrid [data-id="${id}"]`); if (nb) nb.focus({ preventScroll: true }); };
+    const lock = '<svg class="lk" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10.5" width="14" height="10" rx="1.5"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/></svg>';
+    $('#armGrid').innerHTML = items.map((i, k) => { const own = i.id in S.own, eq = S.equip[i.slot] === i.id, R = Prog.RAR[i.r]; return `<button class="item${own ? '' : ' locked'}${eq ? ' eq' : ''}" data-id="${i.id}" style="--rc:${R.c};--i:${Math.min(k, 12)}"><span class="icw">${Prog.icon(i)}${own ? '' : lock}</span>${own && S.own[i.id] === 1 && !eq ? '<span class="new">NEW</span>' : ''}${eq ? '<span class="eqm">Equipped</span>' : ''}<b>${esc(i.name)}</b><small>${R.n}</small>${own ? '' : '<em>Win spoils to unlock</em>'}</button>`; }).join('');
+    for (const b of $$('#armGrid .item')) b.onclick = () => { const id = b.dataset.id, it = Prog.BY[id]; if (!it) return;
+      if (!(id in S.own)) { Sound.S.ui('hover'); armPreview(it, false); for (const x of $$('#armGrid .item.pv')) x.classList.remove('pv'); b.classList.add('pv'); return; }
+      equip(id); renderArmory(); armPreview(it, true); const nb = $(`#armGrid [data-id="${id}"]`); if (nb && Input.device !== 'touch') nb.focus({ preventScroll: true }); };
+    armNote(null);
+  }
+  // armory preview: wear the item on the menu gladiator (locked ones without equipping), play emotes, sample trails and KO effects beside him
+  const fakeTrail = { pos: V3(), yaw: 0, _ta: 0 };
+  function armNote(it, own) {
+    const n = $('#armNote'); if (!n) return;
+    if (!it) { n.className = 'arm-note'; n.innerHTML = IS_TOUCH ? 'Tap an item to wear it · drag the gladiator to turn him' : 'Click an item to wear it · drag the gladiator to turn him'; return; }
+    const R = Prog.RAR[it.r]; n.className = 'arm-note' + (own ? ' ok' : ' lockd'); n.style.setProperty('--rc', R.c);
+    n.innerHTML = own ? `<b>${esc(it.name)}</b> equipped` : `<b>${esc(it.name)}</b> · ${R.n} · <span>Locked: preview only. Win spoils to unlock.</span>`;
+  }
+  function armPreview(it, own) {
+    if (!display) return; const S = Prog.S, G = display.fakeG; endPreview(); armNote(it, own);
+    if (!own) { const c = Object.assign({}, S.equip); c[it.slot] = it.id; display.setLook({ cos: c }); G.cos = c; }
+    try {
+      if (it.slot === 'emote' && Rig.EMOTES && Rig.EMOTES[it.id]) { const em = Rig.EMOTES[it.id]; G.flourishing = false; G.noFlourish = true; G.basePose = em.pose; G.pose = em.pose; emoteT = em.dur + 0.3; }
+      else if (it.slot === 'trail' && FX.ready && FX.trail) { let t = 0; fakeTrail._ta = 0; prevFx = (dt) => { t += dt; if (t > 2.2) { prevFx = null; return; } const a = t * 3.2, M = Cam.MENU; fakeTrail.pos.set(M.x + Math.sin(a) * 1.5, 0.35 + Math.sin(t * 5) * 0.2, M.z + Math.cos(a) * 1.5); fakeTrail.yaw = a + Math.PI / 2; FX.trail(it.id, fakeTrail, dt, t > 0.8); }; }
+      else if (it.slot === 'explosion' && FX.ready && FX.ko) { const M = Cam.MENU, a = Cam.MENU_YAW + 1.2; FX.ko(it.id, V3(M.x + Math.sin(a) * 1.8, 0, M.z + Math.cos(a) * 1.8), '#ffd24a', 0.45); }
+    } catch (e) { console.error(e); }
   }
   function equip(id) { const S = Prog.S, it = Prog.BY[id]; S.equip[it.slot] = id; S.own[id] = 0; Prog.save(); Sound.S.ui('equip'); refreshDisplay(); }
   function refreshDisplay() { if (!display) return; const S = Prog.S; display.setLook({ cos: S.equip }); display.fakeG.cos = S.equip; }
@@ -5181,6 +5314,10 @@ const UI = (() => {
     for (const k of ['menuExtra', 'titleExtra', 'careerExtra']) UI[k] = UI[k] || [];
     for (const s of $$('.mi-slot')) s.outerHTML = MI[s.dataset.mi] || MI.def;
     Cam.mf = MF; if (display && display.fakeG) display.fakeG.basePose = 'present';
+    { const st = $('#armStage'); let px = null, pid = -1; // drag the 3D view to turn the gladiator
+      st.addEventListener('pointerdown', (e) => { px = e.clientX; pid = e.pointerId; try { st.setPointerCapture(pid); } catch (err) { /* ok */ } });
+      st.addEventListener('pointermove', (e) => { if (px == null || e.pointerId !== pid) return; DSP.drag += (e.clientX - px) * 0.012; px = e.clientX; });
+      const up = () => { px = null; pid = -1; }; st.addEventListener('pointerup', up); st.addEventListener('pointercancel', up); }
     let rzq = 0; addEventListener('resize', () => { if (!rzq) rzq = requestAnimationFrame(() => { rzq = 0; frameMenu(); }); });
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(frameMenu, () => {});
     for (const b of $$('[data-go]')) b.onclick = () => { Sound.init(); Sound.S.ui(b.dataset.go === 'title' ? 'back' : 'click'); show(b.dataset.go); };
@@ -5943,7 +6080,7 @@ const Match = (() => {
     return pick(TIPS);
   }
   function queue(mode) {
-    Sound.init(); M.mode = mode; UI.show('queue');
+    Sound.init(); M.mode = mode; if (Prog.S && Prog.MODES[mode]) Prog.S.lastMode = mode; UI.show('queue');
     const tier = mode !== 'training' && Prog.S.games[mode] >= 3 ? Prog.rankOf(Prog.S.mmr[mode]).name.replace(/ [IVX]+$/, '') + '-tier rivals' : '';
     $('#qTitle').textContent = mode === 'training' ? 'Preparing the arena' : tier ? 'Finding ' + tier : 'Finding opponents'; $('#qTip').textContent = queueTip(mode);
     MT.set('queue', () => { if (UI.cur === 'queue') start(mode); }, mode === 'training' ? 300 : rand(400, 800));
