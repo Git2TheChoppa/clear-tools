@@ -557,6 +557,7 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script>
 'use strict';
+const __G = (window.__G = {}); // shared registry: modules may attach themselves (also the headless-test hook)
 // ---------------------------------------------------------------- utilities
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -956,6 +957,8 @@ const Sound = (() => {
 
   return {
     init, S, crowd, cheer, ooh, boost, boostMode, duck, music, setIntensity, vol, applyVolumes, L,
+    // synth kit for other modules: every helper is a no-op/returns null until the AudioContext exists (check Sound.ready first)
+    kit: { chain: (pos, base, wet) => chain(pos, base, wet), osc: (...a) => { if (ctx) osc(...a); }, nz: (...a) => { if (ctx) nz(...a); }, horn: (notes, gain, root) => horn(notes, gain, root), now: () => (ctx ? ctx.currentTime : 0), get ctx() { return ctx; }, get sfx() { return sfxBus; }, get crowd() { return crowdBus; }, get music() { return musBus; } },
     get ready() { return !!ctx; },
     suspend() { if (ctx && ctx.state === 'running') ctx.suspend().catch(() => {}); },
     resume() { if (ctx && ctx.state !== 'running') ctx.resume().catch(() => {}); },
@@ -2305,7 +2308,8 @@ void main(){ vec2 p = gl_PointCoord - 0.5; float c = cos(vFR.y), s = sin(vFR.y);
     trauma = Math.max(0, trauma - dt * 1.5);
     if (flashEl) { flashA = Math.max(0, flashA - dt * 3); flashEl.style.opacity = flashA.toFixed(3); }
   }
-  const FX = Object.assign(E, { init, update, ring, flash, shake, screen, bolt, rumble, ready: false, get trauma() { return trauma; }, clear() { ADD.n = 0; NRM.n = 0; } });
+  // raw emitters for other modules: add(additive, x, y, z, vx, vy, vz, life, s0, s1, color, alpha, atlasFrame, grav, drag, spin, flags) and burstAt(additive, x, y, z, n, opts) (see burst())
+  const FX = Object.assign(E, { init, update, ring, flash, shake, screen, bolt, rumble, ready: false, get trauma() { return trauma; }, clear() { ADD.n = 0; NRM.n = 0; }, qn, add: (additive, ...a) => { if (ADD) (additive ? ADD : NRM).add(...a); }, burstAt: (additive, x, y, z, n, o) => { if (ADD) burst(additive ? ADD : NRM, x, y, z, n, o); } });
   return FX;
 })();
 
@@ -3932,7 +3936,7 @@ const Match = (() => {
       FX.hit(e.pos, e.heavy || e.dmg >= 20); (e.heavy || e.dmg >= 20 ? Sound.S.heavyHit : Sound.S.hit)(e.pos, clamp(e.dmg / 12, 0.7, 1.6), ak, asp);
       if (e.v.rig) e.v.rig.hit(1);
       const mine = isMe(e.a), hurt = isMe(e.v);
-      if (mine || hurt || !M.active) HUD.num(e.pos, e.dmg, hurt ? 'hurt' : e.dmg >= 20 || e.crit ? 'crit' : '');
+      if (mine || hurt) HUD.num(e.pos, e.dmg, hurt ? 'hurt' : e.dmg >= 20 || e.crit ? 'crit' : '');
       if (mine || hurt) { hitstop(e.dmg >= 20 ? 0.09 : 0.045); FX.shake(hurt ? 0.28 : e.dmg >= 20 ? 0.22 : 0.08); }
       Arena.excite = Math.min(1, Arena.excite + 0.02);
       hitFeel(e, mine, hurt, asp);
@@ -4051,7 +4055,8 @@ const Match = (() => {
       Input.poll(); UI.update(dt);
       try { Match.update(dt); } catch (e) { console.error(e); }
       if (display && display.root.visible) {
-        flourT -= dt; const G = display.fakeG; if (flourT < 0) { G.pose = G.pose ? null : pick(['flourish', 'salute', 'victory']); flourT = G.pose ? 3.2 : rand(4, 7); }
+        // menu gladiator: rests in G.basePose (set by UI per screen), with an occasional flourish unless G.noFlourish
+        flourT -= dt; const G = display.fakeG; if (flourT < 0) { const fl = !G.flourishing && !G.noFlourish; G.flourishing = fl; G.pose = fl ? pick(G.flourishes || ['flourish', 'salute', 'victory']) : (G.basePose || null); flourT = fl ? 3.2 : rand(4, 7); } else if (!G.flourishing && G.pose !== (G.basePose || null)) G.pose = G.basePose || null;
         display.animate(dt, G);
       }
       Arena.update(dt, now / 1000, Sim);
@@ -4062,7 +4067,7 @@ const Match = (() => {
   }
   addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { if (Match.active && !Match.paused && Match.phase !== 'done') Match.pause(); Sound.suspend(); } else Sound.resume(); });
-  window.__G = { Sim, Match, UI, Prog, Arena, Cam, FX, HUD, Input, Sound, renderer, scene, camera, get display() { return display; } };
+  Object.assign(__G, { Sim, Match, UI, Prog, Arena, Cam, FX, HUD, Input, Sound, Rig, Tex, Game, TUNE, Bus, renderer, scene, camera }); Object.defineProperty(__G, 'display', { get() { return display; }, configurable: true });
   next();
 })();
 
