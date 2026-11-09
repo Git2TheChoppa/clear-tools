@@ -5370,7 +5370,7 @@ body.touch .ld-yard button{ min-height:44px; justify-content:center; }
   function build() {
     if (root) return;
     hudEl = document.getElementById('hud'); root = el('div'); root.id = 'ludus';
-    root.innerHTML = '<div class="ld-wrap" hidden><div class="ld-card"><div class="ld-top"><span class="ld-kick"></span><span class="ld-prog"></span><button class="ld-skip" data-ld="skip" tabindex="-1"><i></i><span></span></button></div><div class="ld-name"></div><div class="ld-text"></div><div class="ld-goal"><span class="ld-pips"></span><span class="ld-lab"></span><button class="ld-b ld-act" data-ld="taunt" tabindex="-1" hidden>Salute</button></div><div class="ld-hint"></div><div class="ld-stamp"><span></span></div></div></div>'
+    root.innerHTML = '<div class="ld-wrap" hidden><div class="ld-card"><div class="ld-top"><span class="ld-kick"></span><span class="ld-prog"></span><button class="ld-skip" data-ld="skip" tabindex="-1"><i></i><span></span></button></div><div class="ld-name"></div><div class="ld-text"></div><div class="ld-goal"><span class="ld-pips"></span><span class="ld-lab"></span><button class="ld-b ld-act" data-ld="taunt" tabindex="-1" hidden>Taunt</button></div><div class="ld-hint"></div><div class="ld-stamp"><span></span></div></div></div>'
       + '<div class="ld-mark" hidden><div class="ld-pin"><b></b><em></em><i></i></div><div class="ld-edge"><i></i><b></b></div></div><div class="ld-yard" hidden></div><div class="ld-offer plaque" hidden></div><div class="ld-grad" hidden></div>';
     hudEl.appendChild(root);
     const q = (s) => root.querySelector(s);
