@@ -4782,6 +4782,65 @@ const Meta = (() => {
       + `<div class="section-t" style="margin-top:14px">Last ${Math.max(1, d.hist.length)} matches<small>${d.wrun > 1 ? `${d.wrun} wins in a row` : ''}</small></div>${rows ? `<ul class="mt-hist">${rows}</ul>` : '<p class="mt-empty">Nothing yet. Every real match is logged here.</p>'}`;
   }
   careerSecs.push({ id: 'records', order: 30, html: recordsCareer });
+  // ---------- feats: lifetime deeds with a reward each (a number is XP, 'c<r>' a crate of at least that rarity). Counters Prog keeps (ko, demo, par, wins) count from day one.
+  const FEATS = [
+    ['cent', 'Centurion', 'Score {n} KOs', 'ko', 100, 'c3'], ['victor', 'Victor', 'Win {n} matches', 'wins', 25, 'c3'], ['wall', 'Wall Breaker', 'Wall-splat {n} foes', 'splat', 25, 400],
+    ['untouch', 'The Untouchable', "Win {n} matches without being KO'd", 'flawless', 5, 'c3'], ['darling', "Crowd's Darling", 'Earn {n} Ovations', 'ovations', 3, 'c3'],
+    ['decreed', 'Decreed', 'Claim {n} decrees', 'decree', 10, 400], ['demol', 'Demolisher', 'Demolish {n} gladiators', 'demo', 25, 'c2'], ['iron', 'Iron Wall', 'Land {n} parries', 'par', 50, 300],
+    ['ripo', 'Riposte Artist', 'Land {n} ripostes', 'rip', 25, 300], ['meteor', 'Meteor', 'Land {n} meteor slams', 'slam', 25, 300], ['show', 'Showman', 'Finish {n} taunts', 'taunts', 25, 300],
+    ['slayer', 'Rival Slayer', 'Defeat {n} rivals', 'rivals', 10, 400], ['breaker', 'Nemesis Breaker', 'Vanquish a Nemesis', 'vanq', 1, 'c4'],
+  ].map(([id, n, t, k, goal, rw]) => ({ id, n, t: Prog.chalText(t, goal), k, goal, rw }));
+  const LIFE = ['splat', 'slam', 'rip', 'taunts', 'ovations', 'decree', 'flawless', 'rivals'], PROG_KEY = { ko: 1, demo: 1, par: 1, wins: 1 };
+  repairs.push((m) => {
+    const lf = isObj(m.life) ? m.life : {}; m.life = {}; for (const k of LIFE) m.life[k] = int(lf[k]);
+    const ft = isObj(m.feat) ? m.feat : {}; m.feat = {}; for (const f of FEATS) if (fin(ft[f.id]) && ft[f.id] > 0) m.feat[f.id] = ft[f.id];
+  });
+  const featVal = (f, d) => (PROG_KEY[f.k] ? +Prog.S.stats[f.k] || 0 : f.k === 'vanq' ? int(d.vanq) : d.life[f.k] || 0);
+  const rewardText = (rw) => (typeof rw === 'number' ? `+${rw} XP` : `${Prog.RAR[+rw.slice(1)].n} spoils`);
+  const toasts = [];
+  onEnd.push((L, M, res, out) => {
+    if (!L.real || M.forfeited) return; const d = D(), st = M.me.stats, win = out.win;
+    for (const k of ['splat', 'slam', 'rip', 'taunts', 'ovations', 'decree']) d.life[k] += Math.max(0, Math.round(+st[k] || 0));
+    if (win && st.de === 0) d.life.flawless++; if (win) d.life.rivals += L.seated.length;
+    out.feats = [];
+    for (const f of FEATS) {
+      if (d.feat[f.id] || featVal(f, d) < f.goal) continue;
+      d.feat[f.id] = Date.now(); out.feats.push(f.id);
+      if (typeof f.rw === 'number') Prog.addXp(f.rw, res, 'Feat: ' + f.n); else crate(+f.rw.slice(1));
+      out.heads.push({ k: 'gold', i: 'star', t: 'Feat · ' + f.n, s: `${f.t} · ${rewardText(f.rw)}` }); toasts.push(f);
+    }
+  });
+  function featsCareer() {
+    const d = D(), done = FEATS.filter((f) => d.feat[f.id]).length;
+    const list = FEATS.slice().sort((a, b) => !!d.feat[a.id] - !!d.feat[b.id] || featVal(b, d) / b.goal - featVal(a, d) / a.goal).map((f) => {
+      const v = Math.min(f.goal, featVal(f, d)), ok = !!d.feat[f.id];
+      return `<div class="mt-feat${ok ? ' done' : ''}" style="--p:${(100 * v / f.goal).toFixed(0)}%"><b>${ok ? ICON.check : ''}${esc(f.n)}</b><small>${ok ? 'Done' : `${v}/${f.goal}`}</small><p>${esc(f.t)} · ${esc(rewardText(f.rw))}</p><span class="mt-bar"><i></i></span></div>`;
+    }).join('');
+    return `<div class="section-t">Feats<small>${done} of ${FEATS.length}</small></div><div class="mt-feats">${list}</div>`;
+  }
+  careerSecs.push({ id: 'feats', order: 40, html: featsCareer });
+  // a toast for each feat, one after another once the results are up
+  function toast(f, i) {
+    setTimeout(() => { const t = el('div', 'mt-toast', `${ICON.star}<div><b>Feat · ${esc(f.n)}</b><span>${esc(f.t)} · ${esc(rewardText(f.rw))}</span></div>`); document.body.appendChild(t); sfx('equip'); setTimeout(() => t.remove(), 3700); }, 900 + i * 3900);
+  }
+  // ---------- the Emperor's Bounty: one marked enemy (the Nemesis first, then a rival) pays +100 score and bonus XP to the first KO you land on them
+  const BOUNTY_XP = 75;
+  onStart.push((L, M) => {
+    if (!L.real) return; const me = M.me, foes = M.glads.filter((g) => g.team !== me.team && !g.human && !g.passive); if (!foes.length) return;
+    const g = foes.find((x) => x.nemesis) || (L.seated.length ? pick(L.seated) : M.mode === 'duel' ? null : pick(foes)); if (!g) return;
+    g.bounty = true; g.preBounty = g.titleName || ''; g.titleName = (g.nemesis ? 'Nemesis · ' : '') + 'Bounty · +100'; L.bounty = { g, paid: false }; L.dirty = true;
+    let seen = 0; const wait = () => setTimeout(() => {
+      if (live !== L || !Match.active || !g.bounty) return; if (Match.phase !== 'play' || Match.paused) { seen = 0; wait(); return; }
+      if (++seen < 6) { wait(); return; } // a moment after the fight starts, clear of the GO banner
+      try { HUD.ann("Emperor's Bounty", 'gold', `${esc(g.name)} · +100 for the first KO`, 2.4); } catch (e) { /* HUD not up */ }
+    }, 300);
+    wait();
+  });
+  onKo.push((L, e, me) => {
+    const b = L.bounty; if (!b || b.paid || e.by !== me || e.v !== b.g) return;
+    b.paid = true; b.g.bounty = false; b.g.titleName = b.g.preBounty; bonus(me, "Emperor's Bounty", 100);
+  });
+  onEnd.push((L, M, res) => { const b = L.bounty; if (!b) return; b.g.bounty = false; if (b.paid && !M.forfeited) Prog.addXp(BOUNTY_XP, res, "Emperor's Bounty"); });
   // results: call-outs go right under the title, the detail cards after the grid (both are Meta's own elements inside #scr-results .res)
   Bus.on('results', () => {
     const host = document.querySelector('#scr-results .res'); if (!host) return;
@@ -4795,6 +4854,7 @@ const Meta = (() => {
       const parts = resBlocks.sort(bySec).map((b) => { const h = b.html(); return h ? `<div class="res-card plaque mt-rc mt-r-${b.id}">${h}</div>` : ''; }).join('');
       if (parts) { const box = el('div', 'mt-res', parts), act = host.querySelector(':scope > .res-actions'); if (act) host.insertBefore(box, act); else host.appendChild(box); }
     } catch (e) { console.error(e); }
+    toasts.splice(0).forEach(toast);
   });
   // the hooks light up once the menus build reads them; until then (or if one is never read) the observers below add the same markup after each render
   let hooked = false;
@@ -4885,12 +4945,24 @@ const Meta = (() => {
 .mt-hist li.L,.mt-hist li.F{ border-left-color:#ff9c8a; } .mt-hist li b{ font-weight:900; } .mt-hist li.W b{ color:#9fdc86; } .mt-hist li.L b,.mt-hist li.F b{ color:#ff9c8a; }
 .mt-hist span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .mt-hist .sc,.mt-hist .mm{ font-weight:800; font-variant-numeric:tabular-nums; } .mt-hist .mm{ text-align:right; }
 .mt-hist small{ font-size:13px; color:var(--dim); white-space:nowrap; }
-@media (prefers-reduced-motion: reduce){ .mt-head,.mt-daily li.fresh,.mt-streak.risk{ animation:none; } }
+.mt-feats{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:6px; }
+.mt-feat{ position:relative; min-width:0; padding:7px 10px 9px; border:1px solid rgba(255,255,255,.1); background:rgba(0,0,0,.2); }
+.mt-feat b{ display:block; padding-right:56px; font-size:17px; font-weight:800; line-height:1.15; }
+.mt-feat small{ position:absolute; right:10px; top:8px; font-size:13px; font-weight:800; color:var(--sand); font-variant-numeric:tabular-nums; }
+.mt-feat p{ margin:2px 0 6px; font-size:14px; line-height:1.25; color:var(--dim); }
+.mt-bar{ display:block; height:5px; background:rgba(255,255,255,.1); } .mt-bar i{ display:block; height:100%; width:var(--p,0%); background:linear-gradient(90deg,#c98a1a,#ffd66e); }
+.mt-feat.done{ border-color:rgba(245,192,69,.65); background:rgba(120,80,12,.22); } .mt-feat.done b{ color:#ffe08a; } .mt-feat.done small{ color:var(--gold); }
+.mt-toast{ position:fixed; left:50%; top:calc(var(--sat) + 14px); z-index:90; display:flex; align-items:center; gap:10px; max-width:calc(100vw - 24px); padding:8px 18px 9px 14px; border:1px solid rgba(255,226,154,.85); background:linear-gradient(90deg, rgba(126,84,14,.97), rgba(40,26,14,.97)); box-shadow:0 8px 24px rgba(0,0,0,.45); pointer-events:none; transform:translateX(-50%); animation:mt-toast 3.6s ease both; }
+.mt-toast .mt-i{ width:22px; height:22px; margin:0; color:#ffd66e; }
+.mt-toast b{ display:block; font-family:var(--display); font-weight:900; font-size:16px; letter-spacing:.06em; text-transform:uppercase; color:#ffe08a; } .mt-toast span{ display:block; font-size:14px; color:var(--marble); }
+@keyframes mt-toast{ 0%{ opacity:0; transform:translate(-50%,-18px); } 9%,86%{ opacity:1; transform:translate(-50%,0); } 100%{ opacity:0; transform:translate(-50%,-8px); } }
+@media (prefers-reduced-motion: reduce){ .mt-head,.mt-daily li.fresh,.mt-streak.risk{ animation:none; } .mt-toast{ animation-name:mt-fade; } }
+@keyframes mt-fade{ 0%,100%{ opacity:0; } 10%,86%{ opacity:1; } }
 #scr-title .side.mt-side{ max-height:calc(100% - 44px - var(--sat) - var(--sab)); overflow-y:auto; touch-action:pan-y; scrollbar-width:none; }
 #scr-title .side.mt-side::-webkit-scrollbar{ display:none; }
 `)).id = 'meta-css';
   function onSave(ev) { cur = null; if (ev !== 'load') { io.mode = 'out'; io.arm = 0; live = null; last = null; stranger = null; lastMet = []; } D(); hook(); }
-  return { onSave, D, renderCareer, renderTitle, titleHTML, careerHTML, ACT, seat, CAST, TEMPER, duelTarget, daily, rollDaily, streakNow, today, tonight: () => ({ n: night.n, w: night.w }), REC, set clock(f) { clock = typeof f === 'function' ? f : () => new Date(); }, get live() { return live; }, get last() { return last; } };
+  return { onSave, D, renderCareer, renderTitle, titleHTML, careerHTML, ACT, seat, CAST, TEMPER, duelTarget, daily, rollDaily, streakNow, today, tonight: () => ({ n: night.n, w: night.w }), REC, FEATS, set clock(f) { clock = typeof f === 'function' ? f : () => new Date(); }, get live() { return live; }, get last() { return last; } };
 })();
 __G.Meta = Meta;
 
