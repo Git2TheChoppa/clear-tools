@@ -3249,7 +3249,10 @@ const Prog = (() => {
   const BY = {}; ITEMS.forEach((i) => (BY[i.id] = i));
   const TIERS = [['Bronze', '#c07a3e'], ['Silver', '#c9ced6'], ['Gold', '#f1c243'], ['Platinum', '#7fe0d8'], ['Diamond', '#6fb6ff'], ['Champion', '#b27cff'], ['Grand Champion', '#ff4d5a']];
   const MODES = { duel: { n: 'Duel', s: '1v1', size: 1, d: 'Just you, a blade, and one rival. Pure skill.' }, doubles: { n: 'Doubles', s: '2v2', size: 2, d: 'Fight beside a partner. Assists win games.' }, standard: { n: 'Standard', s: '3v3', size: 3, d: 'The full spectacle. Chaos, demos, glory.' }, spectacle: { n: 'Spectacle', s: '3v3', size: 3, d: 'The games of the day: one wild rule each match. Low gravity, endless fury, lightning and worse.', tag: 'Rotating rules', unranked: true }, training: { n: 'Training', s: 'Free play', size: 1, d: 'Practice on passive dummies. No clock, no rank.' } };
-  const CH = [['win', 'Win {n} matches', 2, 3], ['ko', 'Score {n} KOs', 6, 10], ['demo', 'Demolish {n} gladiators', 1, 3], ['par', 'Land {n} parries', 3, 5], ['mvp', 'Earn MVP', 1, 1], ['pads', 'Collect {n} fury pads', 15, 25], ['flawless', "Win without being KO'd", 1, 1], ['bless', "Claim {n} Emperor's Blessings", 2, 3], ['dmg', 'Deal {n} damage', 800, 1200], ['splat', 'Wall-splat {n} foes', 1, 3], ['slam', 'Land {n} meteor slams', 2, 4], ['dh', 'Land {n} dodge strikes', 3, 5], ['as', 'Earn {n} assists', 3, 6], ['play', 'Play {n} matches', 3, 3]];
+  // key, text, lo, hi, hard (at most one hard challenge is active at a time). A key is one of applyMatch's `inc` counts or any per-match stat (g.stats)
+  const CH = [['win', 'Win {n} matches', 2, 3], ['ko', 'Score {n} KOs', 6, 10], ['demo', 'Demolish {n} gladiator{s}', 1, 3], ['par', 'Land {n} parries', 3, 5], ['mvp', 'Earn MVP', 1, 1], ['pads', 'Collect {n} fury pads', 15, 25], ['flawless', "Win without being KO'd", 1, 1, 1], ['bless', "Claim {n} Emperor's Blessings", 2, 3], ['dmg', 'Deal {n} damage', 800, 1200], ['splat', 'Wall-splat {n} foe{s}', 1, 3], ['slam', 'Land {n} meteor slams', 2, 4], ['dh', 'Land {n} dodge strikes', 3, 5], ['as', 'Earn {n} assists', 3, 6], ['play', 'Play {n} matches', 3, 3],
+    ['rip', 'Land {n} ripostes', 2, 4], ['taunts', 'Finish {n} taunts', 3, 5], ['ovations', 'Earn an Ovation from the crowd', 1, 1, 1], ['decree', 'Claim {n} decrees with your team', 2, 3], ['specWin', 'Win a Spectacle match', 1, 1]];
+  const chalText = (t, n) => t.replace('{n}', n).replace('{s}', n === 1 ? '' : 's').replace('{es}', n === 1 ? '' : 'es');
   const NAMES = ['Flamma', 'Priscus', 'Verus', 'Crixus', 'Spiculus', 'Tetraites', 'Carpophorus', 'Celadus', 'Ursus', 'Tigris', 'Ferox', 'Velox', 'Taurus', 'Lupus', 'Corvus', 'Draco', 'Castor', 'Pollux', 'Brutus', 'Maximus', 'Invictus', 'Saltius', 'Calculus', 'Boomerus', 'Hermes', 'Triumphus', 'Aureolus', 'Scylax', 'Marcus', 'Cassius', 'Nero', 'Vulcan', 'Achillia', 'Mevia', 'Amazonia'];
   const KEY = 'gladius.save.v3', KEY_V2 = 'gladius.save.v2';
   let S = null;
@@ -3349,8 +3352,9 @@ const Prog = (() => {
   }
   function refill() {
     while (S.chal.length < 3) {
-      const used = new Set(S.chal.map((c) => c.k)), opts = CH.filter((c) => !used.has(c[0])), c = pick(opts), n = randi(c[2], c[3]);
-      S.chal.push({ k: c[0], t: c[1].replace('{n}', n), n, p: 0 });
+      const used = new Set(S.chal.map((c) => c.k)), hard = CH.some((c) => c[4] && used.has(c[0])), green = (S.stats.matches || 0) < 8; // an Ovation is not asked of a newcomer
+      const opts = CH.filter((c) => !used.has(c[0]) && !(c[4] && hard) && !(green && c[0] === 'ovations')), c = pick(opts), n = randi(c[2], c[3]);
+      S.chal.push({ k: c[0], t: chalText(c[1], n), n, p: 0 });
     }
   }
   // loop-3: pity timers live in S.spoils (lazy; S5 adds the deep-merge migration): pity counts spoils since the last Import+, pityX since the last Exotic+
@@ -3455,7 +3459,7 @@ const Prog = (() => {
     res.drops = S.pending.slice(); res.next = nextUp(r.mode); res.pityLeft = pityLeft();
     save(); return res;
   }
-  return { RAR, SLOTS, ITEMS, BY, MODES, NAMES, TIERS, rankOf, rankSVG, icon, xpFor, load, save, fresh, applyMatch, rollDrop, grant, skillFor, botLoadout, winsTo, nextDiv, nextUp, pityLeft, addXp, exportCode, readCode, importCode, KEY, get S() { return S; }, reset() { const keep = S.settings; S = fresh(); S.settings = keep; refill(); save(); tellMeta('reset'); } };
+  return { RAR, SLOTS, ITEMS, BY, MODES, NAMES, TIERS, rankOf, rankSVG, icon, xpFor, load, save, fresh, applyMatch, rollDrop, grant, skillFor, botLoadout, winsTo, nextDiv, nextUp, pityLeft, addXp, chalText, exportCode, readCode, importCode, KEY, get S() { return S; }, reset() { const keep = S.settings; S = fresh(); S.settings = keep; refill(); save(); tellMeta('reset'); } };
 })();
 
 // ---------------------------------------------------------------- meta: reasons to come back (save tools, rivals, daily contracts, records, feats, the bounty)
@@ -3531,6 +3535,9 @@ const Meta = (() => {
     skull: '<svg class="mt-i" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M8 1.5C4.4 1.5 2 3.9 2 7.2c0 1.9.9 3.3 2.2 4.1v2.2h7.6v-2.2C13.1 10.5 14 9.1 14 7.2 14 3.9 11.6 1.5 8 1.5ZM5.6 9.2a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm4.8 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm-3.2 3v-1.4h1.6v1.4Z"/></svg>',
     swords: '<svg class="mt-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 2l8.2 8.2M13.5 2L5.3 10.2M2.2 11l2.8 2.8M13.8 11L11 13.8" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/></svg>',
     star: '<svg class="mt-i" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.2l2 4.3 4.7.6-3.5 3.2.9 4.7L8 11.7 3.9 14l.9-4.7L1.3 6.1 6 5.5Z"/></svg>',
+    flame: '<svg class="mt-i" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8.3 1c.5 2.3 3.9 3.8 3.9 7.7A4.2 4.2 0 0 1 8 13 4.2 4.2 0 0 1 3.8 8.7c0-1.5.7-2.7 1.6-3.5.1 1.1.6 1.9 1.3 2.2C6.4 5.200 7.100 2.600 8.300 1Z"/></svg>',
+    scroll: '<svg class="mt-i" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M3 2h9a1.500 1.500 0 0 1 1.500 1.500V5H11v8.500A1.500 1.500 0 0 1 9.500 15h-6A1.500 1.500 0 0 1 2 13.500V12h1V2Zm2 3v1.200h4V5H5Zm0 2.600v1.200h4V7.600H5Z"/></svg>',
+    check: '<svg class="mt-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.500l3.200 3.200L13 4.800" stroke="currentColor" stroke-width="2.200" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   };
   // ---------- rivals: a fixed cast with looks, temperaments and a head-to-head record against you; whoever KOs you most becomes your Nemesis
   // B(b): how a temperament bends the bot's band row (AI.BANDS) · swag: how often they showboat after a KO · hi / hit (they KO you) / hurt (you KO them): chat
@@ -3698,6 +3705,61 @@ const Meta = (() => {
     if (key) { const n = w.querySelector(FOCUS_NEXT[key] || `[data-meta="${key}"]`); if (n) n.focus({ preventScroll: true }); }
   }
   function renderTitle() { for (const c of titleCards) { const w = document.querySelector(`[data-meta-card="${c.id}"]`); if (w) w.innerHTML = c.html(); } }
+  // ---------- daily contracts and the return streak (local calendar days; `clock` can be swapped to test a rollover)
+  let clock = () => new Date();
+  const dayNum = (t) => Math.floor(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) / 864e5), today = () => dayNum(clock());
+  const DAILY_XP = [350, 450, 600], SWEEP_XP = 250;
+  // key, text, lo, hi, tier (0 easy · 1 medium · 2 hard: one of each per day). A key is a per-match stat or one of the derived counts in the matchEnd step below
+  const DAILY = [
+    ['play', 'Fight {n} match{es}', 2, 3, 0], ['ko', 'Score {n} KOs', 4, 6, 0], ['dmg', 'Deal {n} damage', 600, 900, 0], ['pads', 'Collect {n} fury pads', 10, 16, 0], ['taunts', 'Finish {n} taunts', 2, 3, 0], ['blk', 'Block {n} blows', 6, 10, 0], ['dh', 'Land {n} dodge strikes', 2, 3, 0],
+    ['win', 'Win {n} match{es}', 1, 2, 1], ['par', 'Land {n} parries', 3, 5, 1], ['slam', 'Land {n} meteor slams', 2, 4, 1], ['as', 'Earn {n} assists in a team playlist', 3, 5, 1], ['bless', "Claim {n} Emperor's Blessings", 2, 3, 1], ['rip', 'Land {n} ripostes', 2, 3, 1], ['favor2', 'Win the crowd over: reach Cheers', 1, 1, 1], ['rival', 'Defeat {n} rival{s}', 1, 2, 1], ['decree', 'Claim {n} decree{s} in a team playlist', 1, 2, 1],
+    ['flawless', "Win a match without being KO'd", 1, 1, 2], ['mvp', 'Be named MVP', 1, 1, 2], ['demo', 'Demolish {n} gladiators', 2, 3, 2], ['splat', 'Wall-splat {n} foes', 2, 3, 2], ['favor3', 'Whip the crowd into a Roar', 1, 1, 2], ['specWin', 'Win a Spectacle match', 1, 1, 2], ['duelWin', 'Win {n} Duel{s}', 1, 2, 2],
+  ];
+  function rollDaily(t) {
+    const R = rng((t * 2654435761) >>> 0), list = [];
+    for (let tier = 0; tier < 3; tier++) { const opts = DAILY.filter((c) => c[4] === tier), c = opts[(R() * opts.length) | 0]; let n = c[2] + Math.floor(R() * (c[3] - c[2] + 1)); if (c[0] === 'dmg') n = Math.round(n / 50) * 50; list.push({ k: c[0], t: Prog.chalText(c[1], n), n, p: 0, xp: DAILY_XP[tier] }); }
+    return { day: t, list, swept: false };
+  }
+  repairs.push((m) => {
+    const dl = m.daily, okList = isObj(dl) && Array.isArray(dl.list) && dl.list.length === 3 && dl.list.every((c) => isObj(c) && typeof c.k === 'string' && typeof c.t === 'string' && fin(c.n) && c.n > 0 && fin(c.p) && fin(c.xp));
+    if (okList && fin(dl.day)) { dl.swept = !!dl.swept; for (const c of dl.list) { c.p = clamp(c.p, 0, c.n); c.xp = clamp(Math.round(c.xp), 0, 2000); } } else m.daily = null;
+    const s = isObj(m.streak) ? m.streak : {}; m.streak = { n: int(s.n), last: int(s.last, 0, 0, 1e7), best: int(s.best) }; m.streak.best = Math.max(m.streak.best, m.streak.n);
+    m.contracts = int(m.contracts); m.sweeps = int(m.sweeps);
+  });
+  // today's three contracts (rolled on first use each day; the same day always rolls the same three)
+  function daily() { const d = D(), t = today(); if (!d.daily || d.daily.day !== t) d.daily = rollDaily(t); return d.daily; }
+  // the streak as it stands today: lit (fought today), risk (fought yesterday, not yet today) or cold
+  function streakNow() { const s = D().streak, gap = today() - s.last; return gap === 0 ? { n: s.n, st: 'lit' } : gap === 1 && s.n > 0 ? { n: s.n, st: 'risk' } : { n: 0, st: 'cold' }; }
+  const streakXp = (n) => (n >= 2 ? 5 * Math.min(n, 10) : 0);
+  function resetsIn() { const t = clock(), m = Math.max(1, Math.round((new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1) - t) / 6e4)); return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m} min`; }
+  onStart.push((L, M) => { // evergreen "Win a Spectacle match": applyMatch reads me.stats[key], so the stat is computed when it is asked for
+    Object.defineProperty(M.me.stats, 'specWin', { get: () => (Match.mode === 'spectacle' && Match.me && Match.winner === Match.me.team && !Match.forfeited ? 1 : 0), enumerable: true, configurable: true });
+  });
+  onEnd.push((L, M, res, out) => {
+    if (!L.real || M.forfeited) return; const d = D(), st = M.me.stats, win = out.win, t = today(), s = d.streak;
+    if (t > s.last) { s.n = t - s.last === 1 ? s.n + 1 : 1; s.last = t; s.best = Math.max(s.best, s.n); if (s.n >= 2) out.heads.push({ k: 'gold', i: 'flame', t: `${s.n}-day streak`, s: `+${streakXp(s.n)} XP on every match today` }); }
+    if (t === s.last && streakXp(s.n)) Prog.addXp(streakXp(s.n), res, `Day streak ×${s.n}`);
+    const dl = daily(), inc = { play: 1, win: win ? 1 : 0, mvp: M.mvpId === M.me.id ? 1 : 0, flawless: win && st.de === 0 ? 1 : 0, duelWin: win && M.mode === 'duel' ? 1 : 0, specWin: win && M.mode === 'spectacle' ? 1 : 0, favor2: st.favorPeak >= 2 ? 1 : 0, favor3: st.favorPeak >= 3 ? 1 : 0, rival: win ? L.seated.length : 0 };
+    out.daily = dl.list.map((c) => { const p0 = c.p; if (p0 < c.n) { c.p = Math.min(c.n, p0 + (c.k in inc ? inc[c.k] : +st[c.k] || 0)); if (c.p >= c.n) { d.contracts++; Prog.addXp(c.xp, res, 'Contract: ' + c.t); } } return { t: c.t, p0, p: c.p, n: c.n, xp: c.xp, done: c.p >= c.n, fresh: c.p >= c.n && p0 < c.n }; });
+    if (!dl.swept && dl.list.every((c) => c.p >= c.n)) { dl.swept = true; d.sweeps++; Prog.addXp(SWEEP_XP, res, 'All contracts complete'); crate(3); out.heads.push({ k: 'gold', i: 'scroll', t: 'Contracts complete', s: 'Rare spoils earned · three more tomorrow' }); }
+  });
+  const contractRow = (c, fresh, full) => { const done = c.p >= c.n; return `<li class="${done ? 'done' : ''}${fresh ? ' fresh' : ''}" style="--p:${(100 * c.p / c.n).toFixed(0)}%"><span>${done ? ICON.check : ''}${esc(c.t)}</span><small>${done ? `+${c.xp} XP` : `${c.p}/${c.n}${full ? ` · ${c.xp} XP` : ''}`}</small></li>`; };
+  function streakChip() { const s = streakNow(); return s.n ? `<span class="mt-streak ${s.st}" title="+5 XP per match for each day, up to +50">${ICON.flame}${s.n} day${s.n > 1 ? 's' : ''}${s.st === 'risk' ? ' · fight today' : ''}</span>` : ''; }
+  function dailyCard() {
+    const dl = daily(), all = dl.list.every((c) => c.p >= c.n);
+    return `<h3>Contracts${streakChip()}</h3><ul class="mt-daily">${dl.list.map((c) => contractRow(c)).join('')}</ul><div class="mt-foot${all ? ' done' : ''}">${all ? 'All done. Three more tomorrow' : `All three: +${SWEEP_XP} XP &amp; Rare spoils`} · ${resetsIn()}${all ? '' : ' left'}</div>`;
+  }
+  titleCards.push({ id: 'daily', order: 10, html: dailyCard });
+  function dailyCareer() {
+    const d = D(), dl = daily(), s = streakNow(), all = dl.list.every((c) => c.p >= c.n);
+    const line = s.st === 'lit' ? `Day streak ${s.n}${streakXp(s.n) ? ` · +${streakXp(s.n)} XP on every match` : ' · come back tomorrow to start the bonus'}` : s.st === 'risk' ? `Day streak ${s.n} · fight today to keep it` : 'Fight on consecutive days to build a streak: +5 XP per match for each day, up to +50';
+    return `<div class="section-t">Contracts of the day<small>${all ? 'all done · ' : ''}new in ${resetsIn()}</small></div><ul class="mt-daily">${dl.list.map((c) => contractRow(c, false, true)).join('')}</ul><p class="mt-foot">${all ? 'All three done: the Rare spoils are yours.' : `Finish all three for +${SWEEP_XP} XP and guaranteed Rare spoils.`} ${ICON.flame}${esc(line)}${d.streak.best > 1 ? ` · best ${d.streak.best}` : ''}${d.contracts ? ` · ${d.contracts} contract${d.contracts > 1 ? 's' : ''} fulfilled` : ''}</p>`;
+  }
+  careerSecs.push({ id: 'daily', order: 10, html: dailyCareer });
+  resBlocks.push({ id: 'daily', order: 10, html: () => {
+    if (!last || !last.daily) return ''; const all = last.daily.every((c) => c.done), s = streakNow();
+    return `<div class="rank-row"><div class="rn" style="font-size:19px">Contracts of the day</div>${s.n ? `<span class="mt-streak ${s.st}" style="margin-left:auto">${ICON.flame}${s.n} day${s.n > 1 ? 's' : ''}</span>` : ''}</div><ul class="mt-daily" style="margin-top:8px">${last.daily.map((c) => contractRow(c, c.fresh, true)).join('')}</ul><div class="mt-foot${all ? ' done' : ''}">${all ? 'All done. Come back tomorrow for three more' : `All three: +${SWEEP_XP} XP &amp; Rare spoils`} · ${resetsIn()}${all ? '' : ' left'}</div>`;
+  } });
   // results: call-outs go right under the title, the detail cards after the grid (both are Meta's own elements inside #scr-results .res)
   Bus.on('results', () => {
     const host = document.querySelector('#scr-results .res'); if (!host) return;
@@ -3761,6 +3823,20 @@ const Meta = (() => {
 .mt-who b{ display:block; font-size:18px; font-weight:800; line-height:1.05; } .mt-who small{ display:block; font-size:14px; color:var(--dim); line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .mt-rec{ text-align:right; } .mt-rec b{ display:block; font-size:22px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; } .mt-rec small{ display:block; font-size:13px; color:var(--dim); white-space:nowrap; }
 .mt-riv p{ grid-column:1 / 4; margin:3px 0 0; font-size:14px; line-height:1.25; color:var(--dim); } .mt-riv em{ font-style:normal; font-weight:700; color:var(--marble); }
+.mt-daily{ margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap:4px; }
+.mt-daily li{ display:flex; align-items:center; justify-content:space-between; gap:10px; min-height:25px; padding:1px 8px; font-size:16px; line-height:1.1; border-left:2px solid rgba(224,165,96,.6); background:linear-gradient(90deg, rgba(201,138,26,.36) var(--p,0%), rgba(255,255,255,.06) var(--p,0%)); }
+.mt-daily li span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mt-daily li small{ flex:none; font-size:14px; font-weight:700; color:var(--dim); font-variant-numeric:tabular-nums; }
+.mt-daily li.done{ color:#ffe08a; border-left-color:var(--gold); background:linear-gradient(90deg, rgba(245,192,69,.3), rgba(245,192,69,.1)); }
+.mt-daily li.done small{ color:var(--gold); }
+.mt-daily li.fresh{ animation:mt-glow 1.1s ease-out .7s 2 both; }
+@keyframes mt-glow{ 50%{ box-shadow:0 0 16px rgba(245,192,69,.65); } }
+.mt-foot{ margin:6px 0 0; font-size:14px; line-height:1.3; color:var(--dim); }
+.mt-foot.done{ color:#ffe08a; }
+.mt-streak{ display:inline-flex; align-items:center; font-family:var(--ui); font-weight:800; font-size:14px; letter-spacing:0; color:#ffae3a; white-space:nowrap; }
+.mt-streak .mt-i{ margin-right:3px; }
+.mt-streak.risk{ animation:mt-risk 1.4s ease-in-out infinite; }
+@keyframes mt-risk{ 50%{ opacity:.45; } }
 .mt-heads{ display:flex; flex-wrap:wrap; gap:8px 10px; margin:-4px 0 0; }
 .mt-head{ display:flex; align-items:baseline; gap:8px; padding:6px 14px 6px 12px; border:1px solid rgba(255,226,154,.8); background:linear-gradient(90deg, rgba(230,169,44,.34), rgba(60,40,26,.6)); font-size:17px; animation:mt-pop .45s cubic-bezier(.2,.9,.3,1.35) both; }
 .mt-head .mt-i{ align-self:center; margin:0; width:18px; height:18px; color:#ffd66e; }
@@ -3770,12 +3846,12 @@ const Meta = (() => {
 @keyframes mt-pop{ from{ opacity:0; transform:scale(1.25); } }
 .mt-res{ display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; }
 .mt-rl{ margin-top:8px; display:flex; flex-direction:column; gap:2px; }
-@media (prefers-reduced-motion: reduce){ .mt-head{ animation:none; } }
+@media (prefers-reduced-motion: reduce){ .mt-head,.mt-daily li.fresh,.mt-streak.risk{ animation:none; } }
 #scr-title .side.mt-side{ max-height:calc(100% - 44px - var(--sat) - var(--sab)); overflow-y:auto; touch-action:pan-y; scrollbar-width:none; }
 #scr-title .side.mt-side::-webkit-scrollbar{ display:none; }
 `)).id = 'meta-css';
   function onSave(ev) { cur = null; if (ev !== 'load') { io.mode = 'out'; io.arm = 0; live = null; last = null; stranger = null; lastMet = []; } D(); hook(); }
-  return { onSave, D, renderCareer, renderTitle, titleHTML, careerHTML, ACT, seat, CAST, TEMPER, duelTarget, get live() { return live; }, get last() { return last; } };
+  return { onSave, D, renderCareer, renderTitle, titleHTML, careerHTML, ACT, seat, CAST, TEMPER, duelTarget, daily, rollDaily, streakNow, today, set clock(f) { clock = typeof f === 'function' ? f : () => new Date(); }, get live() { return live; }, get last() { return last; } };
 })();
 __G.Meta = Meta;
 
