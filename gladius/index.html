@@ -31,15 +31,20 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 #flash{ position:absolute; inset:0; background:#fff; opacity:0; }
 #speedlines{ position:absolute; inset:-10%; opacity:0; background:repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,255,255,.0) 0deg 5deg, rgba(255,240,210,.20) 5.4deg 5.8deg, rgba(255,255,255,0) 6.2deg 11deg); -webkit-mask-image:radial-gradient(ellipse at center, transparent 36%, #000 72%); mask-image:radial-gradient(ellipse at center, transparent 36%, #000 72%); transition:opacity .3s; }
 #wui{ position:fixed; inset:0; pointer-events:none; z-index:3; overflow:hidden; }
-.plate{ position:absolute; left:0; top:0; transform:translate(-50%,-100%); text-align:center; font-weight:700; font-size:14px; line-height:1; white-space:nowrap; text-shadow:0 1px 2px #000, 0 0 6px rgba(0,0,0,.6); will-change:transform; }
-.plate .pn{ display:block; margin-bottom:3px; letter-spacing:.02em; }
-.plate .pb{ display:block; width:64px; height:6px; margin:0 auto; background:rgba(0,0,0,.55); border:1px solid rgba(0,0,0,.6); border-radius:1px; overflow:hidden; }
-.plate .pb i{ display:block; height:100%; width:100%; background:var(--marble); transform-origin:left; }
-.plate.t0 .pn{ color:#9cc9ff; } .plate.t1 .pn{ color:#ffc08a; }
-.plate.enemy .pb i{ background:#ff5446; } .plate.ally .pb i{ background:#7dd36b; }
-.plate.gild .pn{ color:var(--gold); }
-.dmg{ position:absolute; left:0; top:0; font-weight:800; font-style:italic; font-size:26px; color:#fff; text-shadow:0 2px 0 #000, 0 0 8px rgba(0,0,0,.7); transform:translate(-50%,-50%); will-change:transform,opacity; }
-.dmg.crit{ color:var(--gold); font-size:34px; } .dmg.hurt{ color:#ff6a5c; } .dmg.info{ color:var(--sand); font-size:20px; }
+.plate{ position:absolute; left:0; top:0; transform:translate(-50%,-100%); text-align:center; font-weight:700; font-size:14px; line-height:1; white-space:nowrap; text-shadow:0 1px 2px #000, 0 0 5px rgba(0,0,0,.7); will-change:transform; }
+.plate .pn{ display:inline-flex; align-items:center; gap:4px; margin-bottom:3px; letter-spacing:.02em; }
+.plate .pp{ display:block; width:7px; height:7px; transform:rotate(45deg); background:#6aa8ff; box-shadow:0 0 0 1px rgba(0,0,0,.7); }
+.plate.t1 .pp{ background:#ffab55; }
+.plate .pb{ display:block; position:relative; width:56px; height:5px; margin:0 auto; background:rgba(0,0,0,.6); box-shadow:0 0 0 1px rgba(0,0,0,.55); overflow:hidden; }
+.plate .pb i{ display:block; height:100%; width:100%; background:var(--marble); transform-origin:left; transition:transform .15s; }
+.plate .pb::after{ content:""; position:absolute; inset:0; background:repeating-linear-gradient(90deg, transparent 0 calc(16.667% - 1px), rgba(0,0,0,.7) calc(16.667% - 1px) 16.667%); }
+.plate.t0 .pn{ color:#b4d6ff; } .plate.t1 .pn{ color:#ffcf9e; }
+.plate.enemy .pb i{ background:linear-gradient(180deg, #ff7a68, #d8322a); } .plate.ally .pb i{ background:linear-gradient(180deg, #a6ee7c, #4fb636); }
+.plate.ally .pn{ opacity:.88; } .plate.ally .pb{ width:44px; height:4px; }
+.plate.gild .pn{ color:var(--gold); } .plate.gild .pn::after{ content:"✦"; color:#ffd66e; text-shadow:0 0 6px #ffae3a, 0 1px 2px #000; }
+.dmg{ position:absolute; left:0; top:0; font-weight:800; font-style:italic; font-size:26px; color:#fff; text-shadow:0 2px 0 #1c0d04, 0 0 6px rgba(0,0,0,.8); -webkit-text-stroke:1px rgba(28,13,4,.6); transform:translate(-50%,-50%); will-change:transform,opacity; }
+.dmg.crit{ color:#ffe08a; font-size:36px; text-shadow:0 2px 0 #1c0d04, 0 0 12px rgba(255,150,40,.85); } .dmg.hurt{ color:#ff6a5c; font-size:22px; } .dmg.info{ color:var(--sand); font-size:17px; letter-spacing:.06em; font-style:normal; -webkit-text-stroke:0; }
+body.touch .dmg{ font-size:21px; } body.touch .dmg.crit{ font-size:28px; } body.touch .dmg.info{ font-size:14px; } body.touch .plate{ font-size:12px; }
 #reticle{ position:absolute; left:0; top:0; width:46px; height:46px; margin:-23px 0 0 -23px; border:2px solid rgba(255,90,70,.9); border-radius:50%; box-shadow:0 0 10px rgba(255,80,60,.6); display:none; }
 #reticle::before,#reticle::after{ content:""; position:absolute; left:50%; top:-8px; width:2px; height:10px; margin-left:-1px; background:rgba(255,90,70,.9); }
 #reticle::after{ top:auto; bottom:-8px; }
@@ -4380,10 +4385,12 @@ const HUD = (() => {
     const rows = (t) => glads.filter((g) => g.team === t).sort((a, b) => b.stats.score - a.stats.score).map((g) => `<tr class="t${t}${g.human ? ' me' : ''}"><td class="nm">${esc(g.name)}${g.id === mvpId ? '<span class="mvp">MVP</span>' : ''}<small>${esc(g.titleName || '')}</small></td><td>${g.stats.score}</td><td>${g.stats.ko}</td><td>${g.stats.as}</td><td>${g.stats.demo}</td><td>${g.stats.par}</td><td>${g.stats.de}</td></tr>`).join('');
     E.scoreboard.innerHTML = `<table class="board"><tr><th>Gladiator</th><th>Score</th><th>KOs</th><th>Assists</th><th>Demos</th><th>Parries</th><th>Deaths</th></tr>${rows(0)}<tr class="gap"><td colspan="7"></td></tr>${rows(1)}</table>`;
   }
+  let numN = 0, numT = 0;
   function num(pos, text, cls) {
     if (!Game.settings.dmgNums) return;
-    const d = dmgs.find((x) => x.t >= 1) || dmgs[0];
-    d.t = 0; d.pos.copy(pos); d.pos.x += rand(-0.3, 0.3); d.el.textContent = text; d.el.className = 'dmg ' + (cls || ''); d.el.style.display = '';
+    const d = dmgs.find((x) => x.t >= 1) || dmgs[0], t = performance.now(); numN = t - numT < 350 ? numN + 1 : 0; numT = t;
+    d.t = 0; d.pos.copy(pos); d.pos.x += rand(-0.25, 0.25); d.el.textContent = text; d.el.className = 'dmg ' + (cls || ''); d.el.style.display = '';
+    d.ox = (numN % 2 ? 1 : -1) * Math.min(3, numN) * 16 + rand(-6, 6); d.oy = -Math.min(3, numN) * 12; d.rot = cls === 'crit' ? rand(-8, 8) : 0; d.pk = cls === 'crit' ? 2.1 : cls === 'info' ? 1.2 : 1.6;
   }
   function project(p) { _v.copy(p).project(camRef); return _v.z < 1 && _v.z > -1 ? [(_v.x * 0.5 + 0.5) * W, (-_v.y * 0.5 + 0.5) * H, true] : [(_v.x * 0.5 + 0.5) * W, (-_v.y * 0.5 + 0.5) * H, false]; }
   function update(dt, glads, me, lockT, lockOn) {
@@ -4396,19 +4403,20 @@ const HUD = (() => {
       if (g === me || !g.alive) continue;
       seen.add(g.id);
       let p = plates.get(g.id);
-      if (!p) { const e = el('div', 'plate t' + g.team + (me && g.team === me.team ? ' ally' : ' enemy'), `<span class="pn"></span><span class="pb"><i></i></span>`); E.wui.appendChild(e); p = { el: e, n: e.querySelector('.pn'), b: e.querySelector('.pb i'), hp: -1, name: '' }; plates.set(g.id, p); }
+      if (!p) { const e = el('div', 'plate t' + g.team + (me && g.team === me.team ? ' ally' : ' enemy'), `<span class="pn"><i class="pp"></i><span class="pt"></span></span><span class="pb"><i></i></span>`); E.wui.appendChild(e); p = { el: e, n: e.querySelector('.pt'), b: e.querySelector('.pb i'), hp: -1, name: '', op: -1 }; plates.set(g.id, p); }
       const [x, y, vis] = project(_v.set(g.pos.x, g.pos.y + 2.3, g.pos.z)); const d = camRef.position.distanceTo(g.pos);
       if (!vis || d > 55 || x < -50 || x > W + 50) { p.el.style.display = 'none'; continue; }
-      p.el.style.display = ''; p.el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-100%) scale(${clamp(14 / d, 0.6, 1).toFixed(2)})`;
-      const nm = g.name + (g.gildT > 0 ? ' ✦' : ''); if (nm !== p.name) { p.n.textContent = nm; p.name = nm; p.el.classList.toggle('gild', g.gildT > 0); }
+      if (p.el.style.display) p.el.style.display = ''; p.el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-100%) scale(${clamp(14 / d, 0.6, 1).toFixed(2)})`;
+      const op = Math.round(clamp(1.35 - d / 40, 0.4, 1) * 20) / 20; if (op !== p.op) { p.op = op; p.el.style.opacity = op; }
+      const nm = g.name, gi = g.gildT > 0; if (nm !== p.name || gi !== p.gi) { p.n.textContent = nm; p.name = nm; p.gi = gi; p.el.classList.toggle('gild', gi); }
       if (g.hp !== p.hp) { p.b.style.transform = `scaleX(${Math.max(0, g.hp) / TUNE.HP})`; p.hp = g.hp; }
     }
-    for (const [id, p] of plates) if (!seen.has(id)) p.el.style.display = 'none';
+    for (const [id, p] of plates) if (!seen.has(id) && p.el.style.display !== 'none') p.el.style.display = 'none';
     // damage numbers
     for (const d of dmgs) {
       if (d.t >= 1) continue; d.t += dt / 0.9; d.pos.y += dt * 1.4;
       const [x, y, vis] = project(d.pos); if (!vis || d.t >= 1) { d.el.style.display = 'none'; continue; }
-      const s = d.t < 0.15 ? 1 + (0.15 - d.t) * 4 : 1; d.el.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px) translate(-50%,-50%) scale(${s.toFixed(2)})`; d.el.style.opacity = (1 - Math.max(0, d.t - 0.6) / 0.4).toFixed(2);
+      const s = d.t < 0.12 ? 1 + (d.pk - 1) * (1 - d.t / 0.12) : d.t < 0.2 ? 1 - (0.2 - d.t) * 0.6 : 1, sp = d.t * 1.6; d.el.style.transform = `translate(${(x + (d.ox || 0) * Math.min(1, sp)).toFixed(1)}px,${(y + (d.oy || 0)).toFixed(1)}px) translate(-50%,-50%) rotate(${d.rot || 0}deg) scale(${s.toFixed(2)})`; d.el.style.opacity = (1 - Math.max(0, d.t - 0.6) / 0.4).toFixed(2);
     }
     // reticle / off-screen arrow
     if (lockOn && lockT && lockT.alive && me && me.alive) {
