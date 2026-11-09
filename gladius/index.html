@@ -1932,6 +1932,8 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       this.cur = new Float32Array(NB * 3); this.tgt = new Float32Array(NB * 3); this.bodyY = 0.95; this.bodyZ = 0;
       this.phase = 0; this.t = rand(0, 10); this.flash = 0; this.tumbleA = 0;
       this.shudderT = 0; this.shudderW = 0; this.bladeFlash = 0; this.squash = 0; // feel: victim shudder (wall-clock), attacker blade flash, landing squash
+      // KO launch: koT -1 idle, >= 0 flying, -2 popped (hidden until revived); hint* = direction from the Bus 'ko' event, lastV = own velocity fallback
+      this.wasAlive = null; this.koT = -1; this.koDir = V3(0, 0, -1); this.koPow = 1; this.koPos = V3(); this.lastV = V3(); this.hintDir = V3(); this.hintPow = 1; this.hintW = -1e9; this.teamC = new THREE.Color();
       this.shadow = new THREE.Mesh(SH_GEO, new THREE.MeshBasicMaterial({ map: Tex.blob, transparent: true, depthWrite: false, opacity: 0.7 })); this.shadow.renderOrder = 1;
       this.trail = new Trail(); this.tipL = V3(); this.baseL = V3(); this.tipW = V3(); this.baseW = V3();
       this.build();
@@ -1974,8 +1976,8 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       if (role === 'me') { c.lerp(WARM, 0.3); I = 0.9; rA = 1; rI = 1.15; }
       else if (role === 'enemy') { c.lerp(_c1.set(T.c), 0.45); I = 1.05; P = 2.2; rA = 0.95; }
       else if (role === 'show') { c.set('#ffd9a8'); I = 0.55; P = 2.8; rA = 0; }
-      c.multiplyScalar(I * (1 + 0.6 * dim)); U.uRimC.value.copy(c); U.uRimP.value = P;
-      ru.uC.value.set(T.css); if (role === 'enemy') ru.uC.value.lerp(_c1.set('#ff2a12'), 0.38); ru.uC.value.multiplyScalar(rI);
+      c.multiplyScalar(I * (1 + 0.6 * dim)); U.uRimC.value.copy(c); U.uRimP.value = P; this.teamC.set(T.lite);
+      ru.uC.value.set(T.css); if (role === 'enemy') ru.uC.value.lerp(_c1.set('#ff2a12'), 0.5); ru.uC.value.multiplyScalar(rI);
       ru.uMe.value = role === 'me' ? 1 : 0; ru.uSeg.value = role === 'enemy' ? 6 : 0; this.ringA = rA;
     }
     setLook(o) { let ch = false; if (o.team != null && o.team !== this.team) { this.team = o.team; ch = true; } if (o.cos) for (const k in o.cos) if (this.cos[k] !== o.cos[k]) { this.cos[k] = o.cos[k]; ch = true; } if (o.skin && o.skin !== this.skin) { this.skin = o.skin; ch = true; } if (ch) this.build(); }
@@ -1983,10 +1985,33 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
     removeFrom(scene) { scene.remove(this.root); scene.remove(this.shadow); scene.remove(this.ring); scene.remove(this.trail.mesh); }
     dispose() { for (const m of this.parts) m.geometry.dispose(); [this.matA, this.matM, this.matS, this.matB, this.matC, this.shadow.material, this.ring.material, this.trail.mat].forEach((m) => m && m.dispose()); this.trail.g.dispose(); }
     hit(f = 1, shudder = 0) { this.flash = Math.max(this.flash, f); if (shudder > this.shudderT) { this.shudderT = shudder; this.shudderW = performance.now(); } }
+    // KO launch. The Bus 'ko' event only leaves a direction hint (along the killing blow, or the demolisher's path); the launch itself starts on the
+    // alive -> dead edge seen by animate(), so it also works for a gladiator that dies without an event.
+    koHint(e) {
+      const v = e.v, by = e.by, d = this.hintDir; let pow = 1;
+      if (e.kind === 'demo' && by && Math.hypot(by.vel.x, by.vel.z) > 3) { d.set(by.vel.x, 0, by.vel.z); pow = 1.45; }
+      else if (v.hitDir && Sim.time - (v.hitT || -9) < 0.6) d.set(v.hitDir.x, 0, v.hitDir.z);
+      else if (by) d.set(v.pos.x - by.pos.x, 0, v.pos.z - by.pos.z);
+      else return;
+      if (d.lengthSq() < 1e-6) return;
+      d.normalize(); this.hintPow = pow; this.hintW = performance.now();
+    }
+    koStart(g) {
+      const d = this.koDir, lv = this.lastV; this.koPow = 1;
+      if (performance.now() - this.hintW < 500) { d.copy(this.hintDir); this.koPow = this.hintPow; }
+      else if (g.hitDir && Sim.time - (g.hitT || -9) < 0.6) d.set(g.hitDir.x, 0, g.hitDir.z);
+      else if (lv.x * lv.x + lv.z * lv.z > 2) d.set(lv.x, 0, lv.z).normalize();
+      else d.set(-Math.sin(this.root.rotation.y), 0, -Math.cos(this.root.rotation.y));
+      this.koT = 0; this.koTw = Math.random() < 0.5 ? -1 : 1; this.hintW = -1e9;
+    }
+    koEnd(done) { this.koT = done ? -2 : -1; this.spin.scale.setScalar(1); this.rimU.uHeat.value = 0; }
     // g: sim gladiator (or a display stand-in with {st, vel, ground, pose})
     animate(dt, g) {
       if (this.role === null) this.setRole(g.inp ? 'ally' : 'show'); else if (this.preset !== Arena.preset) this.styleRole();
       const T = this.tgt, t = (this.t += dt), st = g.st || 'idle', vel = g.vel || _v1.set(0, 0, 0);
+      const alive = g.alive !== false;
+      if (alive) { if (this.koT !== -1) this.koEnd(false); this.lastV.copy(vel); } else if (this.wasAlive === true) this.koStart(g);
+      this.wasAlive = alive;
       const S = (j, x, y, z) => { T[j * 3] = x; T[j * 3 + 1] = y; T[j * 3 + 2] = z; };
       const Sa = (j, a) => S(j, a[0], a[1], a[2]);
       const sp = Math.hypot(vel.x, vel.z), yaw = this.root.rotation.y, sy = Math.sin(yaw), cy = Math.cos(yaw);
@@ -2011,7 +2036,7 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       let shR = [-0.3, -0.25, -0.1], elR = [-1.25, 0, 0], hR = [1.35, 0, 0], shL = [-0.62, -0.18, 0.12], elL = [-0.95, 0, 0], hL = [0.05, 0, 0];
       if (a > 0) { shR[0] += Math.sin(this.phase) * 0.35 * a * amp; shL[0] -= Math.sin(this.phase) * 0.1 * a; }
       if (g.boosting && ground && st === 'idle') { shR = [0.55, -0.3, -0.25]; elR = [-0.5, 0, 0]; }
-      const pose = !g.alive && g.alive !== undefined ? 'none' : (g.pose || st);
+      const pose = !alive ? (this.koT >= 0 ? 'ko' : 'none') : (g.pose || st);
       switch (pose) {
         case 'block':
           shL = [-0.98, -0.5, 0.22]; elL = [-0.85, 0, 0]; hL = [0.28, 0, 0]; shR = [-0.05, 0.05, -0.25]; elR = [-1.7, 0, 0]; hR = [1.2, 0, 0];
@@ -2069,6 +2094,9 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
         case 'kneel':
           bodyY = 0.55; thR = [-1.5, 0, -0.1]; knR = [1.6, 0, 0]; ftR = [0, 0, 0]; thL = [0.25, 0, 0.1]; knL = [2.1, 0, 0]; ftL = [0.8, 0, 0];
           spine = [0.35, 0, 0]; head = [0.45, 0, 0]; shR = [0.1, 0, -0.1]; elR = [-0.3, 0, 0]; shL = [0.05, 0, 0.1]; elL = [-0.3, 0, 0]; break;
+        case 'ko': // thrown by the killing blow: arched back, limbs flung wide
+          shL = [-0.6, 0, 1.9]; shR = [-0.6, 0, -1.9]; elL = [-0.5, 0, 0]; elR = [-0.5, 0, 0]; spine = [-0.5, 0, 0]; chest = [-0.3, 0, 0]; head = [-0.45, 0, 0];
+          thR = [0.5, 0, -0.35]; thL = [0.2, 0, 0.35]; knR = [0.9, 0, 0]; knL = [0.5, 0, 0]; bodyY = 1; k = 26; break;
         case 'flourish': {
           const f = (t % 3.2) / 3.2, s = Math.sin(f * TAU);
           if (f < 0.5) { shR = [-1.6 + s * 0.6, -0.9 + s * 1.4, 0]; elR = [-0.4, 0, 0]; hR = [1.45, 0, 0]; chest = [0, s * 0.4, 0]; }
@@ -2087,7 +2115,8 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       this.bones[0].position.set(0, this.bodyY - 1, this.bodyZ);
       // whole-body rotation (flips, tumbles, spins)
       const q = this.spin.quaternion;
-      if (pose === 'dodge' && g.dodge) { const f = clamp(g.stT / 0.46, 0, 1), ang = smooth(0, 1, f) * TAU; _ax.set(g.dodge.lz, 0, -g.dodge.lx); if (_ax.lengthSq() < 1e-4) _ax.set(1, 0, 0); q.setFromAxisAngle(_ax.normalize(), ang); }
+      if (pose === 'ko') { const d = this.koDir, a = this.koT * (15 - 9 * this.koT); _ax.set(d.x * sy + d.z * cy, 0, -(d.x * cy - d.z * sy)); q.setFromAxisAngle(_ax, a).multiply(_q1.setFromAxisAngle(_v2.set(0, 1, 0), this.koTw * a * 0.6)); }
+      else if (pose === 'dodge' && g.dodge) { const f = clamp(g.stT / 0.46, 0, 1), ang = smooth(0, 1, f) * TAU; _ax.set(g.dodge.lz, 0, -g.dodge.lx); if (_ax.lengthSq() < 1e-4) _ax.set(1, 0, 0); q.setFromAxisAngle(_ax.normalize(), ang); }
       else if (pose === 'tumble') { this.tumbleA += dt * 10; const hd = g.hitDir; if (hd) _ax.set(hd.x * sy + hd.z * cy, 0, -(hd.x * cy - hd.z * sy)); else _ax.set(1, 0, 0.35); if (_ax.lengthSq() < 1e-4) _ax.set(1, 0, 0.35); q.setFromAxisAngle(_ax.normalize(), this.tumbleA); }
       else if (pose === 'atk' && g.atk && g.atk.kind === 'air') { const d = g.atk.def, f = smooth(d.wind * 0.5, d.wind + d.act, g.atk.t); q.setFromAxisAngle(_ax.set(0, 1, 0), -f * TAU); }
       else if (pose === 'slam') q.slerp(_q1.setFromAxisAngle(_ax.set(1, 0, 0), 0.5), 1 - Math.exp(-12 * dt));
@@ -2113,7 +2142,18 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       // victim shudder during hitstop: wall-clock driven because dt is ~0 while frozen
       if (this.shudderT > 0) { const nw = performance.now(); this.shudderT -= (nw - this.shudderW) / 1000; this.shudderW = nw; this.spin.position.x = Math.sin(nw * 0.28) * 0.045; }
       else if (this.spin.position.x !== 0) this.spin.position.x = 0;
-      this.root.visible = g.alive !== false && !(g.invT > 0 && Math.floor(t * 14) % 2 === 0);
+      this.root.visible = alive ? !(g.invT > 0 && Math.floor(t * 14) % 2 === 0) : this.koT >= 0;
+      // KO launch: the body stays ~half a second, thrown along the killing blow: rising, spinning, shrinking and glowing hotter, then it pops
+      if (this.koT >= 0) {
+        const kt = (this.koT += dt), f = Math.min(1, kt / 0.5), d = this.koDir, p = this.root.position;
+        const s = 3.6 * this.koPow * (1 - Math.exp(-3.2 * kt)), wk = Math.hypot((p.x + d.x * s) / (ARENA.A - 0.8), (p.z + d.z * s) / (ARENA.B - 0.8));
+        p.x += d.x * s; p.z += d.z * s; if (wk > 1) { p.x /= wk; p.z /= wk; } p.y += 9 * kt - 7 * kt * kt;
+        this.spin.scale.setScalar(1 - 0.7 * smooth(0.3, 1, f));
+        U.uHeat.value = 0.15 + 2.7 * f * f * f; U.uHeatC.value.copy(this.teamC).lerp(WARM, 0.1 + 0.5 * f * f);
+        this.koPos.set(p.x, p.y + 1, p.z);
+        if (FX.koTrail) FX.koTrail(this.koPos, this.teamC, dt);
+        if (f >= 1) { if (FX.koPop) FX.koPop(this.koPos, this.teamC, d); this.koEnd(true); this.root.visible = false; }
+      }
       // shadow & trail
       const h = this.root.position.y;
       this.shadow.position.set(this.root.position.x, 0.025, this.root.position.z);
@@ -2130,9 +2170,10 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       if (st === 'slam' || st === 'dodge') tOn = true;
       this.trail.update(dt, tOn && this.root.visible, this.baseW, this.tipW);
     }
-    reset() { this.trail.init = false; this.spin.quaternion.identity(); this.tumbleA = 0; this.shudderT = 0; this.spin.position.x = 0; this.squash = 0; this.bladeFlash = 0; }
+    reset() { this.trail.init = false; this.spin.quaternion.identity(); this.tumbleA = 0; this.shudderT = 0; this.spin.position.x = 0; this.squash = 0; this.bladeFlash = 0; this.koEnd(false); this.wasAlive = null; }
   }
   const _q1 = new THREE.Quaternion();
+  Bus.on('ko', (e) => { const r = e && e.v && e.v.rig; if (r && r.koHint) r.koHint(e); });
   return { Rig: RigC, SKIN, SWORDS, CAPES, J };
 })();
 
@@ -2331,6 +2372,14 @@ void main(){ vec2 p = gl_PointCoord - 0.5; float c = cos(vFR.y), s = sin(vFR.y);
       while (g._sa >= 1) { g._sa -= 1; ADD.add(g.pos.x + rand(-0.25, 0.25), g.pos.y + rand(0.6, 1.3), g.pos.z + rand(-0.25, 0.25), -g.vel.x * 0.15 + rand(-0.5, 0.5), -g.vel.y * 0.15 + rand(-0.5, 0.5), -g.vel.z * 0.15 + rand(-0.5, 0.5), 0.18, 0.5, 0.1, c, 0.9, 12, 0, 1, 0, 0); if (g.ground) NRM.add(g.pos.x, 0.25, g.pos.z, rand(-1, 1), rand(0.5, 1.5), rand(-1, 1), rand(0.4, 0.8), 0.5, 1.2, '#cfae7c', 0.4, pick([2, 3]), 0, 2, 1, 0); }
     },
     djump(pos) { ring(_r.set(pos.x, pos.y + 0.1, pos.z), '#fff4dc', 0.2, 1.4, 0.25, 0.6); burst(ADD, pos.x, pos.y + 0.1, pos.z, qn(8), { life: [0.2, 0.4], speed: [2, 5], flat: 0.3, vy: -3, s0: 0.3, s1: 0.05, col: ['#fff4dc', '#ffd27a'], f: 1, drag: 2 }); },
+    // KO launch (rig): hot team-coloured smear behind a body thrown by the killing blow, and the pop that ends it (p: the rig's own Vector3, c: THREE.Color)
+    koTrail(p, c, dt) { p._ka = (p._ka || 0) + dt * 80 * [0.4, 0.7, 1][Q]; while (p._ka >= 1) { p._ka -= 1; const w = Math.random() < 0.3; ADD.add(p.x + rand(-0.22, 0.22), p.y + rand(-0.35, 0.35), p.z + rand(-0.22, 0.22), rand(-0.7, 0.7), rand(-0.3, 1.2), rand(-0.7, 0.7), rand(0.2, 0.42), w ? 0.5 : 0.85, 0.06, w ? '#fff4d8' : c, 0.9, w ? 1 : 0, 0, 1.5, 0, 0); } },
+    koPop(p, c, dir) {
+      ring(p, c, 0.25, 2.6, 0.32, 0.9, dir || null, 0.28);
+      burst(ADD, p.x, p.y, p.z, qn(24), { life: [0.25, 0.6], speed: [3, 10], s0: 0.2, s1: 0.02, col: ['#fff4d8', c, c], f: 1, g: 9, drag: 1.6 });
+      burst(ADD, p.x, p.y, p.z, qn(8), { life: [0.3, 0.55], speed: [0.5, 2.5], s0: 0.9, s1: 0.2, col: [c, '#ffe9c4'], a: 0.7, f: 0, drag: 2 });
+      ADD.add(p.x, p.y, p.z, 0, 0, 0, 0.18, 3.4, 0.8, '#fff6e0', 1, 8, 0, 0, 0, 0);
+    },
     confetti(dt, rate = 60) { const n = dt * rate * [0.4, 0.7, 1][Q]; for (let i = 0; i < n; i++) { const a = rand(0, TAU), r = Math.sqrt(Math.random()) * 0.9; NRM.add(Math.cos(a) * ARENA.A * r, rand(10, 15), Math.sin(a) * ARENA.B * r, rand(-1, 1), rand(-2, -1), rand(-1, 1), rand(4, 6), 0.3, 0.26, pick(['#ff2d55', '#ffd24a', '#ffffff', '#ff7a9a', '#e8b84a']), 1, pick([4, 10]), 0.6, 0.4, 6, 0); } },
   };
   function init(sc, q) {
