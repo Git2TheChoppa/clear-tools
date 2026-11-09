@@ -4960,6 +4960,11 @@ const Meta = (() => {
 @keyframes mt-fade{ 0%,100%{ opacity:0; } 10%,86%{ opacity:1; } }
 #scr-title .side.mt-side{ max-height:calc(100% - 44px - var(--sat) - var(--sab)); overflow-y:auto; touch-action:pan-y; scrollbar-width:none; }
 #scr-title .side.mt-side::-webkit-scrollbar{ display:none; }
+/* phones: the title cards stand alone in a swipeable strip (~300 px wide, ≤ 150 px tall); every button a thumb can hit */
+body.touch .mt-go{ min-height:44px; align-items:center; margin-top:6px; }
+body.touch .mt-c-rivals .mt-rv:nth-of-type(n+3){ display:none; }
+body.touch .mt-card{ padding:10px 14px 11px; } body.touch .mt-card h3{ margin-bottom:5px; }
+body.touch .mt-io .btn{ min-height:44px; } body.touch .mt-code{ min-height:44px; font-size:16px; }
 `)).id = 'meta-css';
   function onSave(ev) { cur = null; if (ev !== 'load') { io.mode = 'out'; io.arm = 0; live = null; last = null; stranger = null; lastMet = []; } D(); hook(); }
   return { onSave, D, renderCareer, renderTitle, titleHTML, careerHTML, ACT, seat, CAST, TEMPER, duelTarget, daily, rollDaily, streakNow, today, tonight: () => ({ n: night.n, w: night.w }), REC, FEATS, set clock(f) { clock = typeof f === 'function' ? f : () => new Date(); }, get live() { return live; }, get last() { return last; } };
