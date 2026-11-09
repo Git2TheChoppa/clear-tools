@@ -4609,7 +4609,7 @@ const Meta = (() => {
     const ng = L.seated.find((g) => g.nemesis && g.rival.id === d.nem);
     if (ng && win) {
       d.nemBeat = (d.nemBeat || 0) + 1; Prog.addXp(150, res, 'Nemesis defeated');
-      if (d.nemBeat >= 3) { rec(d.nem).g = 0; d.nem = null; d.nemBeat = 0; d.vanq = int(d.vanq) + 1; Prog.addXp(300, res, 'Nemesis vanquished'); crate(3); out.heads.push({ k: 'gold', i: 'skull', t: 'Nemesis vanquished', s: `${ng.rival.n} holds nothing over you · +300 XP and Rare spoils` }); }
+      if (d.nemBeat >= 3) { rec(d.nem).g = 0; d.nem = null; d.nemBeat = 0; d.vanq = int(d.vanq) + 1; Prog.addXp(300, res, 'Nemesis vanquished'); crate(3); out.heads.push({ k: 'gold', i: 'skull', t: 'Nemesis vanquished', s: `${ng.rival.n} holds nothing over you · +300 XP and Very Rare spoils` }); }
       else out.heads.push({ k: 'gold', i: 'skull', t: 'Nemesis defeated', s: `${ng.rival.n} · ${d.nemBeat} of 3 to break the hold` });
     } else if (ng) d.nemBeat = Math.max(0, (d.nemBeat || 0) - 1);
     // crowned: the rival with the most KOs on you (three or more) since the last one was vanquished; a sitting Nemesis is only usurped by a clear margin
@@ -4712,24 +4712,24 @@ const Meta = (() => {
     if (t === s.last && streakXp(s.n)) Prog.addXp(streakXp(s.n), res, `Day streak ×${s.n}`);
     const dl = daily(), inc = { play: 1, win: win ? 1 : 0, mvp: M.mvpId === M.me.id ? 1 : 0, flawless: win && st.de === 0 ? 1 : 0, duelWin: win && M.mode === 'duel' ? 1 : 0, specWin: win && M.mode === 'spectacle' ? 1 : 0, favor2: st.favorPeak >= 2 ? 1 : 0, favor3: st.favorPeak >= 3 ? 1 : 0, rival: win ? L.seated.length : 0 };
     out.daily = dl.list.map((c) => { const p0 = c.p; if (p0 < c.n) { c.p = Math.min(c.n, p0 + (c.k in inc ? inc[c.k] : +st[c.k] || 0)); if (c.p >= c.n) { d.contracts++; Prog.addXp(c.xp, res, 'Contract: ' + c.t); } } return { t: c.t, p0, p: c.p, n: c.n, xp: c.xp, done: c.p >= c.n, fresh: c.p >= c.n && p0 < c.n }; });
-    if (!dl.swept && dl.list.every((c) => c.p >= c.n)) { dl.swept = true; d.sweeps++; Prog.addXp(SWEEP_XP, res, 'All contracts complete'); crate(3); out.heads.push({ k: 'gold', i: 'scroll', t: 'Contracts complete', s: 'Rare spoils earned · three more tomorrow' }); }
+    if (!dl.swept && dl.list.every((c) => c.p >= c.n)) { dl.swept = true; d.sweeps++; Prog.addXp(SWEEP_XP, res, 'All contracts complete'); crate(3); out.heads.push({ k: 'gold', i: 'scroll', t: 'Contracts complete', s: 'Very Rare spoils earned · three more tomorrow' }); }
   });
   const contractRow = (c, fresh, full) => { const done = c.p >= c.n; return `<li class="${done ? 'done' : ''}${fresh ? ' fresh' : ''}" style="--p:${(100 * c.p / c.n).toFixed(0)}%"><span>${done ? ICON.check : ''}${esc(c.t)}</span><small>${done ? `+${c.xp} XP` : `${c.p}/${c.n}${full ? ` · ${c.xp} XP` : ''}`}</small></li>`; };
   function streakChip() { const s = streakNow(); return s.n ? `<span class="mt-streak ${s.st}" title="+5 XP per match for each day, up to +50">${ICON.flame}${s.n} day${s.n > 1 ? 's' : ''}${s.st === 'risk' ? ' · fight today' : ''}</span>` : ''; }
   function dailyCard() {
     const dl = daily(), all = dl.list.every((c) => c.p >= c.n);
-    return `<h3>Contracts${streakChip()}</h3><ul class="mt-daily">${dl.list.map((c) => contractRow(c)).join('')}</ul><div class="mt-foot${all ? ' done' : ''}">${all ? 'All done. Three more tomorrow' : `All three: +${SWEEP_XP} XP &amp; Rare spoils`} · ${resetsIn()}${all ? '' : ' left'}</div>`;
+    return `<h3>Contracts${streakChip()}</h3><ul class="mt-daily">${dl.list.map((c) => contractRow(c)).join('')}</ul><div class="mt-foot${all ? ' done' : ''}">${all ? 'All done. Three more tomorrow' : `All three: +${SWEEP_XP} XP &amp; Very Rare spoils`} · ${resetsIn()}${all ? '' : ' left'}</div>`;
   }
   titleCards.push({ id: 'daily', order: 10, html: dailyCard });
   function dailyCareer() {
     const d = D(), dl = daily(), s = streakNow(), all = dl.list.every((c) => c.p >= c.n);
     const line = s.st === 'lit' ? `Day streak ${s.n}${streakXp(s.n) ? ` · +${streakXp(s.n)} XP on every match` : ' · come back tomorrow to start the bonus'}` : s.st === 'risk' ? `Day streak ${s.n} · fight today to keep it` : 'Fight on consecutive days to build a streak: +5 XP per match for each day, up to +50';
-    return `<div class="section-t">Contracts of the day<small>${all ? 'all done · ' : ''}new in ${resetsIn()}</small></div><ul class="mt-daily">${dl.list.map((c) => contractRow(c, false, true)).join('')}</ul><p class="mt-foot">${all ? 'All three done: the Rare spoils are yours.' : `Finish all three for +${SWEEP_XP} XP and guaranteed Rare spoils.`} ${ICON.flame}${esc(line)}${d.streak.best > 1 ? ` · best ${d.streak.best}` : ''}${d.contracts ? ` · ${d.contracts} contract${d.contracts > 1 ? 's' : ''} fulfilled` : ''}</p>`;
+    return `<div class="section-t">Contracts of the day<small>${all ? 'all done · ' : ''}new in ${resetsIn()}</small></div><ul class="mt-daily">${dl.list.map((c) => contractRow(c, false, true)).join('')}</ul><p class="mt-foot">${all ? 'All three done: the Very Rare spoils are yours.' : `Finish all three for +${SWEEP_XP} XP and guaranteed Very Rare spoils.`} ${ICON.flame}${esc(line)}${d.streak.best > 1 ? ` · best ${d.streak.best}` : ''}${d.contracts ? ` · ${d.contracts} contract${d.contracts > 1 ? 's' : ''} fulfilled` : ''}</p>`;
   }
   careerSecs.push({ id: 'daily', order: 10, html: dailyCareer });
   resBlocks.push({ id: 'daily', order: 10, html: () => {
     if (!last || !last.daily) return ''; const all = last.daily.every((c) => c.done), s = streakNow();
-    return `<div class="rank-row"><div class="rn" style="font-size:19px">Contracts of the day</div>${s.n ? `<span class="mt-streak ${s.st}" style="margin-left:auto">${ICON.flame}${s.n} day${s.n > 1 ? 's' : ''}</span>` : ''}</div><ul class="mt-daily" style="margin-top:8px">${last.daily.map((c) => contractRow(c, c.fresh, true)).join('')}</ul><div class="mt-foot${all ? ' done' : ''}">${all ? 'All done. Come back tomorrow for three more' : `All three: +${SWEEP_XP} XP &amp; Rare spoils`} · ${resetsIn()}${all ? '' : ' left'}</div>`;
+    return `<div class="rank-row"><div class="rn" style="font-size:19px">Contracts of the day</div>${s.n ? `<span class="mt-streak ${s.st}" style="margin-left:auto">${ICON.flame}${s.n} day${s.n > 1 ? 's' : ''}</span>` : ''}</div><ul class="mt-daily" style="margin-top:8px">${last.daily.map((c) => contractRow(c, c.fresh, true)).join('')}</ul><div class="mt-foot${all ? ' done' : ''}">${all ? 'All done. Come back tomorrow for three more' : `All three: +${SWEEP_XP} XP &amp; Very Rare spoils`} · ${resetsIn()}${all ? '' : ' left'}</div>`;
   } });
   // ---------- records, match history and the Tonight counter (real matches only; a first value is set quietly, beating it is called out)
   const night = { n: 0, w: 0 }; // this page load
