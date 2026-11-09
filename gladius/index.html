@@ -1884,7 +1884,7 @@ const Rig = (() => {
   const RIM_PARS = 'uniform vec3 uRimC; uniform float uRimP; uniform vec3 uFlashC; uniform float uFlash; uniform vec3 uHeatC; uniform float uHeat; varying float vRimK;\n';
   const RIM_MAIN = `#include <emissivemap_fragment>
 	{ float rF = 1.0 - saturate(dot(normalize(normal), normalize(vViewPosition)));
-	  totalEmissiveRadiance += uRimC * (pow(rF, uRimP) * (0.55 + 0.45 * saturate(normal.y + 0.4)) * vRimK) + uFlashC * (uFlash * (0.07 + 2.6 * rF * rF * (0.35 + 0.65 * vRimK))) + uHeatC * (uHeat * (0.4 + rF)); }`;
+	  totalEmissiveRadiance += uRimC * (pow(rF, uRimP) * (0.55 + 0.45 * saturate(normal.y + 0.4)) * vRimK) + uFlashC * (uFlash * (0.05 + 3.2 * rF * rF * rF * (0.25 + 0.75 * vRimK))) + uHeatC * (uHeat * (0.4 + rF)); }`;
   function rimMat(m, U) {
     m.onBeforeCompile = (sh) => {
       Object.assign(sh.uniforms, U);
@@ -1911,7 +1911,7 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
  #include <colorspace_fragment>
 }`;
   const ringMat = () => new THREE.ShaderMaterial({ uniforms: { uC: { value: new THREE.Color() }, uA: { value: 0 }, uMe: { value: 0 }, uSeg: { value: 0 } }, vertexShader: RING_VS, fragmentShader: RING_FS, transparent: true, depthWrite: false, extensions: { derivatives: true } });
-  const WARM = new THREE.Color('#fff0d2'), _c1 = new THREE.Color();
+  const WARM = new THREE.Color('#fff0d2'), GILD = new THREE.Color(1.5, 1.0, 0.25), _c1 = new THREE.Color();
   const IDQ = new THREE.Quaternion(), _ax = V3(), _v1 = V3(), _v2 = V3();
   const L3 = (a, b, f) => [lerp(a[0], b[0], f), lerp(a[1], b[1], f), lerp(a[2], b[2], f)];
   class RigC {
@@ -1927,7 +1927,7 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       this.matM = rimMat(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.32, metalness: 0.9 }), U);
       this.matS = rimMat(new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.05 }), U);
       this.matB = null; this.matC = null; this.parts = [];
-      this.role = null; this.ringA = 0; // role styling (rim + ground ring): see setRole(); null = decided on the first animate()
+      this.role = null; this.ringA = 0; this.rimC0 = new THREE.Color(); // role styling (rim + ground ring): see setRole(); null = decided on the first animate()
       this.ring = new THREE.Mesh(RING_GEO, ringMat()); this.ring.renderOrder = 2; this.ring.visible = false;
       this.cur = new Float32Array(NB * 3); this.tgt = new Float32Array(NB * 3); this.bodyY = 0.95; this.bodyZ = 0;
       this.phase = 0; this.t = rand(0, 10); this.flash = 0; this.tumbleA = 0;
@@ -1946,7 +1946,7 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
         this.root.add(sm); sm.bind(this.skel, new THREE.Matrix4()); this.parts.push(sm);
       }
       this.matS.map = Tex.shield(this.team, this.cos.emblem); this.matS.needsUpdate = true;
-      const sf = new THREE.Mesh(rimK(shieldFace(), 0.7), this.matS); sf.castShadow = true; this.bones[J.hL].add(sf); this.parts.push(sf);
+      const sf = new THREE.Mesh(rimK(shieldFace(), 0.8), this.matS); sf.castShadow = true; this.bones[J.hL].add(sf); this.parts.push(sf);
       if (this.matB) this.matB.dispose();
       const bp = Object.assign({ emissive: '#ff9a30' }, sw.blade); this.matB = rimMat(new THREE.MeshStandardMaterial(bp), this.rimU); this.bladeEm = bp.emissiveIntensity || 0; this.bladeEmC = new THREE.Color(bp.emissive); this.matB.emissiveIntensity = 1;
       const bl = new THREE.Mesh(rimK(bladeGeo(sw), 0.5), this.matB); bl.castShadow = true; this.bones[J.hR].add(bl); this.parts.push(bl);
@@ -1968,13 +1968,13 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
     // no ring. Never called = 'ally' for a sim gladiator, 'show' for a display stand-in. The rim is additive, so it is subtle in sunlight; it gets a lift at night.
     setRole(role) { this.role = role; this.styleRole(); return this; }
     styleRole() {
-      const role = this.role || 'ally', T = TEAM[this.team], U = this.rimU, c = U.uRimC.value.set(T.lite), ru = this.ring.material.uniforms;
+      const role = this.role || 'ally', T = TEAM[this.team], U = this.rimU, c = this.rimC0.set(T.lite), ru = this.ring.material.uniforms;
       const pr = (this.preset = Arena.preset), sunI = typeof PRESETS !== 'undefined' && PRESETS[pr] ? PRESETS[pr].sunI : 3, dim = clamp(1 - sunI / 3, 0, 1);
       let I = 0.8, P = 2.4, rA = 0.85, rI = 1;
       if (role === 'me') { c.lerp(WARM, 0.3); I = 0.9; rA = 1; rI = 1.15; }
       else if (role === 'enemy') { c.lerp(_c1.set(T.c), 0.45); I = 1.05; P = 2.2; rA = 0.95; }
       else if (role === 'show') { c.set('#ffd9a8'); I = 0.55; P = 2.8; rA = 0; }
-      c.multiplyScalar(I * (1 + 0.6 * dim)); U.uRimP.value = P;
+      c.multiplyScalar(I * (1 + 0.6 * dim)); U.uRimC.value.copy(c); U.uRimP.value = P;
       ru.uC.value.set(T.css); if (role === 'enemy') ru.uC.value.lerp(_c1.set('#ff2a12'), 0.38); ru.uC.value.multiplyScalar(rI);
       ru.uMe.value = role === 'me' ? 1 : 0; ru.uSeg.value = role === 'enemy' ? 6 : 0; this.ringA = rA;
     }
@@ -2098,14 +2098,15 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
         for (let i = 0; i < pa.count; i++) { const v = -base[i * 3 + 1]; arr[i * 3 + 2] = base[i * 3 + 2] - Math.pow(v, 1.4) * (0.05 + blow * 0.75) - Math.sin(t * 9 + v * 5 + base[i * 3] * 3) * 0.04 * v * (0.3 + blow); arr[i * 3 + 1] = base[i * 3 + 1] + v * v * blow * 0.35; }
         pa.needsUpdate = true;
       }
-      // flash / gild / blink
+      // flash / gild / blink. The hit flash keeps the form: an overbright fresnel edge plus a small emissive lift (uFlash in RIM_MAIN), not a flat white body
       this.flash = Math.max(0, this.flash - dt * 5);
-      const f = this.flash * this.flash * 0.9, gild = g.gildT > 0 ? 0.25 + 0.15 * Math.sin(t * 8) : 0;
-      this.matA.emissive.setRGB(f, f * 0.95, f * 0.85);
-      this.matM.emissive.setRGB(f + gild, f + gild * 0.7, f + gild * 0.15);
+      const U = this.rimU, gild = g.gildT > 0 ? 0.25 + 0.15 * Math.sin(t * 8) : 0;
+      U.uFlash.value = this.flash * this.flash;
+      U.uRimC.value.copy(this.rimC0); if (gild > 0) U.uRimC.value.lerp(GILD, 0.75); // the Emperor's Blessing turns the rim gold
+      this.matM.emissive.setRGB(gild, gild * 0.7, gild * 0.15);
       // shield flares gold for exactly the parry window (feel-4); blade glows while charging and flashes white on a landed hit (feel-1/4)
       const pw = st === 'block' && g.blockPT != null ? clamp(1 - (Sim.time - g.blockPT) / (TUNE.PARRY || 0.15), 0, 1) : 0;
-      this.matS.emissive.setRGB(f + pw * 0.9, f + pw * 0.7, f + pw * 0.15);
+      this.matS.emissive.setRGB(pw * 0.9, pw * 0.7, pw * 0.15);
       this.bladeFlash = Math.max(0, this.bladeFlash - dt);
       const ch = st === 'charge' ? (g.charge || 0) : 0;
       this.matB.emissive.copy(this.bladeEmC).multiplyScalar(this.bladeEm + ch * 2.5).addScalar(this.bladeFlash > 0 ? 2.5 : 0);
