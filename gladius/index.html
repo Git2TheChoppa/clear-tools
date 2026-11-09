@@ -356,6 +356,20 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 #scr-career.on,#scr-settings.on{ display:flex; }
 #scr-career .scr-head,#scr-settings .scr-head{ width:min(920px, 100%); flex:none; }
 #scr-career .panel,#scr-settings .panel{ width:min(920px, 100%); flex:1 1 auto; min-height:0; max-height:none; margin:0; padding:16px 18px 20px; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:rgba(224,165,96,.45) transparent; background:linear-gradient(180deg, rgba(34,23,15,.94), rgba(22,14,9,.94)); }
+/* career */
+#careerBody .section-t{ display:flex; align-items:center; gap:10px; margin:20px 0 10px; padding-bottom:6px; border-bottom:1px solid rgba(224,165,96,.25); font-size:20px; }
+#careerBody > .section-t:first-child{ margin-top:0; }
+.cs-h .mi{ width:20px; height:20px; color:var(--gold); opacity:1; }
+#careerBody .stats{ grid-template-columns:repeat(auto-fill, minmax(118px,1fr)); gap:10px; }
+#careerBody .stat{ padding:8px 10px; background:rgba(0,0,0,.22); border-left:2px solid rgba(224,165,96,.5); }
+#careerBody .stat b{ font-size:28px; } #careerBody .stat span{ font-size:15px; }
+.cs-ranks{ grid-template-columns:repeat(auto-fit, minmax(110px,1fr)); margin-top:0; }
+.cs-ranks .emb{ width:64px; height:64px; filter:drop-shadow(0 4px 6px rgba(0,0,0,.5)); }
+.cs-ranks div{ font-size:15px; } .cs-ranks b{ font-size:17px; margin-top:2px; }
+.cs-sum{ margin:0 0 8px; color:var(--dim); font-size:16px; }
+.cs-cols{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:8px 18px; }
+.cs-col{ display:grid; grid-template-columns:1fr auto; gap:2px 8px; font-size:16px; } .cs-col b{ font-variant-numeric:tabular-nums; color:var(--sand); }
+.cs-col .cbar{ grid-column:1 / -1; height:6px; background:rgba(255,255,255,.1); } .cs-col .cbar i{ display:block; height:100%; background:linear-gradient(90deg,#c98a1a,#ffd66e); }
 /* settings */
 #setBody{ display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap:14px 18px; align-items:start; }
 .sgrp{ padding:10px 14px 12px; border:1px solid rgba(185,119,59,.35); background:rgba(0,0,0,.2); animation:stagUp .34s cubic-bezier(.2,.8,.25,1) backwards; animation-delay:calc(var(--i,0) * 45ms + 60ms); }
@@ -5252,7 +5266,9 @@ const UI = (() => {
   function renderCareer() {
     const S = Prog.S, T = S.stats, h = Math.floor(T.time / 3600), m = Math.floor((T.time % 3600) / 60);
     const st = [['Matches', T.matches], ['Wins', T.wins], ['Win rate', T.matches ? Math.round(100 * T.wins / T.matches) + '%' : '—'], ['KOs', T.ko], ['Deaths', T.de], ['K/D', T.de ? (T.ko / T.de).toFixed(2) : T.ko], ['Assists', T.as], ['Demolitions', T.demo], ['Parries', T.par], ['MVPs', T.mvp], ['Blessings', T.bless], ['Damage', T.dmg], ['Best streak', S.bestStreak], ['Level', S.level], ['Time in arena', h ? `${h}h ${m}m` : `${m}m`]];
-    $('#careerBody').innerHTML = `<div class="stats">${st.map(([a, b]) => `<div class="stat"><b>${b}</b><span>${a}</span></div>`).join('')}</div><div class="section-t">Best ranks</div><div class="ranks" style="grid-template-columns:repeat(3,1fr)">${['duel', 'doubles', 'standard'].map((k) => `<div>${Prog.rankSVG(S.best[k] || 250, 44, S.games[k] >= 3)}<b>${Prog.MODES[k].n}</b>${S.games[k] >= 3 ? Prog.rankOf(S.best[k]).name : 'Unranked'}</div>`).join('')}</div><div class="section-t">Collection</div><p style="margin:0;color:var(--dim);font-size:17px">${Object.keys(S.own).length} of ${Prog.ITEMS.length} items unlocked.</p>` + extraHTML(UI.careerExtra);
+    const rk = Object.keys(Prog.MODES).filter((k) => S.mmr[k] != null), hd = (t, ic) => `<div class="section-t cs-h">${MI[ic] || MI.def}${t}</div>`;
+    const col = Prog.SLOTS.map((s) => { const all = Prog.ITEMS.filter((i) => i.slot === s.id), o = all.filter((i) => i.id in S.own).length; return `<div class="cs-col"><span>${esc(s.n)}</span><b>${o}/${all.length}</b><div class="cbar"><i style="width:${all.length ? (100 * o / all.length).toFixed(0) : 0}%"></i></div></div>`; }).join('');
+    $('#careerBody').innerHTML = `${hd('Record', 'play')}<div class="stats">${st.map(([a, b]) => `<div class="stat"><b>${b}</b><span>${a}</span></div>`).join('')}</div>${hd('Best ranks', 'career')}<div class="ranks cs-ranks">${rk.map((k) => { const pl = (S.games[k] || 0) >= 3; return `<div>${Prog.rankSVG(S.best[k] || 250, 64, pl)}<b>${esc(Prog.MODES[k].n)}</b>${pl ? esc(Prog.rankOf(S.best[k] || S.mmr[k]).name) : `${S.games[k] || 0}/3 placed`}</div>`; }).join('')}</div>${hd('Collection', 'armory')}<p class="cs-sum">${Object.keys(S.own).length} of ${Prog.ITEMS.length} items unlocked</p><div class="cs-cols">${col}</div>` + extraHTML(UI.careerExtra);
   }
   function renderSettings() {
     const G = Game.settings, S = Prog.S, V = G.vol, num = (k, d) => (typeof G[k] === 'number' ? G[k] : d), on = (k, d) => (G[k] == null ? d : G[k] !== false);
