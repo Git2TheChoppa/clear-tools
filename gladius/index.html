@@ -319,7 +319,7 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 .mart svg{ position:absolute; left:8%; top:10%; width:84%; height:84%; filter:drop-shadow(0 6px 8px rgba(0,0,0,.5)); }
 .mart::after{ content:""; position:absolute; left:0; right:0; bottom:0; height:3px; background:var(--mc); opacity:.85; }
 .mbody{ flex:1; min-height:0; display:flex; flex-direction:column; gap:6px; padding:12px 16px 14px; }
-.mhead{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.mhead{ display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:0 8px; }
 #scr-play .mode .mn{ font-size:clamp(22px, 2.1vw, 30px); line-height:1; }
 #scr-play .mode .ms{ font-size:19px; color:var(--mc); white-space:nowrap; }
 #scr-play .mode p{ font-size:16px; line-height:1.25; overflow:hidden; display:-webkit-box; -webkit-line-clamp:4; -webkit-box-orient:vertical; }
@@ -587,7 +587,7 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 #scr-reveal{ transition:background-color .5s; }
 #scr-reveal.opened{ background:linear-gradient(90deg, rgba(18,11,7,.05) 0%, rgba(18,11,7,.1) 38%, rgba(18,11,7,.78) 66%, rgba(18,11,7,.86) 100%); -webkit-backdrop-filter:none; backdrop-filter:none; }
 #scr-reveal .reveal{ width:min(460px, 92vw); transition:transform .55s cubic-bezier(.2,.8,.2,1); }
-#scr-reveal.opened .reveal{ transform:translate3d(min(24vw, 380px),0,0); }
+#scr-reveal.opened .reveal{ transform:translate3d(calc(50vw - 50% - 30px - var(--sar)),0,0); }
 .crate{ width:180px; height:138px; margin-bottom:22px; }
 .crate::before{ content:""; position:absolute; left:-70px; right:-70px; top:-70px; bottom:-60px; background:radial-gradient(circle, var(--rc) 0, transparent 62%); opacity:0; transform:scale(.6); transition:opacity .5s, transform .5s; pointer-events:none; }
 .crate.charge::before{ opacity:.45; transform:scale(.9); }
@@ -610,7 +610,7 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 #rcard .rico{ width:84px; height:84px; filter:drop-shadow(0 0 14px var(--rc)); }
 #rcard .ri{ font-size:clamp(26px, 4vw, 38px); }
 @media (max-height:520px){
-  #scr-reveal{ padding-top:calc(6px + var(--sat)); padding-bottom:calc(6px + var(--sab)); }
+  #scr-reveal{ padding-top:calc(6px + var(--sat)); padding-bottom:calc(6px + var(--sab)); } #scr-reveal .reveal{ width:min(400px, 52vw); } .reveal .btns .btn{ min-height:44px; font-size:18px; padding:0 16px; }
   .crate{ width:130px; height:100px; margin-bottom:10px; } .crate .box{ height:68px; } .crate .lid{ height:32px; } .crate .box::before,.crate .lid::before{ left:16px; } .crate .box::after,.crate .lid::after{ right:16px; } .crate .lockp{ top:26px; transform:scale(.8); }
   .crate .rays{ width:260px; height:260px; margin:-130px 0 0 -130px; }
   #rcard{ padding:10px 18px; } #rcard .rico{ width:52px; height:52px; margin-bottom:2px; } #rcard .ri{ font-size:24px; } .reveal .btns{ margin-top:10px; } .rfoot{ margin-top:6px; font-size:13px; }
@@ -5187,7 +5187,7 @@ const UI = (() => {
   // ---------- menu gladiator framing: the camera's menu branch frames UI.display inside the screen area the menu leaves free (measured from the DOM)
   const MF = { sx: 0.2, sy: 0, hf: 0.6, yc: 1.02, span: 2.15, fov: 50, el: 0.08 }, DSP = { yaw: 0.55, yawT: 0.55, drag: 0, spin: 0 };
   let emoteT = 0;
-  const ARMF = { helmet: { span: 0.95, yc: 1.68, yaw: 0.35 }, emblem: { span: 1.9, yc: 1.05, yaw: -0.75 }, sword: { span: 1.9, yc: 1.1, yaw: 1.0 }, cape: { span: 2.2, yc: 1.1, yaw: Math.PI }, title: { span: 2.3, yc: 1.05, yaw: 0.5 }, def: { span: 2.5, yc: 1.05, yaw: 0.5 } };
+  const ARMF = { helmet: { span: 1.45, yc: 1.6, yaw: 0.35 }, emblem: { span: 1.9, yc: 1.05, yaw: -0.75 }, sword: { span: 1.9, yc: 1.1, yaw: 1.0 }, cape: { span: 2.2, yc: 1.1, yaw: Math.PI }, title: { span: 2.3, yc: 1.05, yaw: 0.5 }, def: { span: 2.5, yc: 1.05, yaw: 0.5 } };
   function frameMenu() {
     const W = innerWidth, H = innerHeight, por = H > W * 1.05, R = (q) => { const e = $(q), r = e && e.getBoundingClientRect(); return r && r.width > 0 ? r : null; };
     let x0 = 0, x1 = W, y0 = 0, y1 = H, span = 2.15, yc = 1.02, yaw = 0.4, fill = por ? 0.92 : 0.68;
@@ -5197,7 +5197,7 @@ const UI = (() => {
     } else if (cur === 'armory') {
       const p = R('#scr-armory .wrap'), f = ARMF[armTab] || ARMF.def; if (p) { if (por) y1 = p.top; else x0 = p.right; } span = f.span; yc = f.yc; yaw = f.yaw; fill = por ? 0.86 : 0.8;
     } else if (cur === 'reveal') {
-      const c = R('#scr-reveal .reveal'); if (c) { if (por) y1 = c.top; else x1 = c.left; } span = 2.3; fill = 0.8;
+      const c = R('#scr-reveal .reveal'); if (c) { if (por) y1 = c.top; else x1 = W - c.width - 30; } span = 2.3; fill = 0.78;
     } else return;
     if (x1 - x0 < W * 0.16) { x0 = W * 0.42; x1 = W * 0.62; } if (y1 - y0 < H * 0.16) { y0 = 0; y1 = H * 0.4; }
     MF.sx = (x0 + x1) / W - 1; MF.sy = 1 - (y0 + y1) / H; MF.span = span; MF.yc = yc;
@@ -5456,7 +5456,7 @@ const UI = (() => {
     $('#scr-reveal').classList.add('opened'); if (!display) return;
     try {
       armPreview(it, false); display.root.visible = true; Cam.set('armory'); DSP.drag = 0; DSP.yaw = DSP.yawT = it.slot === 'cape' ? 2.4 : 0.3; DSP.spin = REDUCED_MOTION ? 0 : 0.5;
-      frameMenu(); Tm.set('prizeFrame', () => { if (cur === 'reveal') frameMenu(); }, 560);
+      frameMenu(); Cam.snap = true; Tm.set('prizeFrame', () => { if (cur === 'reveal') frameMenu(); }, 560);
       if (FX.ready) { const M = Cam.MENU, col = gold ? '#ffd24a' : Prog.RAR[it.r].c, n = FX.qn(30 + it.r * 12);
         FX.flash(V3(M.x, 1.8, M.z), col, 50 + it.r * 18, 0.7); FX.ring(V3(M.x, 0.1, M.z), col, 0.3, 3 + it.r * 0.4, 0.8, 0.9);
         FX.burstAt(true, M.x, 1.1, M.z, n, { life: [0.7, 1.5], speed: [2, 6 + it.r], up: 1, upAdd: 0.5, s0: 0.2, s1: 0.02, col: [col, '#fff4d0'], f: 1, g: 2.5, drag: 1.2 }); }
