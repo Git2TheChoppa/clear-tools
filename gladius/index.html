@@ -1966,6 +1966,8 @@ const Rig = (() => {
     air: { w: { shR: [-1.5, -1.55, 0], elR: [-0.2, 0, 0], hR: [1.5, 0, 0], chest: [0, -0.3, 0], spine: [0.1, 0, 0] }, s: { shR: [-1.5, -1.4, 0], elR: [-0.1, 0, 0], hR: [1.5, 0, 0], chest: [0, 0.3, 0], spine: [0.1, 0, 0] } },
   };
   const SH_GEO = new THREE.PlaneGeometry(1.5, 1.5); SH_GEO.rotateX(-Math.PI / 2);
+  // lowest point of a sole below the hip joint, from the thigh / knee / foot Euler triples that animate() poses (legs are 0.44 + 0.44)
+  function soleY(th, kn, ft) { const cz = Math.cos(th[2]), ct = Math.cos(th[0]), a = th[0] + kn[0] + ft[0], c = Math.cos(a), s = Math.sin(a); return 0.44 * (Math.sin(kn[0]) * Math.sin(th[0]) - (1 + Math.cos(kn[0])) * cz * ct) + Math.min(-0.07 * c - 0.21 * s, -0.07 * c + 0.07 * s); }
   // rim light + hit flash + KO heat: one fresnel term patched into every rig material (r158: `normal` and `vViewPosition` are in scope after
   // <emissivemap_fragment>). The uniforms object is shared by all materials of one rig; the patch text is identical everywhere, so all rigs share programs.
   // Vertex attribute aRimK (0..1, missing = 0) mutes the rim on big flat parts (shield, cape, blade) that would otherwise light up whole at grazing angles.
@@ -2017,7 +2019,8 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       this.matB = null; this.matC = null; this.parts = [];
       this.role = null; this.ringA = 0; this.rimC0 = new THREE.Color(); // role styling (rim + ground ring): see setRole(); null = decided on the first animate()
       this.ring = new THREE.Mesh(RING_GEO, ringMat()); this.ring.renderOrder = 2; this.ring.visible = false;
-      this.cur = new Float32Array(NB * 3); this.tgt = new Float32Array(NB * 3); this.bodyY = 0.95; this.bodyZ = 0;
+      this.cur = new Float32Array(NB * 3); this.tgt = new Float32Array(NB * 3); this.bodyY = 0.95; this.bodyZ = 0; this.bodyX = 0;
+      this.poseN = null; this.poseT = 0; this.emoteBeat = 0; this.beatI = 0; // pose clock (restarts when the pose name changes) + emote impact counter (see EMOTES)
       this.phase = 0; this.t = rand(0, 10); this.flash = 0; this.tumbleA = 0;
       this.shudderT = 0; this.shudderW = 0; this.bladeFlash = 0; this.squash = 0; // feel: victim shudder (wall-clock), attacker blade flash, landing squash
       // KO launch: koT -1 idle, >= 0 flying, -2 popped (hidden until revived); hint* = direction from the Bus 'ko' event, lastV = own velocity fallback
@@ -2038,7 +2041,7 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       this.matS.map = Tex.shield(this.team, this.cos.emblem); this.matS.needsUpdate = true;
       const sf = new THREE.Mesh(rimK(shieldFace(), 0.8), this.matS); sf.castShadow = true; this.bones[J.hL].add(sf); this.parts.push(sf);
       if (this.matB) this.matB.dispose();
-      const bp = Object.assign({ emissive: '#ff9a30', vertexColors: true, envMapIntensity: 0.65 }, sw.blade); this.matB = rimMat(new THREE.MeshStandardMaterial(bp), this.rimU); this.bladeEm = bp.emissiveIntensity || 0; this.bladeEmC = new THREE.Color(bp.emissive); this.matB.emissiveIntensity = 1;
+      const bp = Object.assign({ emissive: '#ff9a30', vertexColors: true, envMapIntensity: 0.7 }, sw.blade); bp.metalness = Math.min(bp.metalness, 0.82); this.matB = rimMat(new THREE.MeshStandardMaterial(bp), this.rimU); this.bladeEm = bp.emissiveIntensity || 0; this.bladeEmC = new THREE.Color(bp.emissive); this.matB.emissiveIntensity = 1;
       const bl = new THREE.Mesh(rimK(bladeGeo(sw), 0.5), this.matB); bl.castShadow = true; this.bones[J.hR].add(bl); this.parts.push(bl);
       this.baseL.set(0, 0.12, 0).applyMatrix4(SW_M); this.tipL.set(bladeProf(sw, 1)[0], 0.085 + sw.len, 0).applyMatrix4(SW_M);
       this.trail.mat.uniforms.uC.value.set(sw.trail);
@@ -2107,7 +2110,7 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       this.phase += dt * (ground && sp > 0.5 ? 2.4 + sp * 0.74 : 0) * (fwd < -1 ? -1 : 1);
       const a = ground ? smooth(0.3, 3.5, sp) : 0, amp = clamp(sp / 8, 0.25, 1.15), fN = sp > 0.1 ? fwd / sp : 1, lN = sp > 0.1 ? lat / sp : 0;
       const br = Math.sin(t * 2.1) * 0.012; let k = 16;
-      let bodyY = 0.9 + br, bodyZ = 0;
+      let bodyY = 0.9 + br, bodyZ = 0, bodyX = 0, crouch = 0, hop = 0, plant = ground;
       let spine = [0.12, -0.3, 0], chest = [0.02 + br, -0.08, 0], head = [-0.08, 0.35, 0];
       let thR = [0.28, 0, -0.05], knR = [0.5, 0, 0], ftR = [-0.22, 0, 0], thL = [-0.38, 0, 0.06], knL = [0.42, 0, 0], ftL = [-0.04, 0, 0];
       if (a > 0) {
@@ -2125,15 +2128,17 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       if (a > 0) { shR[0] += Math.sin(this.phase) * 0.35 * a * amp; shL[0] -= Math.sin(this.phase) * 0.1 * a; }
       if (g.boosting && ground && st === 'idle') { shR = [0.55, -0.3, -0.25]; elR = [-0.5, 0, 0]; }
       const pose = !alive ? (this.koT >= 0 ? 'ko' : 'none') : (g.pose || st);
+      if (pose !== this.poseN) { this.poseN = pose; this.poseT = 0; this.beatI = 0; }
+      const pt = (this.poseT += dt);
       switch (pose) {
         case 'block':
           shL = [-0.98, -0.5, 0.22]; elL = [-0.85, 0, 0]; hL = [0.28, 0, 0]; shR = [-0.05, 0.05, -0.25]; elR = [-1.7, 0, 0]; hR = [1.2, 0, 0];
-          spine = [0.22, -0.45, 0]; bodyY -= 0.06;
-          if (g.shieldCharge) { spine = [0.55, -0.55, 0]; shL = [-1.2, -0.65, 0.1]; bodyY -= 0.05; }
+          spine = [0.22, -0.45, 0]; crouch = 0.06;
+          if (g.shieldCharge) { spine = [0.55, -0.55, 0]; shL = [-1.2, -0.65, 0.1]; crouch = 0.11; }
           break;
         case 'charge': {
           const c = g.charge || 0, tr = c >= 1 ? Math.sin(t * 60) * 0.02 : 0;
-          shR = [-2.6 + tr, -1.2, 0]; elR = [-1.2, 0, 0]; hR = [1.4, 0, 0]; chest = [0, -0.8 - c * 0.15, 0]; spine = [0.05, -0.3, 0]; bodyY -= 0.08 + c * 0.05; break;
+          shR = [-2.6 + tr, -1.2, 0]; elR = [-1.2, 0, 0]; hR = [1.4, 0, 0]; chest = [0, -0.8 - c * 0.15, 0]; spine = [0.05, -0.3, 0]; crouch = 0.08 + c * 0.05; break;
         }
         case 'atk': {
           const at = g.atk; if (!at) break;
@@ -2145,13 +2150,14 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
           else { f = smooth(0, 1, (tt - d.wind - d.act) / d.rec); A = ap.s; Bp = guard; k = 24; }
           shR = L3(A.shR, Bp.shR, f); elR = L3(A.elR, Bp.elR, f); hR = L3(A.hR, Bp.hR, f); chest = L3(A.chest, Bp.chest, f); spine = L3(A.spine, Bp.spine, f);
           if (tt >= d.wind && tt < d.wind + d.act + d.rec * 0.5) bodyZ = 0.1;
-          if (at.kind === 'heavy') bodyY -= 0.06;
+          if (at.kind === 'heavy') crouch = 0.06;
           if (at.kind !== 'air') { shL = [-0.45, 0.1, 0.35]; elL = [-1.0, 0, 0]; }
           break;
         }
         case 'slam':
-          shR = [-2.9, 0, 0]; elR = [-0.6, 0, 0]; hR = [2.2, 0, 0]; spine = [0.35, 0, 0]; thR = [-1.1, 0, 0]; knR = [1.6, 0, 0]; thL = [-1.2, 0, 0]; knL = [1.7, 0, 0]; break;
+          plant = false; shR = [-2.9, 0, 0]; elR = [-0.6, 0, 0]; hR = [2.2, 0, 0]; spine = [0.35, 0, 0]; thR = [-1.1, 0, 0]; knR = [1.6, 0, 0]; thL = [-1.2, 0, 0]; knL = [1.7, 0, 0]; break;
         case 'getup':
+          plant = false;
           if (g.slamLand) { shR = [-0.5, -0.15, 0]; elR = [-0.2, 0, 0]; hR = [1.55, 0, 0]; spine = [0.6, 0, 0]; bodyY = 0.62; thR = [-1.2, 0, 0]; knR = [1.9, 0, 0]; thL = [0.3, 0, 0]; knL = [1.6, 0, 0]; k = 30; }
           else { bodyY = 0.75; spine = [0.5, 0, 0]; }
           break;
@@ -2170,23 +2176,70 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
           break;
         }
         case 'tumble':
-          shL = [0, 0, 1.6]; shR = [0, 0, -1.6]; elL = [-0.2, 0, 0]; elR = [-0.2, 0, 0]; thR = [-0.3, 0, -0.5]; thL = [-0.3, 0, 0.5]; knR = [0.4, 0, 0]; knL = [0.4, 0, 0]; k = 12; break;
+          plant = false; shL = [0, 0, 1.6]; shR = [0, 0, -1.6]; elL = [-0.2, 0, 0]; elR = [-0.2, 0, 0]; thR = [-0.3, 0, -0.5]; thL = [-0.3, 0, 0.5]; knR = [0.4, 0, 0]; knL = [0.4, 0, 0]; k = 12; break;
         case 'dodge':
-          thR = [-1.3, 0, 0]; knR = [2.0, 0, 0]; thL = [-1.3, 0, 0]; knL = [2.0, 0, 0]; spine = [0.5, 0, 0]; shR = [-0.8, -0.2, -0.3]; elR = [-1.4, 0, 0]; shL = [-0.9, 0, 0.2]; k = g.stT < 0.1 ? 40 : 30; break;
-        case 'victory':
-          shR = [-3.0, -0.2, 0]; elR = [-0.1, 0, 0]; hR = [1.45, 0, 0]; shL = [-0.6, 0.6, 0.4]; elL = [-0.6, 0, 0]; spine = [-0.1, -0.1, 0]; head = [-0.25, 0, 0];
-          bodyY = 0.97 + Math.abs(Math.sin(t * 5)) * 0.04; thR = [0.1, 0, -0.08]; knR = [0.1, 0, 0]; thL = [-0.1, 0, 0.08]; knL = [0.1, 0, 0]; ftR = [0, 0, 0]; ftL = [0, 0, 0]; break;
+          plant = false; thR = [-1.3, 0, 0]; knR = [2.0, 0, 0]; thL = [-1.3, 0, 0]; knL = [2.0, 0, 0]; spine = [0.5, 0, 0]; shR = [-0.8, -0.2, -0.3]; elR = [-1.4, 0, 0]; shL = [-0.9, 0, 0.2]; k = g.stT < 0.1 ? 40 : 30; break;
+        case 'victory': { // the sword pumps overhead on every hop, shield arm flung wide, chest out
+          const u = Math.sin(pt * 8.5), up = Math.max(0, u), dn = Math.max(0, -u);
+          shR = [-2.85 - up * 0.2, -0.12, -0.18]; elR = [-0.55 + up * 0.5, 0, 0]; hR = [1.45, 0, 0];
+          shL = [-0.55, 0.5, 1.0 + up * 0.25]; elL = [-0.75, 0, 0]; hL = [-0.4, 0, 0];
+          spine = [-0.14 + dn * 0.08, -0.05, 0]; chest = [-0.14, 0, 0]; head = [-0.3, 0.12 * Math.sin(pt * 2.1), 0];
+          thR = [-0.12 - dn * 0.22, -0.15, -0.1]; knR = [0.22 + dn * 0.5, 0, 0]; ftR = [-0.1 - dn * 0.28 + up * 0.5, 0, 0];
+          thL = [-0.12 - dn * 0.22, 0.15, 0.1]; knL = [0.22 + dn * 0.5, 0, 0]; ftL = [-0.1 - dn * 0.28 + up * 0.5, 0, 0];
+          hop = up * up * 0.09; k = 22; break;
+        }
         case 'salute':
           shR = [-1.2, 0.9, 0]; elR = [-1.9, 0, 0]; hR = [0.1, 0, 0]; shL = [-0.3, 0, 0.15]; elL = [-0.6, 0, 0]; spine = [0.02, 0, 0]; head = [0.05, 0, 0];
           bodyY = 0.98; thR = [0.02, 0, -0.06]; knR = [0.05, 0, 0]; thL = [0.02, 0, 0.06]; knL = [0.05, 0, 0]; ftR = [0, 0, 0]; ftL = [0, 0, 0]; break;
-        case 'kneel':
-          bodyY = 0.55; thR = [-1.5, 0, -0.1]; knR = [1.6, 0, 0]; ftR = [0, 0, 0]; thL = [0.25, 0, 0.1]; knL = [2.1, 0, 0]; ftL = [0.8, 0, 0];
-          spine = [0.35, 0, 0]; head = [0.45, 0, 0]; shR = [0.1, 0, -0.1]; elR = [-0.3, 0, 0]; shL = [0.05, 0, 0.1]; elL = [-0.3, 0, 0]; break;
+        case 'present': { // menus: shield hanging low at the left, sword carried upright at the right shoulder, weight on the right leg, slow breathing sway
+          const b = Math.sin(t * 1.5), sw = Math.sin(t * 0.55);
+          spine = [-0.06 + b * 0.008, 0.1 + sw * 0.03, 0.03]; chest = [-0.1 - b * 0.022, 0.06, 0]; head = [0.03 + b * 0.008, -0.3 - sw * 0.1, 0.03];
+          shR = [-0.35 - b * 0.02, -0.3, -0.35]; elR = [-2.2 + b * 0.025, 0, 0]; hR = [0.6, -0.25, 0];
+          shL = [0.25, 0, 0.22 + b * 0.012]; elL = [-0.2, 0, 0]; hL = [-1.5, 0, 1.1];
+          thR = [0.04, -0.3, -0.07]; knR = [0.05, 0, 0]; ftR = [-0.09, 0, 0]; thL = [-0.2, 0.4, 0.2]; knL = [0.28, 0, 0]; ftL = [-0.08, 0, 0];
+          bodyX = -0.035 + sw * 0.006; hop = b * 0.004; k = 7; break;
+        }
+        case 'kneel': { // defeated: left knee and shin on the sand, right foot planted, head bowed, sword point in the sand, shield resting on its edge
+          const b = Math.sin(t * 1.3) * 0.012;
+          plant = false; bodyY = 0.56 + b * 0.3; thL = [0.2, 0, 0.1]; knL = [1.37, 0, 0]; ftL = [1.4, 0, 0]; thR = [-1.57, 0, -0.12]; knR = [1.57, 0, 0]; ftR = [0, 0, 0];
+          spine = [0.3 + b, 0, 0]; chest = [0.12 + b, 0, 0]; head = [0.55, 0, 0];
+          shR = [-0.76, 0, -0.1]; elR = [-1.0, 0, 0]; hR = [2.9, 0, 0]; shL = [-0.42, 0, 0.1]; elL = [-0.1, 0, 0]; hL = [-1.57, 0, 0.5]; k = 9; break;
+        }
+        // ---- emotes (Rig.EMOTES): played while g.pose names one; legs keep following the locomotion
+        case 'e_salute': // hilt to the chest, then the blade thrust up at the stands
+          if (pt < 0.4) { shR = [-0.9, 0.75, 0]; elR = [-2.15, 0, 0]; hR = [0.75, 0, 0]; head = [0.08, 0.1, 0]; }
+          else if (pt < 1.6) { shR = [-2.5, -0.1, -0.15]; elR = [-0.25, 0, 0]; hR = [1.3, 0, 0]; head = [-0.3, 0.1, 0]; spine = [-0.08, -0.1, 0]; }
+          shL = [0.2, 0, 0.25]; elL = [-0.2, 0, 0]; hL = [-1.5, 0, 0.9]; k = 13; break;
+        case 'e_entertained': { // arms thrown wide, chest out, a slow turn of chest and head across the stands
+          const tw = Math.sin(pt * 1.5);
+          shR = [-0.25, 0, -1.7]; elR = [-0.3, 0, 0]; hR = [0.9, 0, 0]; shL = [-0.25, 0, 1.7]; elL = [-0.3, 0, 0]; hL = [-0.2, 0, 0];
+          spine = [-0.16, tw * 0.25, 0]; chest = [-0.1, tw * 0.3, 0]; head = [-0.18, tw * 0.45, 0]; k = 9; break;
+        }
+        case 'e_bang': { // the sword bangs the shield rim three times; emoteBeat counts the impacts so that a caller can play the clang
+          const B = 0.34, n = Math.floor(pt / B), c = pt / B - n; if (n > 3) break;
+          const w = n >= 3 ? 0 : c < 0.6 ? easeOutCubic(c / 0.6) : c < 0.8 ? 1 - Math.pow((c - 0.6) / 0.2, 2) : 0, jolt = n < 3 && c >= 0.8 ? (1 - c) * 5 : 0;
+          shR = L3([-0.8, 0.5, -0.1], [-1.0, -0.55, -0.35], w); elR = L3([-1.25, 0, 0], [-1.6, 0, 0], w); hR = L3([0.9, 0, 0], [0.6, 0, 0], w);
+          shL = [-0.72 + jolt * 0.08, -0.45, 0.2]; elL = [-0.85, 0, 0]; hL = [0.15, 0, 0]; spine = [0.14, -0.3 + w * 0.12, 0]; head = [0, 0.3, 0]; k = 34;
+          const hits = Math.min(3, Math.floor(pt / B + 0.2));
+          while (this.beatI < hits) { this.beatI++; this.emoteBeat++; if (FX.ready) FX.burstAt(true, (this.baseW.x + this.tipW.x) / 2, (this.baseW.y + this.tipW.y) / 2, (this.baseW.z + this.tipW.z) / 2, FX.qn(9), { life: [0.12, 0.3], speed: [2, 6], s0: 0.13, s1: 0.02, col: ['#fff4d0', '#ffd27a'], f: 1, g: 10, drag: 2 }); }
+          break;
+        }
+        case 'e_point': { // sword levelled at the foe, shield drawn back
+          const j = Math.sin(pt * 20) * 0.035 * Math.exp(-pt * 5);
+          shR = [-1.5 + j, -0.62, 0]; elR = [-0.06, 0, 0]; hR = [1.5, 0, 0]; shL = [0.3, 0, 0.4]; elL = [-0.5, 0, 0]; hL = [-1.3, 0, 0.9];
+          spine = [0.08, 0.4, 0]; chest = [0, 0.25, 0]; head = [0, -0.6, 0]; k = 15; break;
+        }
+        case 'e_flex': { // sword arm curled, shield planted wide, a pumped double beat
+          const pu = Math.max(0, Math.sin(pt * 6.5)) * Math.exp(-pt * 0.4);
+          shR = [-0.25, 0, -1.45 - pu * 0.12]; elR = [-2.05 - pu * 0.25, 0, 0]; hR = [1.3, 0, 0];
+          shL = [0.2, 0, 0.3 + pu * 0.06]; elL = [-0.25, 0, 0]; hL = [-1.5, 0, 1.0];
+          spine = [-0.12, -0.12, 0]; chest = [-0.12 - pu * 0.05, -0.1, 0.04]; head = [-0.05, -0.55, 0]; k = 14; break;
+        }
         case 'ko': // thrown by the killing blow: arched back, limbs flung wide
           shL = [-0.6, 0, 1.9]; shR = [-0.6, 0, -1.9]; elL = [-0.5, 0, 0]; elR = [-0.5, 0, 0]; spine = [-0.5, 0, 0]; chest = [-0.3, 0, 0]; head = [-0.45, 0, 0];
-          thR = [0.5, 0, -0.35]; thL = [0.2, 0, 0.35]; knR = [0.9, 0, 0]; knL = [0.5, 0, 0]; bodyY = 1; k = 26; break;
+          thR = [0.5, 0, -0.35]; thL = [0.2, 0, 0.35]; knR = [0.9, 0, 0]; knL = [0.5, 0, 0]; bodyY = 1; k = 26; plant = false; break;
         case 'flourish': {
-          const f = (t % 3.2) / 3.2, s = Math.sin(f * TAU);
+          const f = (pt % 3.2) / 3.2, s = Math.sin(f * TAU);
           if (f < 0.5) { shR = [-1.6 + s * 0.6, -0.9 + s * 1.4, 0]; elR = [-0.4, 0, 0]; hR = [1.45, 0, 0]; chest = [0, s * 0.4, 0]; }
           break;
         }
@@ -2194,13 +2247,18 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       // landing squash (feel-9): set by the 'land' handler, decays at k=9
       this.squash = this.squash > 0.005 ? damp(this.squash, 0, 9, dt) : 0;
       if (this.squash > 0 && ground) { const sq = this.squash; bodyY -= 0.16 * sq; spine[0] += 0.35 * sq; thR[0] -= 0.4 * sq; knR[0] += 0.8 * sq; thL[0] -= 0.4 * sq; knL[0] += 0.8 * sq; }
+      // a crouch (block, charge, heavy) bends the knees; then the hips are set so that the lower sole meets the sand instead of sinking into it.
+      // The correction fades out with the run cycle, which has a flight phase.
+      if (crouch > 0) { thR[0] -= 4 * crouch; knR[0] += 8 * crouch; thL[0] -= 4 * crouch; knL[0] += 8 * crouch; }
+      if (plant && a < 1) bodyY += clamp(0.05 - bodyY - Math.min(soleY(thR, knR, ftR), soleY(thL, knL, ftL)), -0.06, 0.16) * (1 - a);
+      bodyY += hop;
       Sa(J.body, [0, 0, 0]); Sa(J.spine, spine); Sa(J.chest, chest); Sa(J.head, head); Sa(J.shR, shR); Sa(J.elR, elR); Sa(J.hR, hR); Sa(J.shL, shL); Sa(J.elL, elL); Sa(J.hL, hL);
       Sa(J.thR, thR); Sa(J.knR, knR); Sa(J.ftR, ftR); Sa(J.thL, thL); Sa(J.knL, knL); Sa(J.ftL, ftL);
       const kk = 1 - Math.exp(-k * dt), C = this.cur;
       for (let i = 0; i < NB * 3; i++) C[i] += (T[i] - C[i]) * kk;
       for (let i = 0; i < NB; i++) this.bones[i].rotation.set(C[i * 3], C[i * 3 + 1], C[i * 3 + 2]);
-      this.bodyY = damp(this.bodyY, bodyY, k, dt); this.bodyZ = damp(this.bodyZ, bodyZ, k, dt);
-      this.bones[0].position.set(0, this.bodyY - 1, this.bodyZ);
+      this.bodyY = damp(this.bodyY, bodyY, k, dt); this.bodyZ = damp(this.bodyZ, bodyZ, k, dt); this.bodyX = damp(this.bodyX, bodyX, k, dt);
+      this.bones[0].position.set(this.bodyX, this.bodyY - 1, this.bodyZ);
       // whole-body rotation (flips, tumbles, spins)
       const q = this.spin.quaternion;
       if (pose === 'ko') { const d = this.koDir, a = this.koT * (15 - 9 * this.koT); _ax.set(d.x * sy + d.z * cy, 0, -(d.x * cy - d.z * sy)); q.setFromAxisAngle(_ax, a).multiply(_q1.setFromAxisAngle(_v2.set(0, 1, 0), this.koTw * a * 0.6)); }
@@ -2262,7 +2320,9 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
   }
   const _q1 = new THREE.Quaternion();
   Bus.on('ko', (e) => { const r = e && e.v && e.v.rig; if (r && r.koHint) r.koHint(e); });
-  return { Rig: RigC, SKIN, SWORDS, CAPES, J };
+  // emotes: a rig plays one while g.pose === pose (e_bang bumps rig.emoteBeat on each of its three impacts); dur = seconds until it has played out
+  const EMOTES = { e_salute: { name: 'Salute', pose: 'e_salute', dur: 1.9 }, e_entertained: { name: 'Are You Not Entertained?', pose: 'e_entertained', dur: 2.8 }, e_bang: { name: 'Shield Bang', pose: 'e_bang', dur: 1.4 }, e_point: { name: 'Challenge', pose: 'e_point', dur: 1.6 }, e_flex: { name: 'Flex', pose: 'e_flex', dur: 1.9 } };
+  return { Rig: RigC, SKIN, SWORDS, CAPES, J, EMOTES };
 })();
 
 // ---------------------------------------------------------------- particles, rings, flashes, screen effects
