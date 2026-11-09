@@ -3759,10 +3759,12 @@ __G.Decree = Decree;
 const Favor = (() => {
   const TIERS = [0, 100, 260, 480, 760, 1100], NAMES = ['', 'Murmurs', 'Cheers', 'Roar', 'Frenzy', 'OVATION'], XP = [0, 20, 45, 80, 120, 180];
   const F = { f: 0, tier: 0, peak: 0, NAMES, XP, TIERS };
-  let me = null, idle = 0, recent = [], hudT = 0, clapT = 0, lastKo = -9, mute = 0, shown = false;
+  let me = null, idle = 0, recent = [], hudT = 0, clapT = 0, lastKo = -9, mute = 0, shown = false, call = null, callT = 18, did = {};
+  // crowd calls: now and then the stands demand a particular feat; delivering it in time pays big favour (and teaches the verbs)
+  const CALLS = [['Parry', 'a PARRY'], ['Riposte', 'a RIPOSTE'], ['Demolition', 'a DEMOLITION'], ['Wall Splat', 'a WALL SPLAT'], ['Meteor Slam', 'a METEOR SLAM'], ['Dodge Strike', 'a DODGE STRIKE'], ['Guard Break', 'a GUARD BREAK'], ['Shield Bash', 'a SHIELD BASH'], ['Showboat', 'a TAUNT over a fresh KO']];
   const tierOf = (f) => { let t = 0; while (t < 5 && f >= TIERS[t + 1]) t++; return t; };
-  function push(up) { if (!HUD.favor) return; if (!me) { if (shown) { HUD.favor(null); shown = false; } return; } const t = F.tier, lo = TIERS[t], hi = t < 5 ? TIERS[t + 1] : 1300; shown = true; HUD.favor({ tier: t, name: NAMES[t], frac: clamp((F.f - lo) / (hi - lo), 0, 1), decay: idle > 6 && F.f > 0, up: !!up }); }
-  function reset(M) { me = M && M.me ? M.me : null; F.f = 0; F.tier = 0; F.peak = 0; idle = 0; recent = []; clapT = 0; mute = 0; lastKo = -9; if (me) me.stats.favorPeak = 0; push(); }
+  function push(up) { if (!HUD.favor) return; if (!me) { if (shown) { HUD.favor(null); shown = false; } return; } const t = F.tier, lo = TIERS[t], hi = t < 5 ? TIERS[t + 1] : 1300; shown = true; HUD.favor({ tier: t, name: NAMES[t], frac: clamp((F.f - lo) / (hi - lo), 0, 1), decay: idle > 6 && F.f > 0, up: !!up, want: call ? call.label : '', wantFrac: call ? clamp(call.t / 24, 0, 1) : 0 }); }
+  function reset(M) { me = M && M.me ? M.me : null; F.f = 0; F.tier = 0; F.peak = 0; idle = 0; recent = []; clapT = 0; mute = 0; lastKo = -9; call = null; callT = 18; did = {}; if (me) me.stats.favorPeak = 0; push(); }
   function stop() { me = null; push(); }
   // variety: the first time an accolade shows up among the last six gains it pays 1.5×, then 1×, 0.6×, 0.35×
   function gain(n, key) {
@@ -3777,12 +3779,20 @@ const Favor = (() => {
     const live = M.phase === 'play' || M.phase === 'ot';
     if (live && me.alive && Input.pressed('taunt')) Sim.taunt(me, me.cos.emote || 'e_salute');
     if (live && me.alive && !Sim.frozen && !(M.roundT > 0)) { idle += dt; if (idle > 6 && F.f > 0) lose(14 * (1 + 0.12 * F.tier) * dt); }
+    if (live && !Sim.frozen && !(M.roundT > 0) && M.mode !== 'training') {
+      if (call) { call.t -= dt; if (call.t <= 0) { call = null; callT = rand(14, 22); } }
+      else if ((callT -= dt) <= 0) { const fresh = CALLS.filter((c) => !did[c[0]]), c = pick(fresh.length ? fresh : CALLS); call = { key: c[0], label: c[1], t: 24 }; HUD.tip('The crowd calls for ' + c[1] + ' · big favour', 4.5); Sound.ooh(); Arena.excite = Math.min(1, Arena.excite + 0.1); }
+    }
     hudT -= dt; if (hudT <= 0) { hudT = 0.1; push(); }
     // at Frenzy the stands stomp-stomp-clap (synthesised, quiet)
     if (F.tier >= 4 && live && Sound.ready) { clapT -= dt; if (clapT <= 0) { clapT = 1.44; const k = Sound.kit, n = k.now() + 0.02, d = k.crowd; for (const o of [0, 0.36]) { k.osc(d, 'sine', 72, n + o, 0.16, 0.2, 0.004, 40); k.nz(d, n + o, 0.1, 0.1, 'lowpass', 420, 0.7); } for (let i = 0; i < 4; i++) k.nz(d, n + 0.72 + i * 0.012, 0.07, 0.11, 'bandpass', 1500 + i * 260, 1.3); } }
   }
   Bus.on('matchStart', (e) => reset(e.M)); Bus.on('matchEnd', stop);
-  Bus.on('award', (e) => { if (e.g === me && e.text !== 'Ovation') { gain(e.pts, e.text); if (e.text === 'KO' || e.text === 'Demolition') lastKo = Sim.time; } });
+  Bus.on('award', (e) => {
+    if (e.g !== me || e.text === 'Ovation') return;
+    gain(e.pts, e.text); did[e.text] = true; if (e.text === 'KO' || e.text === 'Demolition') lastKo = Sim.time;
+    if (call && e.text === call.key) { call = null; callT = rand(18, 26); gain(150); Sound.cheer(1); Arena.cheer[me.team] = Math.max(Arena.cheer[me.team], 0.9); Bus.emit('favorAward', { g: me, text: 'Crowd Pleaser', pts: 60 }); }
+  });
   Bus.on('hit', (e) => { if (!me) return; if (e.a === me) { F.f = Math.min(1300, F.f + e.dmg * 0.6); idle = Math.max(0, idle - 1.5); const t = tierOf(F.f); if (t > F.tier) gain(0.01); } else if (e.v === me) lose(e.dmg); });
   Bus.on('ko', (e) => { if (e.v === me) lose(0, true); maybeShowboat(e); });
   Bus.on('riposte', (e) => { e.a.stats.rip = (e.a.stats.rip || 0) + 1; }); Bus.on('tech', (e) => { if (e.g) e.g.stats.tech = (e.g.stats.tech || 0) + 1; });
