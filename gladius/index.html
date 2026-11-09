@@ -5528,7 +5528,8 @@ body.touch .ld-yard button{ min-height:44px; justify-content:center; }
     { id: 'dodge', name: 'Dodge-Strike', n: 2, goal: 'Dodge into the dummy',
       text: () => `Jump, then press ${G('jump')} again while holding a direction: a dodge. Dodge into the dummy to strike it.`,
       enter() { placeDummy(4.4, 3.2, 6); },
-      on: { dodgeHit(e) { if (e.a === me) tick(); }, jump(e) { if (e.g === me && e.double) hint(`Hold ${G('move')} toward the dummy as you press ${G('jump')} the second time.`); } } },
+      tick() { if (L.v.re && Sim.time > L.v.re && dum.alive && dum.st === 'idle') { L.v.re = 0; placeDummy(4.4, 3.2, 6); } }, // a struck partner may slide off toward the wall: bring it back into dodge range
+      on: { dodgeHit(e) { if (e.a === me) { tick(); L.v.re = Sim.time + 1.1; } }, jump(e) { if (e.g === me && e.double) hint(`Hold ${G('move')} toward the dummy as you press ${G('jump')} the second time.`); } } },
     { id: 'combo', name: 'Three-Hit Combo', n: 3, goals: ['First cut', 'Second cut', 'Finisher'],
       text: () => `Tap ${G('atk')} three times without a pause: two quick cuts and a finisher.`,
       enter() { placeDummy(3, 0, 7); },
