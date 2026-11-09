@@ -230,6 +230,26 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 .feed .k0{ color:#9cc9ff; } .feed .k1{ color:#ffc08a; } .feed .kx{ color:var(--gold); padding:0 2px; font-size:.8em; letter-spacing:.06em; }
 .feed .ki{ display:inline-block; width:18px; height:18px; flex:none; background:var(--gold); -webkit-mask:var(--ki) center/contain no-repeat; mask:var(--ki) center/contain no-repeat; }
 @keyframes feedin{ from{ opacity:0; transform:translateX(24px); } }
+.ki.blade{ --ki:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M21 2.5 21.5 3 10.5 15.5 8.5 13.5z'/%3E%3Cpath d='M6.2 12.4 11.6 17.8 10.4 19 8.6 17.2 4.6 21.2 2.8 19.4 6.8 15.4 5 13.6z'/%3E%3C/svg%3E"); }
+.ki.demo{ --ki:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1 14.2 8.2 21.5 5.5 16.8 11.6 23 15.6 15.4 15.6 15.8 23 12 16.8 8.2 23 8.6 15.6 1 15.6 7.2 11.6 2.5 5.5 9.8 8.2z'/%3E%3C/svg%3E"); }
+.ki.wall{ --ki:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M2 4h9v5H2zM13 4h9v5h-9zM2 11h4v5H2zM8 11h8v5H8zM18 11h4v5h-4zM2 18h9v3H2zM13 18h9v3h-9z'/%3E%3C/svg%3E"); }
+.ki.meteor{ --ki:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='15' cy='15' r='6'/%3E%3Cpath d='M2 2 12.5 10 10 12.5zM8 1 14 8.6 12.6 9.6zM1 8 9.6 12.6 8.6 14z'/%3E%3C/svg%3E"); }
+.ki.trade{ --ki:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M3 2 13.5 12.5 12.5 13.5 2 3zM21 2 22 3 11.5 13.5 10.5 12.5z'/%3E%3Cpath d='M3.5 17.5 6.5 20.5 4 23 1 20zM20.5 17.5 23 20 20 23 17.5 20.5zM5 15 9 19 7.5 20.5 3.5 16.5zM19 15 20.5 16.5 16.5 20.5 15 19z'/%3E%3C/svg%3E"); }
+.ki.fall{ --ki:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M10 2h4v12h5l-7 8-7-8h5z'/%3E%3C/svg%3E"); }
+.ki.shield{ --ki:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1 21 4.5V11c0 5.5-3.8 10-9 12C6.8 21 3 16.5 3 11V4.5z'/%3E%3C/svg%3E"); }
+.ki.star{ --ki:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 1.5 15.1 8.3 22.5 9 16.9 14 18.5 21.3 12 17.5 5.5 21.3 7.1 14 1.5 9 8.9 8.3z'/%3E%3C/svg%3E"); }
+.feed .kx{ display:inline-flex; align-items:center; gap:4px; }
+.acc .ki{ display:inline-block; width:18px; height:18px; flex:none; background:var(--gold); -webkit-mask:var(--ki) center/contain no-repeat; mask:var(--ki) center/contain no-repeat; }
+.acc .an{ font-style:normal; font-size:.8em; color:#fff2c4; }
+.acc.out{ opacity:0; transform:translateX(30px); transition:opacity .35s, transform .35s; }
+.acc-tot{ position:absolute; right:4px; bottom:100%; margin-bottom:4px; font-family:var(--display); font-weight:900; font-size:22px; color:#ffd66e; text-shadow:0 2px 0 #1c0d04, 0 0 12px rgba(255,170,50,.6); opacity:0; transition:opacity .3s; white-space:nowrap; }
+.acc-tot.on{ opacity:1; }
+.combo b{ font-weight:800; font-style:italic; font-size:44px; line-height:1; color:#fff3d0; text-shadow:0 3px 0 #1c0d04, 0 0 14px rgba(255,140,40,.7); font-variant-numeric:tabular-nums; }
+.combo span{ font-weight:800; font-style:italic; font-size:18px; letter-spacing:.08em; color:#ffd66e; text-shadow:0 1px 2px #000; }
+.combo small{ font-weight:700; font-size:16px; color:var(--sand); text-shadow:0 1px 2px #000; }
+.combo small::before{ content:"· "; }
+.combo.drop{ opacity:0; }
+body.touch #hud .combo b{ font-size:32px; } body.touch #hud .combo span{ font-size:14px; } body.touch #hud .combo small{ font-size:13px; } body.touch #hud .acc-tot{ font-size:17px; }
 .chatlog{ position:absolute; left:calc(16px + var(--sal)); top:calc(150px + var(--sat)); display:flex; flex-direction:column; gap:4px; max-width:40ch; }
 .chatlog div{ font-size:18px; font-weight:600; text-shadow:0 1px 2px #000, 0 0 6px rgba(0,0,0,.8); animation:fadein .2s both; }
 .chatlog .c0{ color:#9cc9ff; } .chatlog .c1{ color:#ffc08a; }
@@ -4309,12 +4329,36 @@ const HUD = (() => {
   function clockTick(hi) { if (!Sound.ready || !Sound.kit) return; try { const k = Sound.kit, n = k.now(); k.osc(k.sfx, 'sine', hi ? 1560 : 1180, n, 0.07, hi ? 0.09 : 0.06, 0.002, hi ? 1300 : 980); k.osc(k.sfx, 'triangle', hi ? 780 : 590, n, 0.05, 0.03, 0.002); } catch (e) { /* audio is optional */ } }
   function sub(s) { E.sbSub.textContent = s || ''; }
   function tn(g) { return `<span class="k${g.team}">${esc(g.name)}</span>`; }
+  const FEEDK = { demo: ['demo', 'DEMOLISHED'], splat: ['wall', 'SPLATTED'], slam: ['meteor', 'CRUSHED'], trade: ['trade', 'TRADED'] };
   function feed(by, v, kind) {
-    const d = el('div', '', by ? `${tn(by)}<span class="kx">${kind === 'demo' ? 'DEMOLISHED' : kind === 'splat' ? 'SPLATTED' : kind === 'slam' ? 'CRUSHED' : 'KO'}</span>${tn(v)}` : `${tn(v)}<span class="kx">FELL</span>`);
-    E.feed.prepend(d); while (E.feed.children.length > 5) E.feed.lastChild.remove(); setTimeout(() => d.remove(), 6000);
+    const fk = FEEDK[kind] || (by ? ['blade', ''] : ['fall', 'FELL']), me = V.me, src = by || v;
+    const d = el('div', 'kt' + src.team + (me && (by === me || v === me) ? ' mine' : ''), by ? `${tn(by)}<span class="kx"><i class="ki ${fk[0]}"></i>${fk[1]}</span>${tn(v)}` : `${tn(v)}<span class="kx"><i class="ki ${fk[0]}"></i>${fk[1]}</span>`);
+    E.feed.prepend(d); while (E.feed.children.length > 5) E.feed.lastChild.remove(); setTimeout(() => d.classList.add('out'), 6000); setTimeout(() => d.remove(), 6500);
   }
   function chat(g, text) { const d = el('div', 'c' + g.team, `<b>${esc(g.name)}:</b> ${esc(text)}`); E.chat.appendChild(d); while (E.chat.children.length > 5) E.chat.firstChild.remove(); setTimeout(() => d.remove(), 5000); Sound.S.chat(); }
-  function acc(text, pts) { const d = el('div', 'acc', `${esc(text)} <em>+${pts}</em>`); E.acc.appendChild(d); while (E.acc.children.length > 4) E.acc.firstChild.remove(); setTimeout(() => d.remove(), 2600); }
+  // accolade toasts: kind icon, repeats merge ("KO ×2"), a running +N while toasts chain
+  const ACC = { tot: 0, n: 0, t: 0, el: null }, ACCI = (t) => /KO|Demoli|Takedown|Blood|Revenge|Hat|Strike|Slam|Splat|Pincer|Counter/.test(t) ? 'blade' : /Parry|Block|Wall|Ripost|Evade|Guard|Tech|Savior|Trade/.test(t) ? 'shield' : 'star';
+  function accGone(d) { d._dead = true; d.classList.add('out'); setTimeout(() => d.remove(), 360); }
+  function acc(text, pts) {
+    const now = performance.now(); if (!ACC.el) { ACC.el = el('div', 'acc-tot'); E.acc.appendChild(ACC.el); }
+    if (now - ACC.t > 2800) { ACC.tot = 0; ACC.n = 0; } ACC.t = now; ACC.tot += pts; ACC.n++;
+    ACC.el.textContent = '+' + ACC.tot; cls(ACC.el, 'on', ACC.n >= 2); if (ACC.n >= 2) popEl(ACC.el, 1.4, 260); clearTimeout(ACC.h); ACC.h = setTimeout(() => cls(ACC.el, 'on', false), 2800);
+    const last = E.acc.lastElementChild;
+    if (last && last !== ACC.el && !last._dead && last._txt === text) { last._n++; last._pts += pts; last.querySelector('.an').textContent = '×' + last._n; last.querySelector('em').textContent = '+' + last._pts; popEl(last, 1.25, 260); clearTimeout(last._h); last._h = setTimeout(() => accGone(last), 2600); return; }
+    const d = el('div', 'acc', `<i class="ki ${ACCI(text)}"></i><span>${esc(text)} <span class="an"></span></span><em>+${pts}</em>`); d._txt = text; d._n = 1; d._pts = pts;
+    E.acc.appendChild(d); const list = E.acc.querySelectorAll('.acc'); if (list.length > 4) list[0].remove(); d._h = setTimeout(() => accGone(d), 2600);
+  }
+  // hit combo for the human: consecutive landed hits within 1.6 s ("3 HITS · 41"); a hit taken ends it
+  const CB = { n: 0, dmg: 0, t: -9, on: false };
+  function comboHit(e) {
+    const me = V.me; if (!me || !E.hud.classList.contains('on')) return;
+    if (e.v === me) { CB.n = 0; return; } if (e.a !== me) return;
+    const t = Sim.time; if (t - CB.t > 1.6) { CB.n = 0; CB.dmg = 0; } CB.t = t; CB.n++; CB.dmg += e.dmg || 0;
+    if (CB.n < 2) return;
+    if (!CB.on) { CB.on = true; hid(E.combo, false); } cls(E.combo, 'drop', false);
+    tx(E.comboN, String(CB.n)); tx(E.comboL, CB.n === 1 ? 'HIT' : 'HITS'); tx(E.comboD, String(Math.round(CB.dmg))); popEl(E.comboN, 1.7, 300);
+  }
+  function comboTick() { if (CB.on && (Sim.time - CB.t > 1.6 || CB.n < 2)) { CB.on = false; CB.n = 0; cls(E.combo, 'drop', true); clearTimeout(CB.h); CB.h = setTimeout(() => { if (!CB.on) hid(E.combo, true); }, 380); } }
   // announcer banner: metallic lettering (gradient fill over a dark stroke + glow layer), stamp-in + shine; a new banner replaces the old one with a quick fade-out
   let annEl = null;
   function annOut(fast) { const o = annEl; annEl = null; if (!o) return; o.classList.add('out'); setTimeout(() => o.remove(), fast ? 200 : 300); }
@@ -4343,7 +4387,7 @@ const HUD = (() => {
   }
   function project(p) { _v.copy(p).project(camRef); return _v.z < 1 && _v.z > -1 ? [(_v.x * 0.5 + 0.5) * W, (-_v.y * 0.5 + 0.5) * H, true] : [(_v.x * 0.5 + 0.5) * W, (-_v.y * 0.5 + 0.5) * H, false]; }
   function update(dt, glads, me, lockT, lockOn) {
-    W = innerWidth; H = innerHeight; V.dt = dt;
+    W = innerWidth; H = innerHeight; V.dt = dt; V.me = me; comboTick();
     if (annT > 0) { annT -= dt; if (annT <= 0) annOut(false); }
     if (tipT > 0) { tipT -= dt; if (tipT <= 0) E.tip.classList.remove('on'); }
     // nameplates
@@ -4419,11 +4463,12 @@ const HUD = (() => {
     E.vitals.style.setProperty('--nw', (25 / TUNE.HP * 100).toFixed(3) + '%');
     // fury dial: 10 segments over the 270° arc (r 50 → 235.6 of 314.2) and 11 outer ticks (r 58)
     const seg = 235.6 / 10, a = [0, seg - 0.8]; for (let i = 0; i < 8; i++) a.push(1.6, seg - 1.6); a.push(1.6, 400); E.fury.querySelector('.f-seg').setAttribute('stroke-dasharray', a.join(' ')); E.fury.querySelector('.f-seg').setAttribute('stroke-dashoffset', '0');
+    Bus.on('pad', (e) => { if (e.g && e.g === V.me) furyPad(); }); Bus.on('hit', comboHit);
     const tk = 273.3 / 10, b = []; for (let i = 0; i < 10; i++) b.push(1.2, tk - 1.2); b.push(1.2, 400); E.fury.querySelector('.f-tick').setAttribute('stroke-dasharray', b.join(' '));
   }
   function hudReset(on) {
     V.hp = -1; V.ghost = 1; V.ghostHold = 0; V.f = -1; V.buffs = ''; V.fury = -1; V.rs = -1;
-    if (!on) { respawn2(null); favor(null); objective(null); rounds(null); finale(false); }
+    if (!on) { respawn2(null); favor(null); objective(null); rounds(null); finale(false); CB.n = 0; CB.on = false; hid(E.combo, true); ACC.el = null; }
   }
   const popEl = (e, from = 1.8, ms = 380, rot = '') => { if (e && e.animate && !REDUCED_MOTION) e.animate([{ transform: `${rot}scale(${from})`, opacity: 0.2 }, { transform: `${rot}scale(1)`, opacity: 1 }], { duration: ms, easing: 'cubic-bezier(.2,.9,.3,1.35)' }); };
   // crowd favour: five pips, a fill inside the current one, draining look while idle, rank-up flourish, "the crowd wants" call with its timer
@@ -6540,6 +6585,13 @@ const Match = (() => {
       koLate(e, leaderBefore);
       afterKo(e);
     });
+    // hud (pass 3): feedback for the combat events that had none (riposte, counter, pincer, tech, trade, supersonic strike)
+    Bus.on('riposte', (e) => { award(e.a, 'Riposte', 60); FX.block(e.pos, true); if (isMe(e.a)) { HUD.ann('RIPOSTE!', 'gold', '', 0.9); hitstop(0.08); Cam.fovPunch(-3); FX.rumble(0.4, 0.9, 120); } else if (isMe(e.v)) hitstop(0.05); });
+    Bus.on('counter', (e) => { award(e.a, 'Counter Hit', 25); if (isMe(e.a)) HUD.num(_pv.set(e.pos.x, e.pos.y + 0.7, e.pos.z), 'COUNTER', 'info'); });
+    Bus.on('pincer', (e) => { award(e.a, 'Pincer', 30); award(e.b, 'Pincer', 30); if (isMe(e.a) || isMe(e.b)) HUD.num(_pv.set(e.pos.x, e.pos.y + 0.7, e.pos.z), 'PINCER', 'info'); });
+    Bus.on('tech', (e) => { award(e.g, 'Tech', 10); if (isMe(e.g) && Sound.ready) { const k = Sound.kit, n = k.now(); k.osc(k.sfx, 'triangle', 660, n, 0.09, 0.07, 0.003, 990); k.nz(k.sfx, n, 0.08, 0.05, 'bandpass', 2400, 1.2); } });
+    Bus.on('trade', (e) => { award(e.a, 'Trade', 25); award(e.b, 'Trade', 25); if (M.active && HUD.feed) HUD.feed(e.a, e.b, 'trade'); if (isMe(e.a) || isMe(e.b)) { HUD.ann('TRADE!', 'gold', '', 0.8); hitstop(0.06); } });
+    Bus.on('ssStrike', (e) => { award(e.a, 'Supersonic Strike', 40); });
   }
   let NAMEPOOL = null;
   function NAMESHUF() { const a = Prog.NAMES.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return Meta.seat(a, M); } // Meta seats rivals where the enemy team pops its names
