@@ -1692,7 +1692,7 @@ void main(){ vec3 d = normalize(vDir); float y = d.y;
 })();
 
 // ---------------------------------------------------------------- gladiator rig: one skinned mesh (2 materials) + attachments
-const DEFAULT_COS = { helmet: 'h_murmillo', emblem: 'e_plain', sword: 's_iron', trail: 't_dust', explosion: 'x_sand', cape: 'c_none', title: 'ti_recruit' };
+const DEFAULT_COS = { helmet: 'h_murmillo', emblem: 'e_plain', sword: 's_iron', trail: 't_dust', explosion: 'x_sand', cape: 'c_none', title: 'ti_recruit', emote: 'e_salute' };
 const Rig = (() => {
   const J = { body: 0, spine: 1, chest: 2, head: 3, shR: 4, elR: 5, hR: 6, shL: 7, elL: 8, hL: 9, thR: 10, knR: 11, ftR: 12, thL: 13, knL: 14, ftL: 15 };
   const BONES = [[-1, 0, 0, 0], [0, 0, 0.08, 0], [1, 0, 0.24, 0], [2, 0, 0.27, 0], [2, -0.25, 0.17, 0], [4, 0, -0.3, 0], [5, 0, -0.27, 0], [2, 0.25, 0.17, 0], [7, 0, -0.3, 0], [8, 0, -0.27, 0], [0, -0.105, -0.05, 0], [10, 0, -0.44, 0], [11, 0, -0.44, 0], [0, 0.105, -0.05, 0], [13, 0, -0.44, 0], [14, 0, -0.44, 0]];
@@ -2344,7 +2344,15 @@ const Sim = {
   time: 0, play: false, frozen: false, respawns: true, blessOn: true,
   reset() { this.glads = []; this.time = 0; this.bless.active = false; this.bless.warn = 0; this.bless.next = 0; for (const p of this.pads) { p.active = true; p.t = 0; } },
   setSt(g, s, dur = 0) { if (s === 'stagger' && g.chainN > 1) dur *= clamp(1 - 0.22 * (g.chainN - 1), 0.4, 1); g.st = s; g.stT = 0; g.stunDur = dur; if (s !== 'atk') { g.atk = null; g.queued = false; } if (s !== 'charge') g.charge = 0; if (s !== 'getup') g.slamLand = false; },
-  place(g, x, z, yaw) { g.pos.set(x, 0, z); g.vel.set(0, 0, 0); g.yaw = yaw; g.ground = true; g.jumps = 0; this.setSt(g, 'idle'); this.clearTransient(g); if (g.rig) g.rig.reset(); },
+  // taunt: a committed emote. Leaving it (finished, cancelled or knocked out of it) goes through endTaunt().
+  taunt(g, id) {
+    if (!g.alive || !g.ground || g.st !== 'idle' || this.frozen || this.time - (g.tauntT || -9) < 6) return false;
+    const em = (typeof Rig !== 'undefined' && Rig.EMOTES && Rig.EMOTES[id]) || { pose: 'salute', dur: 1.4 };
+    this.setSt(g, 'taunt', em.dur); g.pose = em.pose; g.tauntT = this.time; g.tauntId = id; g.vel.x *= 0.25; g.vel.z *= 0.25; g.holding = false;
+    Bus.emit('taunt', { g, id }); return true;
+  },
+  endTaunt(g) { if (g.st !== 'taunt') return; const done = g.stT >= g.stunDur * 0.8; g.pose = null; g.st = 'idle'; g.stT = 0; Bus.emit('tauntEnd', { g, done, id: g.tauntId }); },
+  place(g, x, z, yaw) { if (g.st === 'taunt') g.pose = null; g.pos.set(x, 0, z); g.vel.set(0, 0, 0); g.yaw = yaw; g.ground = true; g.jumps = 0; this.setSt(g, 'idle'); this.clearTransient(g); if (g.rig) g.rig.reset(); },
   // bugs-5: nothing transient survives a kickoff / respawn / celebration placement (boost roar, speedlines, held strike, dodge, riposte window...)
   clearTransient(g) {
     g.boosting = g.shieldCharge = g.ss = g.holding = false; g.holdT = 0; g.charge = 0; g.iframeT = 0; g.wallKicked = false; g.jumpT = 9; g.dodge = null; g.dodgeHit = null;
@@ -2377,6 +2385,7 @@ const Sim = {
     const hs0 = Math.hypot(g.vel.x, g.vel.z);
     switch (g.st) {
       case 'stagger': case 'recoil': if (g.stT >= g.stunDur) this.setSt(g, 'idle'); break;
+      case 'taunt': if (g.stT >= g.stunDur || (g.stT > 0.5 && (I.jumpP || I.blockP || I.atkP))) this.endTaunt(g); break; // from 0.5 s a taunt can be dropped with any action
       case 'getup': if (g.stT >= g.stunDur) { const wake = !g.slamLand; this.setSt(g, 'idle'); if (wake) g.iframeT = Math.max(g.iframeT, 0.25); } break; // bots-2: wake-up i-frames after a launch (not after your own slam)
       case 'dodge': if (g.stT >= T.DT) this.setSt(g, 'idle'); break;
       case 'tumble': if (g.ground && g.stT > 0.4 && hs0 < 5) this.setSt(g, 'getup', 0.35); else if (I.jumpP && g.stT > 0.25 && g.fury >= 15) this.techRoll(g); break;
@@ -2676,6 +2685,7 @@ const Sim = {
     if (!v.alive || v.invT > 0 || !this.play) return false;
     const pos = V3(v.pos.x, v.pos.y + 1.3, v.pos.z);
     if (a) for (const [g, r] of v.dmgBy) if (g !== a && g.team === a.team && this.time - r.t < 0.35) { dmg *= 1.25; if (this.time - v.pincerT > 1.5) { v.pincerT = this.time; Bus.emit('pincer', { a, b: g, v, pos }); } break; } // rl-7 pincer
+    if (v.st === 'taunt') { dmg *= 1.25; this.endTaunt(v); }
     dmg = Math.max(1, Math.round(dmg)); v.hp -= dmg;
     if (this.time - v.chainT > 1.6) v.chainN = 0; v.chainN++; v.chainT = this.time; // bots-2: hit-stun decays along a chain
     // bots-12: dmgBy keeps { t, d } (accumulated damage within 6 s) for fair KO / assist credit; damage itself scores (150 HP = 30 pts)
@@ -2803,7 +2813,7 @@ const AI = (() => {
       let best = null, bs = 1e9;
       for (const e of S.glads) {
         if (!e.alive || e.team === g.team) continue;
-        let sc = dist(g, e); if (e === this.tgt) sc -= 4; if (e.target === g) sc -= 2.5; if (e.invT > 0) sc += 6;
+        let sc = dist(g, e); if (e === this.tgt) sc -= 4; if (e.target === g) sc -= 2.5; if (e.invT > 0) sc += 6; if (e.tauntT && S.time - e.tauntT < 4) sc -= 5;
         // Gold+: finish low enemies and peel for a low ally; raiders flank enemies busy with someone else
         if (teamy) { if (e.hp < 40) sc -= 4; if (e.target && e.target !== g && e.target.team === g.team && e.target.hp < 60) sc -= 5; } else if (e.hp < 50) sc -= 3 * s;
         if (raider && e.target && e.target !== g) sc -= 3;
@@ -3225,7 +3235,7 @@ const HUD = (() => {
 // ---------------------------------------------------------------- progression: items, ranks, XP, challenges, drops, save
 const Prog = (() => {
   const RAR = [{ n: 'Common', c: '#c9c2b4' }, { n: 'Uncommon', c: '#8fd0ff' }, { n: 'Rare', c: '#4d7cff' }, { n: 'Very Rare', c: '#9a5cff' }, { n: 'Import', c: '#ff4a4a' }, { n: 'Exotic', c: '#ffd24a' }, { n: 'Black Market', c: '#ff2fb3' }];
-  const SLOTS = [{ id: 'helmet', n: 'Helmets' }, { id: 'emblem', n: 'Shields' }, { id: 'sword', n: 'Swords' }, { id: 'trail', n: 'Fury Trails' }, { id: 'explosion', n: 'KO Effects' }, { id: 'cape', n: 'Capes' }, { id: 'title', n: 'Titles' }];
+  const SLOTS = [{ id: 'helmet', n: 'Helmets' }, { id: 'emblem', n: 'Shields' }, { id: 'sword', n: 'Swords' }, { id: 'trail', n: 'Fury Trails' }, { id: 'explosion', n: 'KO Effects' }, { id: 'cape', n: 'Capes' }, { id: 'title', n: 'Titles' }, { id: 'emote', n: 'Emotes' }];
   const ITEMS = [
     ['h_murmillo', 'helmet', 'Murmillo', 0], ['h_secutor', 'helmet', 'Secutor', 1], ['h_hoplite', 'helmet', 'Hoplite', 2], ['h_thraex', 'helmet', 'Thraex', 2], ['h_centurion', 'helmet', 'Centurion', 3], ['h_lion', 'helmet', 'Lion Pelt', 4], ['h_laurel', 'helmet', 'Laurel Champion', 5], ['h_sol', 'helmet', 'Sol Invictus', 6],
     ['e_plain', 'emblem', 'Legionary', 0], ['e_spqr', 'emblem', 'SPQR', 1], ['e_laurel', 'emblem', 'Laurel', 1], ['e_wolf', 'emblem', 'Lupa', 2], ['e_bolt', 'emblem', 'Fulmen', 2], ['e_eagle', 'emblem', 'Aquila', 3], ['e_trident', 'emblem', 'Neptunus', 3], ['e_sun', 'emblem', 'Sol', 4], ['e_scorpion', 'emblem', 'Praetorian', 4], ['e_skull', 'emblem', 'Memento Mori', 5],
@@ -3234,6 +3244,7 @@ const Prog = (() => {
     ['x_sand', 'explosion', 'Sandburst', 0], ['x_rose', 'explosion', 'Rose Storm', 2], ['x_neptune', 'explosion', "Neptune's Tide", 3], ['x_aureus', 'explosion', 'Aureus', 3], ['x_jupiter', 'explosion', "Jupiter's Wrath", 4], ['x_vesuvius', 'explosion', 'Vesuvius', 4], ['x_phoenix', 'explosion', 'Phoenix', 5], ['x_styx', 'explosion', 'Styx', 6],
     ['c_none', 'cape', 'No Cape', 0], ['c_red', 'cape', 'Legion Red', 1], ['c_team', 'cape', 'Team Colors', 2], ['c_wolf', 'cape', 'Wolf Pelt', 3], ['c_night', 'cape', 'Nightfall', 3], ['c_purple', 'cape', 'Imperial Purple', 4], ['c_gold', 'cape', 'Cloth of Gold', 5],
     ['ti_recruit', 'title', 'Recruit', 0], ['ti_tiro', 'title', 'Tiro', 1], ['ti_calc', 'title', 'Calculated', 2], ['ti_veteran', 'title', 'Veteran', 2], ['ti_crowd', 'title', 'Crowd Favorite', 3], ['ti_lion', 'title', 'Lionheart', 3], ['ti_wall', 'title', 'Iron Wall', 4], ['ti_wreck', 'title', 'Wrecking Ball', 4], ['ti_rudis', 'title', 'Rudiarius', 5], ['ti_chosen', 'title', "Emperor's Chosen", 6],
+    ['e_salute', 'emote', 'Salute', 0], ['e_point', 'emote', 'The Challenge', 1], ['e_bang', 'emote', 'Shield Bang', 2], ['e_flex', 'emote', 'Hercules', 3], ['e_entertained', 'emote', 'Not Entertained?', 5],
   ].map(([id, slot, name, r]) => ({ id, slot, name, r }));
   const BY = {}; ITEMS.forEach((i) => (BY[i.id] = i));
   const TIERS = [['Bronze', '#c07a3e'], ['Silver', '#c9ced6'], ['Gold', '#f1c243'], ['Platinum', '#7fe0d8'], ['Diamond', '#6fb6ff'], ['Champion', '#b27cff'], ['Grand Champion', '#ff4d5a']];
@@ -3259,6 +3270,7 @@ const Prog = (() => {
     explosion: '<path d="M20 3 L23.5 13 L34 9 L27 18 L37 22 L26.5 24 L30 34 L20 27 L10 34 L13.5 24 L3 22 L13 18 L6 9 L16.5 13 Z" fill="C"/>',
     cape: '<path d="M10 6 H30 L33 34 Q26 30 20 34 Q14 30 7 34 Z" fill="C"/><rect x="9" y="4" width="22" height="4" rx="2" fill="C"/>',
     title: '<rect x="6" y="9" width="28" height="22" rx="3" fill="none" stroke="C" stroke-width="3"/><path d="M11 16 H29 M11 21 H26 M11 26 H22" stroke="C" stroke-width="2.5"/>',
+    emote: '<circle cx="20" cy="9" r="5" fill="C"/><path d="M20 14 V26 M20 17 L8 8 M20 17 L32 8 M20 26 L13 37 M20 26 L27 37" stroke="C" stroke-width="3.4" fill="none" stroke-linecap="round"/>',
   };
   function icon(it) { if (it.slot === 'emblem') return `<img class="ic" src="${Tex.emblemIcon(it.id)}" alt="">`; return `<svg class="ic" viewBox="0 0 40 40">${ICONS[it.slot].replace(/C/g, RAR[it.r].c)}</svg>`; }
   function fresh() {
@@ -3267,6 +3279,8 @@ const Prog = (() => {
   }
   function load() {
     try { const raw = Store.get(KEY); S = raw ? Object.assign(fresh(), JSON.parse(raw)) : fresh(); } catch (e) { S = fresh(); }
+    if (!S.own || typeof S.own !== 'object') S.own = {}; for (const i of ITEMS) if (i.r === 0 && !(i.id in S.own)) S.own[i.id] = 0;
+    S.equip = Object.assign({}, DEFAULT_COS, S.equip && typeof S.equip === 'object' ? S.equip : {});
     Object.assign(Game.settings, S.settings || {}); refill(); return S;
   }
   function save() { S.settings = Game.settings; try { Store.set(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } }
@@ -3328,6 +3342,7 @@ const Prog = (() => {
     const T = S.stats, welcome = real && !r.forfeit && (T.matches || 0) < 3;
     // bugs-2: training only pays a time-scaled 'Match played' (no Victory, streak, challenge or win credit)
     add('Match played', r.forfeit ? 50 : training ? clamp(Math.round((r.time || 0) / 180 * 150), 25, 150) : 150); if (r.win && !training) add('Victory', 100);
+    if (st.favorPeak > 0) add('Crowd favour · ' + Favor.NAMES[st.favorPeak], Favor.XP[st.favorPeak]);
     add(`KOs ×${st.ko}`, st.ko * 20); add(`Assists ×${st.as}`, st.as * 10); add(`Demolitions ×${st.demo}`, st.demo * 25); add(`Parries ×${st.par}`, st.par * 5); if (r.mvp && !training) add('MVP', 50);
     if (welcome) add('Welcome to the arena', 100);
     // loop-9: hot streak / redemption (S.streak is still the pre-match streak here)
@@ -3736,6 +3751,55 @@ void main(){ vec2 p = vUv - 0.5; float r = length(p) * 2.0, ang = atan(p.x, p.y)
 })();
 __G.Decree = Decree;
 
+// ---------------------------------------------------------------- crowd favour: a decaying style meter for the human, taunts, showboating bots
+const Favor = (() => {
+  const TIERS = [0, 100, 260, 480, 760, 1100], NAMES = ['', 'Murmurs', 'Cheers', 'Roar', 'Frenzy', 'OVATION'], XP = [0, 20, 45, 80, 120, 180];
+  const F = { f: 0, tier: 0, peak: 0, NAMES, XP, TIERS };
+  let me = null, idle = 0, recent = [], hudT = 0, clapT = 0, lastKo = -9, mute = 0, shown = false;
+  const tierOf = (f) => { let t = 0; while (t < 5 && f >= TIERS[t + 1]) t++; return t; };
+  function push(up) { if (!HUD.favor) return; if (!me) { if (shown) { HUD.favor(null); shown = false; } return; } const t = F.tier, lo = TIERS[t], hi = t < 5 ? TIERS[t + 1] : 1300; shown = true; HUD.favor({ tier: t, name: NAMES[t], frac: clamp((F.f - lo) / (hi - lo), 0, 1), decay: idle > 6 && F.f > 0, up: !!up }); }
+  function reset(M) { me = M && M.me ? M.me : null; F.f = 0; F.tier = 0; F.peak = 0; idle = 0; recent = []; clapT = 0; mute = 0; lastKo = -9; if (me) me.stats.favorPeak = 0; push(); }
+  function stop() { me = null; push(); }
+  // variety: the first time an accolade shows up among the last six gains it pays 1.5×, then 1×, 0.6×, 0.35×
+  function gain(n, key) {
+    if (!me || !(n > 0) || Sim.time < mute) return;
+    let m = 1; if (key) { const c = recent.filter((k) => k === key).length; m = [1.5, 1, 0.6, 0.35][Math.min(c, 3)]; recent.push(key); if (recent.length > 6) recent.shift(); }
+    F.f = Math.min(1300, F.f + n * m); idle = 0; const t = tierOf(F.f);
+    if (t > F.tier) { F.tier = t; if (t > F.peak) { F.peak = t; me.stats.favorPeak = t; } if (t >= 5) { mute = Sim.time + 1.5; F.f = TIERS[3] + 40; F.tier = 3; Bus.emit('ovation', { g: me }); } else Bus.emit('favorUp', { g: me, tier: t, name: NAMES[t] }); push(true); }
+  }
+  function lose(n, floorDrop) { if (!me) return; if (floorDrop) F.f = TIERS[Math.max(0, F.tier - 1)]; else F.f = Math.max(0, F.f - n); const t = tierOf(F.f); if (t !== F.tier) { F.tier = t; push(); } }
+  function update(dt, M) {
+    if (!me || !M.active) return;
+    const live = M.phase === 'play' || M.phase === 'ot';
+    if (live && me.alive && Input.pressed('taunt')) Sim.taunt(me, me.cos.emote || 'e_salute');
+    if (live && me.alive && !Sim.frozen && !(M.roundT > 0)) { idle += dt; if (idle > 6 && F.f > 0) lose(14 * (1 + 0.12 * F.tier) * dt); }
+    hudT -= dt; if (hudT <= 0) { hudT = 0.1; push(); }
+    // at Frenzy the stands stomp-stomp-clap (synthesised, quiet)
+    if (F.tier >= 4 && live && Sound.ready) { clapT -= dt; if (clapT <= 0) { clapT = 1.44; const k = Sound.kit, n = k.now() + 0.02, d = k.crowd; for (const o of [0, 0.36]) { k.osc(d, 'sine', 72, n + o, 0.16, 0.2, 0.004, 40); k.nz(d, n + o, 0.1, 0.1, 'lowpass', 420, 0.7); } for (let i = 0; i < 4; i++) k.nz(d, n + 0.72 + i * 0.012, 0.07, 0.11, 'bandpass', 1500 + i * 260, 1.3); } }
+  }
+  Bus.on('matchStart', (e) => reset(e.M)); Bus.on('matchEnd', stop);
+  Bus.on('award', (e) => { if (e.g === me && e.text !== 'Ovation') { gain(e.pts, e.text); if (e.text === 'KO' || e.text === 'Demolition') lastKo = Sim.time; } });
+  Bus.on('hit', (e) => { if (!me) return; if (e.a === me) { F.f = Math.min(1300, F.f + e.dmg * 0.6); idle = Math.max(0, idle - 1.5); const t = tierOf(F.f); if (t > F.tier) gain(0.01); } else if (e.v === me) lose(e.dmg); });
+  Bus.on('ko', (e) => { if (e.v === me) lose(0, true); maybeShowboat(e); });
+  Bus.on('riposte', (e) => { e.a.stats.rip = (e.a.stats.rip || 0) + 1; }); Bus.on('tech', (e) => { if (e.g) e.g.stats.tech = (e.g.stats.tech || 0) + 1; });
+  Bus.on('tauntEnd', (e) => {
+    const g = e.g; if (!e.done) return; g.stats.taunts = (g.stats.taunts || 0) + 1;
+    const near = Sim.glads.some((o) => o.alive && o.team !== g.team && Math.hypot(o.pos.x - g.pos.x, o.pos.z - g.pos.z) < 9);
+    if (g === me) { const hot = Sim.time - lastKo < 5.5; Bus.emit('favorAward', { g, text: hot ? 'Showboat' : near ? 'Brazen' : 'Taunt', pts: hot ? 40 : near ? 25 : 10 }); gain(hot ? 100 : near ? 65 : 35); }
+    else if (g.brain && chance(0.5)) Bus.emit('chat', { g, text: pick(['Are you not entertained?', 'Ave Caesar!', 'Too easy.', 'Who is next?']) });
+  });
+  // bots showboat after a KO: a stable per-bot swagger, more often over the human, never with a threat close
+  function maybeShowboat(e) {
+    const g = e.by; if (!g || !g.brain || g.passive) return;
+    if (g.swagger == null) { let h = 0; for (const c of g.name) h = (h * 31 + c.charCodeAt(0)) % 997; g.swagger = 0.1 + (h % 36) / 100; }
+    if (!chance(g.swagger * (e.v.human ? 1.7 : 1))) return;
+    const attempt = (n) => { if (!g.alive) return; const clear = !Sim.glads.some((o) => o.alive && o.team !== g.team && Math.hypot(o.pos.x - g.pos.x, o.pos.z - g.pos.z) < 9); if (clear && Sim.taunt(g, g.cos.emote || 'e_salute')) return; if (n > 0) g.brain.at(0.3, () => attempt(n - 1)); };
+    g.brain.at(Sim.glads.length === 2 ? 0.15 : 0.6, () => attempt(5)); // a duel's aftermath is short: start at once
+  }
+  return Object.assign(F, { update, gain, reset });
+})();
+__G.Favor = Favor;
+
 // ---------------------------------------------------------------- match flow + event director
 const Match = (() => {
   const M = { active: false, attract: false, mode: 'duel', phase: 'none', t: 0, clock: 180, ot: false, score: [0, 0], glads: [], me: null, lockOn: true, lockT: null, freeze: 0, slowT: 0, winner: -1, mvpId: -1, forfeited: false, count: 0, firstBlood: false, time: 0, paused: false, roster: null, isRematch: false, skipReq: false };
@@ -3875,6 +3939,17 @@ const Match = (() => {
       FX.ring(V3(e.x, 0.12, e.z), c, e.r * 0.4, e.r * 2.2, 0.7, 1, null, 0.2); FX.burstAt(true, e.x, 1, e.z, FX.qn(70), { life: [0.6, 1.5], speed: [3, 10], up: 1, upAdd: 0.5, s0: 0.34, s1: 0.02, col: [c, '#fff2b0', '#ffd24a'], f: [1, 8], g: -1, drag: 1.2, r: e.r * 0.8, flat: 0.2 });
     });
     Bus.on('decreeLapse', () => { if (M.active) HUD.tip('The decree lapses unclaimed.', 2.5); });
+    // crowd favour
+    Bus.on('favorAward', (e) => award(e.g, e.text, e.pts));
+    Bus.on('favorUp', (e) => { if (!M.active) return; Sound.cheer(0.45 + e.tier * 0.15); Arena.cheer[e.g.team] = Math.max(Arena.cheer[e.g.team], 0.5 + e.tier * 0.12); Sound.kit.horn(e.tier >= 4 ? [[0, 0.1], [4, 0.1], [7, 0.1], [12, 0.3]] : [[0, 0.1], [7, 0.22]], 0.12, 330); });
+    Bus.on('ovation', (e) => {
+      if (!M.active) return; const g = e.g;
+      g.stats.ovations = (g.stats.ovations || 0) + 1; g.fury = Math.min(100, g.fury + 35); if (g.alive) g.hp = Math.min(TUNE.HP, g.hp + 25); award(g, 'Ovation', 150);
+      HUD.ann('OVATION!', 'gold', 'The crowd is yours', 1.8); Sound.cheer(1.6); Sound.S.fanfare(true); Arena.excite = 1; Arena.cheer[g.team] = 1.3; Arena.waveT = 5; Arena.wave = 0;
+      Arena.gesture = 1; MT.set('ovation', () => { if (Arena.gesture === 1 && M.phase !== 'celebrate') Arena.gesture = 0; }, 3200);
+      for (let i = 0; i < 5; i++) FX.burstAt(false, rand(-16, 16), rand(9, 13), rand(-11, 11), FX.qn(26), { life: [3, 5], speed: [0.5, 2.5], s0: 0.3, s1: 0.24, col: ['#ff2d55', '#ff7a9a', '#ffd24a', '#ffffff'], f: 4, g: 1.1, drag: 0.6, spin: 6, r: 5 });
+    });
+    Bus.on('taunt', (e) => { if (!M.active) return; if (M.roundT > 0) M.roundT = Math.max(M.roundT, Math.min(2.2, e.g.stunDur + 0.25)); /* the round waits for a victory emote */ Sound.S.whoosh(e.g.pos, 0.8); if (isMe(e.g)) { Arena.excite = Math.min(1, Arena.excite + 0.12); Sound.cheer(0.5); } else if (Math.hypot(e.g.pos.x - M.me.pos.x, e.g.pos.z - M.me.pos.z) < 30 && e.g.team !== M.me.team) Sound.ooh(); });
   }
   function endMatch(winner) {
     M.phase = 'end'; M.t = 0; M.winner = winner; Sim.play = false; Sim.respawns = false;
@@ -3975,13 +4050,13 @@ const Match = (() => {
       else if (M.phase === 'celebrate') { FX.confetti(dt, 70); if (M.t > 4.8 || (M.t > 1.0 && skipWanted())) finish(); }
       HUD.clock(M.clock, M.ot, M.mode === 'training');
       if (M.mutator) Mutators.update(dt, M.glads);
-      Decree.update(dt, M);
+      Decree.update(dt, M); Favor.update(dt, M);
       if (M.phase !== 'done') playerCtl();
       if (Input.down('board') !== HUD.board) HUD.scoreboard(Input.down('board'), M.glads, M.mvpId);
       // music/crowd intensity
       const close = Math.abs(M.score[0] - M.score[1]) <= 1;
       Sound.setIntensity(M.ot || (M.finale && M.phase === 'play') ? 2 : M.phase === 'play' && M.clock < 60 && close ? 1 : 0);
-      Arena.excite = Math.max(M.phase === 'end' || M.phase === 'celebrate' ? 1 : clamp(0.28 + (M.ot ? 0.35 : 0) + (M.finale ? (close ? 0.3 : 0.15) : 0), 0, 1), Arena.excite - dt * 0.25);
+      Arena.excite = Math.max(M.phase === 'end' || M.phase === 'celebrate' ? 1 : clamp(0.28 + (M.ot ? 0.35 : 0) + (M.finale ? (close ? 0.3 : 0.15) : 0) + Favor.tier * 0.09, 0, 1), Arena.excite - dt * 0.25);
     }
     if (M.paused) { renderRigs(0); Cam.update(0, me, M.lockT, M.lockOn); return; }
     // brains
