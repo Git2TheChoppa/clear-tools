@@ -6422,6 +6422,8 @@ __G.Post = Post;
   const load = $('#loading'), msg = $('#loadMsg');
   const fail = (t) => { load.classList.add('err'); msg.textContent = t; };
   if (typeof THREE === 'undefined') { fail('Could not load the 3D engine. Check your connection and reload.'); return; }
+  // an embedded frame without the gamepad permission makes getGamepads() throw on every poll: neutralise it once, up front
+  try { if (navigator.getGamepads) navigator.getGamepads(); } catch (e) { try { Object.defineProperty(navigator, 'getGamepads', { value: () => [], configurable: true, writable: true }); } catch (e2) { /* Input guards its own call as well */ } }
   Prog.load();
   Object.assign(Sound.vol, Game.settings.vol); Game.settings.vol = Sound.vol;
   // quality -1 is Auto: the device default, or the tier the frame-rate governor settled on during an earlier visit
