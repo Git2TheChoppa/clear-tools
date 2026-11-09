@@ -356,6 +356,7 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 #scr-career.on,#scr-settings.on{ display:flex; }
 #scr-career .scr-head,#scr-settings .scr-head{ width:min(920px, 100%); flex:none; }
 #scr-career .panel,#scr-settings .panel{ width:min(920px, 100%); flex:1 1 auto; min-height:0; max-height:none; margin:0; padding:16px 18px 20px; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:rgba(224,165,96,.45) transparent; background:linear-gradient(180deg, rgba(34,23,15,.94), rgba(22,14,9,.94)); }
+@media (prefers-reduced-motion: reduce){ .screen.menu.on,.stag > *,.sgrp,#scr-title .side .card,.logo::after{ animation:none !important; } #scr-play .mode,#armGrid .item{ transition:none; } }
 /* pause */
 #scr-pause{ display:none; place-items:center; }
 #scr-pause.on{ display:grid; }
