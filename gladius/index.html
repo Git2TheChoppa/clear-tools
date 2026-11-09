@@ -225,7 +225,82 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 .pausebtn{ position:absolute; right:calc(14px + var(--sar)); top:calc(64px + var(--sat)); width:44px; height:44px; display:none; pointer-events:auto; border:1px solid rgba(243,233,214,.35); background:rgba(20,12,7,.6); font-weight:800; font-size:16px; }
 
 /* ---------- menus */
+/* entrance: screens fade in, marked lists stagger in (backwards fill only, so :active/:focus transforms stay live) */
+.screen.menu.on{ animation:scrIn .18s ease-out backwards; }
+@keyframes scrIn{ from{ opacity:0; } }
+.stag > *{ animation:stagIn .34s cubic-bezier(.2,.8,.25,1) backwards; animation-delay:calc(var(--i,0) * 45ms + 70ms); }
+@keyframes stagIn{ from{ opacity:0; transform:translate3d(-22px,0,0) skewX(-10deg); } }
+.stag.up > *{ animation-name:stagUp; }
+@keyframes stagUp{ from{ opacity:0; transform:translate3d(0,16px,0); } }
+.screen.menu button,.screen.menu .tab,.screen.menu .item{ touch-action:manipulation; -webkit-touch-callout:none; }
+/* icons inside buttons */
+.mi{ width:22px; height:22px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; opacity:.8; }
+/* title */
+#scr-title{ background:linear-gradient(90deg, rgba(20,12,7,.84) 0%, rgba(20,12,7,.5) 30%, rgba(20,12,7,0) 46%, rgba(20,12,7,0) 66%, rgba(20,12,7,.5) 100%); }
+#scr-title .col{ left:calc(44px + var(--sal)); top:50%; transform:translateY(-50%); width:auto; max-width:46vw; }
+.brand{ position:relative; margin:0 0 22px; }
+.logo{ position:relative; display:inline-block; margin:0; padding:0 .1em .08em 0; white-space:nowrap; font-size:clamp(46px, min(7.2vw, 13vh), 104px); line-height:1; letter-spacing:.07em; filter:none; background:none; -webkit-text-fill-color:currentColor; color:#4a2a0b; }
+.logo > span{ position:relative; display:inline-block; background:linear-gradient(180deg, #fffae6 0%, #ffe590 20%, #f6c252 44%, #bd7b22 50%, #e9ad44 58%, #ffd970 80%, #c98d2c 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; color:transparent; }
+.logo::before,.logo::after{ content:attr(data-t); position:absolute; left:0; top:0; pointer-events:none; }
+.logo::before{ -webkit-text-fill-color:#4a2a0b; color:#4a2a0b; transform:translate3d(0,.045em,0); text-shadow:0 .02em 0 #2c1806, 0 .045em 0 #1c0f05, 0 .12em .22em rgba(0,0,0,.65), 0 0 .5em rgba(255,170,60,.16); }
+.logo::after{ background:linear-gradient(100deg, rgba(255,255,255,0) 42%, rgba(255,252,236,.92) 50%, rgba(255,255,255,0) 58%) no-repeat; background-size:260% 100%; background-position:135% 0; -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; animation:logoShine 8s ease-in-out 1.4s infinite; }
+@keyframes logoShine{ 0%{ background-position:135% 0; } 20%,100%{ background-position:-35% 0; } }
+.sublogo{ display:flex; align-items:center; gap:14px; margin:4px 0 0 .3em; font-family:var(--ui); font-weight:700; font-style:italic; font-size:clamp(14px, 2.6vh, 21px); letter-spacing:.34em; text-transform:uppercase; color:var(--sand); text-shadow:0 1px 2px rgba(0,0,0,.7); }
+.sublogo i{ flex:none; width:46px; height:2px; background:linear-gradient(90deg, rgba(224,165,96,0), var(--bronze-hi)); }
+.sublogo i:last-child{ transform:scaleX(-1); }
+#tMenu{ gap:10px; }
+#tMenu .btn{ min-width:310px; min-height:50px; padding:0 22px; }
+#tMenu .btn > span{ display:flex; align-items:center; gap:12px; min-width:0; }
+#tMenu .btn.primary{ min-height:66px; font-size:32px; padding:0 34px 0 26px; }
+#tMenu .btn.primary .mi{ width:30px; height:30px; stroke-width:2.4; opacity:1; }
+.mt{ display:flex; flex-direction:column; align-items:flex-start; min-width:0; line-height:1.02; }
+.mt b{ font-weight:700; }
+.mt small{ max-width:100%; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:600; color:var(--dim); letter-spacing:.01em; }
+#tMenu .btn::before{ content:""; position:absolute; left:-1px; top:-1px; bottom:-1px; width:5px; background:var(--gold); transform:scaleY(0); transition:transform .14s; }
+#tMenu .btn:focus-visible::before,#tMenu .btn:active::before{ transform:scaleY(1); }
+#tMenu .btn:not(.primary):active{ background:linear-gradient(180deg, rgba(110,72,40,.96), rgba(56,36,22,.96)); border-color:var(--gold); }
+#tMenu .btn.primary:active{ background:linear-gradient(180deg, #fff0b0, #f6c04a 55%, #dc9b22); }
+.mbdg{ position:absolute; right:-8px; top:-10px; padding:2px 8px; transform:skewX(10deg); font-style:normal; font-size:12px; font-weight:800; letter-spacing:.1em; line-height:1.35; text-transform:uppercase; white-space:nowrap; color:#2a1606; background:linear-gradient(180deg, #ffe7a0, #e6a92c); box-shadow:0 2px 8px rgba(0,0,0,.55); pointer-events:none; }
+.mbdg.red{ color:#fff; background:linear-gradient(180deg, #e8483c, #a3221b); }
+#scr-title .side{ top:calc(22px + var(--sat)); bottom:calc(22px + var(--sab)); right:calc(24px + var(--sar)); width:min(340px, 29vw); gap:12px; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; touch-action:pan-y; scrollbar-width:thin; scrollbar-color:rgba(224,165,96,.45) transparent; padding:0 4px 0 0; }
+#scr-title .side::-webkit-scrollbar{ width:4px; } #scr-title .side::-webkit-scrollbar-thumb{ background:rgba(224,165,96,.45); }
+#scr-title .side > *,#tExtra > *{ flex:none; }
+#scr-title .side .card{ animation:stagUp .4s cubic-bezier(.2,.8,.25,1) backwards; animation-delay:.18s; }
+#scr-title .side .card + .card{ animation-delay:.24s; } #tExtra > .card{ animation-delay:.3s; }
 #tExtra{ display:contents; }
+.profile .pname{ font-size:26px; }
+#tRanks .emb{ width:40px; height:40px; }
+#tHint{ max-width:min(64ch, 44vw); }
+#tHint:empty,body.touch #tHint{ display:none; }
+@media (max-height:520px){
+  #scr-title .col{ left:calc(16px + var(--sal)); width:min(350px, 42vw); max-width:none; }
+  .brand{ margin-bottom:10px; } .logo{ font-size:clamp(34px, 11vh, 58px); } .sublogo{ font-size:12px; letter-spacing:.28em; gap:8px; } .sublogo i{ width:24px; }
+  #tMenu{ display:grid; grid-template-columns:1fr 1fr; gap:7px 9px; }
+  #tMenu .btn{ min-width:0; min-height:44px; padding:0 10px 0 12px; font-size:17px; }
+  #tMenu .btn > span{ gap:8px; } #tMenu .mi{ width:18px; height:18px; }
+  #tMenu .btn.primary{ grid-column:1 / -1; min-height:52px; font-size:25px; }
+  #tMenu .btn:last-child:nth-child(even){ grid-column:1 / -1; }
+  #tMenu .mt small{ display:none; }
+  .mbdg{ font-size:10px; top:-8px; right:-4px; padding:1px 5px; }
+  #scr-title .side{ width:min(280px, 33vw); top:calc(8px + var(--sat)); bottom:calc(8px + var(--sab)); right:calc(10px + var(--sar)); gap:8px; }
+}
+@media (orientation:portrait) and (max-width:760px){
+  #scr-title{ background:linear-gradient(180deg, rgba(20,12,7,.6) 0%, rgba(20,12,7,0) 20%, rgba(20,12,7,0) 38%, rgba(20,12,7,.72) 56%, rgba(20,12,7,.92) 100%); }
+  #scr-title .col{ left:calc(14px + var(--sal)); right:calc(14px + var(--sar)); top:calc(12px + var(--sat)); bottom:calc(204px + var(--sab)); transform:none; width:auto; max-width:none; display:flex; flex-direction:column; justify-content:space-between; }
+  .brand{ margin:0; text-align:center; } .logo{ font-size:min(13.6vw, 66px); padding-left:.07em; } .sublogo{ justify-content:center; margin:2px 0 0; font-size:13px; letter-spacing:.3em; }
+  #tMenu{ display:grid; grid-template-columns:1fr 1fr; gap:8px 10px; }
+  #tMenu .btn{ min-width:0; min-height:48px; padding:0 10px 0 14px; font-size:18px; }
+  #tMenu .btn > span{ gap:9px; } #tMenu .mi{ width:19px; height:19px; }
+  #tMenu .btn.primary{ grid-column:1 / -1; min-height:60px; font-size:30px; justify-content:center; }
+  #tMenu .btn:last-child:nth-child(even){ grid-column:1 / -1; }
+  #tMenu .mt small{ display:none; }
+  .mbdg{ font-size:10px; top:-9px; right:-4px; padding:1px 6px; }
+  #scr-title .side{ display:flex; flex-direction:row; left:0; right:0; top:auto; bottom:calc(10px + var(--sab)); width:auto; height:186px; padding:0 calc(14px + var(--sar)) 0 calc(14px + var(--sal)); gap:10px; overflow-x:auto; overflow-y:hidden; scroll-snap-type:x mandatory; scroll-padding:0 14px; touch-action:pan-x pan-y; scrollbar-width:none; }
+  #scr-title .side::-webkit-scrollbar{ display:none; }
+  #scr-title .side > .card,#tExtra > *{ flex:0 0 min(86%, 340px); max-height:100%; overflow-y:auto; overscroll-behavior:contain; scroll-snap-align:start; touch-action:pan-x pan-y; padding:12px 14px; }
+  #scr-title .profile{ grid-template-columns:52px 1fr; } #scr-title .lvl{ width:52px; height:52px; } #scr-title .lvl b{ font-size:22px; } .profile .pname{ font-size:22px; }
+  #tRanks{ margin-top:8px; } #tRanks .emb{ width:32px; height:32px; } #tRanks div{ font-size:13px; } #tRanks b{ font-size:14px; }
+}
 
 /* ---------- results */
 #scr-results{ overflow-y:auto; touch-action:pan-y; }
@@ -363,11 +438,7 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
 
 @media (max-height:520px){
   .screen{ padding-top:calc(10px + var(--sat)); padding-bottom:calc(10px + var(--sab)); }
-  .logo{ font-size:clamp(44px, 12vh, 76px); }
-  .sublogo{ margin-bottom:14px; font-size:19px; }
-  .menu-list{ gap:8px; } .menu-list .btn{ min-height:40px; font-size:18px; min-width:210px; } .menu-list .btn.primary{ min-width:240px; }
   .btn.big{ min-height:50px; font-size:24px; }
-  #scr-title .side{ top:calc(10px + var(--sat)); gap:8px; }
   .card{ padding:10px 12px 12px; } .card h3{ margin-bottom:6px; font-size:15px; }
   .chal li{ font-size:15px; } .ranks{ margin-top:8px; }
   .hint{ display:none; }
@@ -382,8 +453,6 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
   .tbtn[data-b=lock]{ right:calc(190px + var(--sar)); }
 }
 @media (max-width:760px){
-  #scr-title .col{ left:calc(20px + var(--sal)); width:auto; }
-  #scr-title .side{ display:none; }
   .modes{ grid-template-columns:repeat(2, minmax(0,1fr)); }
   .res-grid{ grid-template-columns:1fr; }
   #scr-armory .wrap{ width:auto; right:calc(22px + var(--sar)); bottom:45%; }
@@ -407,7 +476,7 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
 
   <section id="scr-title" class="screen menu scrim">
     <div class="col">
-      <div class="brand"><h1 class="logo" data-t="GLADIUS">GLADIUS</h1><div class="sublogo"><i></i>Arena League<i></i></div></div>
+      <div class="brand"><h1 class="logo" data-t="GLADIUS"><span>GLADIUS</span></h1><div class="sublogo"><i></i>Arena League<i></i></div></div>
       <div class="menu-list stag" id="tMenu">
         <button class="btn primary big" data-go="play"><span><span class="mi-slot" data-mi="play"></span><span class="mt"><b>Play</b></span></span></button>
         <button class="btn" data-go="armory"><span><span class="mi-slot" data-mi="armory"></span><span class="mt"><b>Armory</b></span></span></button>
@@ -4005,7 +4074,7 @@ const Input = (() => {
 // ---------------------------------------------------------------- camera: chase / lock-on / menu / intro / celebration
 const Cam = (() => {
   const C = { snap: true, mode: 'menu', yaw: 0, pitch: 0.2, fov: 72, idle: 0, t: 0, pos: V3(0, 12, 26), look: V3(), lookS: V3(), piv: V3(), focus: V3(), sweep: 0, intro0: V3(), orbit: 0, kickP: V3(), kickV: V3(), fovK: 0, lock: 0, orbitR: 7.5, killer: null, deadT: 0 };
-  const MENU = V3(-8, 0, 9), OUT = MENU.clone().normalize(), MENU_YAW = Math.atan2(OUT.x, OUT.z), RIGHT = V3(-Math.cos(MENU_YAW), 0, Math.sin(MENU_YAW));
+  const MENU = V3(-8, 0, 9), OUT = MENU.clone().normalize(), MENU_YAW = Math.atan2(OUT.x, OUT.z), RIGHT = V3(-Math.cos(MENU_YAW), 0, Math.sin(MENU_YAW)), MF0 = { sx: 0.2, sy: 0, hf: 0.6, yc: 1.02, span: 2.15, fov: 50, el: 0.08 };
   let cam; const _v = V3(), _w = V3(), _n = V3();
   function clampIn(p, m = 0.9) { const k = Math.hypot(p.x / (ARENA.A - m), p.z / (ARENA.B - m)); if (k > 1) { p.x /= k; p.z /= k; p.y += (k - 1) * 6; } if (p.y < 0.5) p.y = 0.5; return p; }
   function set(mode) {
@@ -4022,11 +4091,13 @@ const Cam = (() => {
     C.t += dt; const wantPos = _v, wantLook = _w; let fov = 70, k = 5;
     if (C.lock > 0) C.lock = Math.max(0, C.lock - dt);
     if (C.mode === 'menu' || C.mode === 'armory') {
-      const close = C.mode === 'armory', sw = Math.sin(C.t * 0.25) * 0.18;
-      const dir = OUT.clone().applyAxisAngle(V3(0, 1, 0), sw);
-      wantPos.copy(MENU).addScaledVector(dir, close ? 3.1 : 4.8); wantPos.y = close ? 1.45 : 1.65;
-      wantLook.copy(MENU).addScaledVector(RIGHT, close ? 0.95 : 0.1); wantLook.y = close ? 1.1 : 1.3;
-      fov = close ? 50 : 55; k = 3;
+      // menus frame the gladiator into the screen area the UI leaves free: C.mf = { sx, sy (NDC centre), hf (screen-height share of `span` metres), yc, fov, el } set by UI
+      const F = C.mf || MF0, fv = F.fov || 50, tv = Math.tan(fv * Math.PI / 360), th = tv * (cam ? cam.aspect : 1.78);
+      const d = clamp((F.span || 2.15) / (Math.max(0.12, F.hf || 0.6) * 2 * tv), 1.3, 13), el = F.el || 0.08, yc = F.yc || 1.02;
+      const a = MENU_YAW + (REDUCED_MOTION ? 0 : Math.sin(C.t * 0.25) * 0.1), dx = Math.sin(a), dz = Math.cos(a), ox = (F.sx || 0) * d * th, oy = (F.sy || 0) * d * tv;
+      wantPos.set(MENU.x + dx * d * Math.cos(el), yc + d * Math.sin(el), MENU.z + dz * d * Math.cos(el));
+      wantLook.set(MENU.x - dz * ox, yc - oy, MENU.z + dx * ox);
+      fov = fv; k = 3;
     } else if (C.mode === 'intro' && P) {
       C.sweep = Math.min(1, C.sweep + dt / 2.8); const f = smooth(0, 1, C.sweep), s = P.team ? 1 : -1;
       const a = V3(s * 6, 16, -24), b = V3(P.pos.x - s * 6.5, 2.6, P.pos.z);
@@ -4840,7 +4911,7 @@ const UI = (() => {
     ludus: svgI('<path d="M7 4h11v12.5a3.5 3.5 0 0 1-3.5 3.5H6.5A2.5 2.5 0 0 1 4 17.5V16h11"/><path d="M9.5 8h5.5M9.5 11.5h5.5"/>'),
     rivalDuel: svgI('<circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.6"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/>'),
     armory: svgI('<path d="M5 15a7 7 0 0 1 14 0v4.5h-4.2v-4H9.2v4H5z"/><path d="M8.5 11h7M12 3.5c2-1.6 4.4-1.6 6 0"/>'),
-    career: svgI('<path d="M8.5 20.5C4 17.5 3 10.5 6.5 4.5M15.5 20.5C20 17.5 21 10.5 17.5 4.5"/><path d="M5.4 9.2L3 8.4M5 13.4l-2.4.4M6.7 17.2l-2 1.3M18.6 9.2l2.4-.8M19 13.4l2.4.4M17.3 17.2l2 1.3"/>'),
+    career: svgI('<path d="M7 3.5h10v5a5 5 0 0 1-10 0z"/><path d="M7 5.5H3.8a3.4 3.4 0 0 0 3.6 4.4M17 5.5h3.2a3.4 3.4 0 0 1-3.6 4.4M12 13.5v4M8 20.5h8M9.5 17.5h5"/>'),
     settings: svgI('<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>'),
     def: svgI('<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>'),
   };
@@ -4854,14 +4925,45 @@ const UI = (() => {
     if (n === 'title' || n === 'play' || n === 'career' || n === 'settings') Cam.set('menu'); if (n === 'armory') Cam.set('armory');
     if (display) display.root.visible = ['title', 'play', 'armory', 'career', 'settings'].includes(n) && !Match.active;
     setTimeout(() => { const f = scr(n) && scr(n).querySelector('.btn.primary, .mode, .btn, .item'); if (f && Input.device !== 'touch') f.focus({ preventScroll: true }); }, 30);
+    if (display && display.fakeG) { const G = display.fakeG; if (n !== 'armory' && n !== 'reveal') { endPreview(); DSP.drag = 0; DSP.spin = 0; } if (emoteT <= 0) G.basePose = 'present'; }
+    requestAnimationFrame(frameMenu); setTimeout(frameMenu, 260);
   }
+  // ---------- menu gladiator framing: the camera's menu branch frames UI.display inside the screen area the menu leaves free (measured from the DOM)
+  const MF = { sx: 0.2, sy: 0, hf: 0.6, yc: 1.02, span: 2.15, fov: 50, el: 0.08 }, DSP = { yaw: 0.55, yawT: 0.55, drag: 0, spin: 0 };
+  let emoteT = 0;
+  const ARMF = { helmet: { span: 0.95, yc: 1.68, yaw: 0.35 }, emblem: { span: 1.9, yc: 1.05, yaw: -0.75 }, sword: { span: 1.9, yc: 1.1, yaw: 1.0 }, cape: { span: 2.2, yc: 1.1, yaw: Math.PI }, title: { span: 2.3, yc: 1.05, yaw: 0.5 }, def: { span: 2.5, yc: 1.05, yaw: 0.5 } };
+  function frameMenu() {
+    const W = innerWidth, H = innerHeight, por = H > W * 1.05, R = (q) => { const e = $(q), r = e && e.getBoundingClientRect(); return r && r.width > 0 ? r : null; };
+    let x0 = 0, x1 = W, y0 = 0, y1 = H, span = 2.15, yc = 1.02, yaw = 0.4, fill = por ? 0.92 : 0.68;
+    if (cur === 'title') {
+      const b = R('#scr-title .brand'), m = R('#tMenu'), s = R('#scr-title .side');
+      if (por) { if (b) y0 = b.bottom + 2; if (m) y1 = m.top - 4; } else { x0 = Math.max(b ? b.right : 0, m ? m.right : 0); if (s) x1 = s.left; }
+    } else if (cur === 'armory') {
+      const p = R('#scr-armory .wrap'), f = ARMF[armTab] || ARMF.def; if (p) { if (por) y1 = p.top; else x0 = p.right; } span = f.span; yc = f.yc; yaw = f.yaw; fill = por ? 0.86 : 0.8;
+    } else if (cur === 'reveal') {
+      const c = R('#scr-reveal .reveal'); if (c) { if (por) y1 = c.top; else x1 = c.left; } span = 2.3; fill = 0.8;
+    } else return;
+    if (x1 - x0 < W * 0.16) { x0 = W * 0.42; x1 = W * 0.62; } if (y1 - y0 < H * 0.16) { y0 = 0; y1 = H * 0.4; }
+    MF.sx = (x0 + x1) / W - 1; MF.sy = 1 - (y0 + y1) / H; MF.span = span; MF.yc = yc;
+    MF.hf = clamp(Math.min(((y1 - y0) / H) * fill, (0.92 * (x1 - x0) * span) / (1.05 * H)), 0.16, 0.86);
+    DSP.yawT = yaw;
+  }
+  function tickDisplay(dt) {
+    if (DSP.spin) DSP.yawT += dt * DSP.spin; DSP.yaw = dampA(DSP.yaw, DSP.yawT + DSP.drag, 5, dt); display.root.rotation.y = Cam.MENU_YAW + DSP.yaw;
+    if (emoteT > 0 && (emoteT -= dt) <= 0) { display.fakeG.basePose = 'present'; display.fakeG.noFlourish = false; }
+    if (prevFx) prevFx(dt);
+  }
+  let prevFx = null;
+  function endPreview() { prevFx = null; if (emoteT > 0 && display) { emoteT = 0; display.fakeG.basePose = 'present'; display.fakeG.noFlourish = false; } }
+  const glyph = (a) => { if (Input.glyph) { try { const h = Input.glyph(a); if (h) return h; } catch (e) { /* plain chip */ } } const K = { move: 'WASD', jump: 'Space', boost: 'Shift', atk: 'LMB', block: 'RMB', lock: 'Q', taunt: 'T', pause: 'Esc' }; return `<span class="kbd">${K[a] || a}</span>`; };
   function lvlRing(S) { const f = S.xp / Prog.xpFor(S.level), c = 2 * Math.PI * 28; return `<svg viewBox="0 0 64 64"><circle cx="32" cy="32" r="28" fill="rgba(0,0,0,.35)" stroke="rgba(255,255,255,.12)" stroke-width="5"/><circle cx="32" cy="32" r="28" fill="none" stroke="#f5c045" stroke-width="5" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}"/></svg><b>${S.level}</b>`; }
   function renderTitle() {
     const S = Prog.S; $('#tLvl').innerHTML = lvlRing(S); $('#tName').textContent = S.name; $('#tTitle').textContent = Prog.BY[S.equip.title].name;
-    $('#tRanks').innerHTML = ['duel', 'doubles', 'standard'].map((m) => { const pl = S.games[m] >= 3; return `<div>${Prog.rankSVG(S.mmr[m], 36, pl)}<b>${Prog.MODES[m].s}</b>${pl ? Prog.rankOf(S.mmr[m]).name : `Placement ${S.games[m]}/3`}</div>`; }).join('');
+    $('#tRanks').innerHTML = ['duel', 'doubles', 'standard'].map((m) => { const pl = S.games[m] >= 3; return `<div>${Prog.rankSVG(S.mmr[m], 36, pl)}<b>${Prog.MODES[m].s}</b>${pl ? Prog.rankOf(S.mmr[m]).name : `${S.games[m] || 0}/3 placed`}</div>`; }).join('');
     $('#tChal').innerHTML = S.chal.map((c) => `<li>${esc(c.t)}<small>${c.p}/${c.n}</small><div class="cbar"><i style="width:${(100 * c.p / c.n).toFixed(0)}%"></i></div></li>`).join('');
     renderMenuExtra(); $('#tExtra').innerHTML = extraHTML(UI.titleExtra);
-    $('#tHint').innerHTML = IS_TOUCH ? 'Left thumb moves · <b>Strike</b> (hold = heavy) · <b>Block</b> (tap as a hit lands = parry) · Jump twice with a direction to dodge' : '<span class="kbd">WASD</span> move · <span class="kbd">Space</span> jump / dodge · <span class="kbd">Shift</span> boost · <span class="kbd">LMB</span> strike (hold = heavy) · <span class="kbd">RMB</span> block (tap on hit = parry) · <span class="kbd">Q</span> target cam';
+    const nw = Prog.ITEMS.filter((i) => S.own[i.id] === 1 && S.equip[i.slot] !== i.id).length, ab = $('#tMenu [data-go="armory"]'); if (ab) { const o = ab.querySelector('.mbdg'); if (o) o.remove(); if (nw) ab.insertAdjacentHTML('beforeend', `<em class="mbdg">${nw} new</em>`); }
+    $('#tHint').innerHTML = IS_TOUCH ? '' : `${glyph('move')} move · ${glyph('jump')} jump / dodge · ${glyph('boost')} boost · ${glyph('atk')} strike (hold = heavy) · ${glyph('block')} block (tap on hit = parry) · ${glyph('lock')} target cam`;
   }
   // extension hooks: other modules push into UI.menuExtra / titleExtra / careerExtra (getters are read at render time; each call is isolated)
   const extraHTML = (a) => (a || []).map((f) => { try { return f() || ''; } catch (e) { console.error(e); return ''; } }).join('');
@@ -5065,7 +5167,8 @@ const UI = (() => {
     else if (cur === 'settings') { Sound.S.ui('back'); show(Match.active ? 'pause' : 'title'); }
     else if (cur === 'pause') Match.resume();
   }
-  function update() {
+  function update(dt) {
+    if (display && display.root.visible) tickDisplay(Math.min(0.05, dt || 0.016));
     if (cur === 'hud') return;
     if (Input.pressed('down') || Input.pressed('right')) navigate(1);
     if (Input.pressed('up') || Input.pressed('left')) navigate(-1);
@@ -5077,6 +5180,9 @@ const UI = (() => {
     display = disp;
     for (const k of ['menuExtra', 'titleExtra', 'careerExtra']) UI[k] = UI[k] || [];
     for (const s of $$('.mi-slot')) s.outerHTML = MI[s.dataset.mi] || MI.def;
+    Cam.mf = MF; if (display && display.fakeG) display.fakeG.basePose = 'present';
+    let rzq = 0; addEventListener('resize', () => { if (!rzq) rzq = requestAnimationFrame(() => { rzq = 0; frameMenu(); }); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(frameMenu, () => {});
     for (const b of $$('[data-go]')) b.onclick = () => { Sound.init(); Sound.S.ui(b.dataset.go === 'title' ? 'back' : 'click'); show(b.dataset.go); };
     $('#setBack').onclick = () => back();
     $('#btnResume').onclick = () => Match.resume();
