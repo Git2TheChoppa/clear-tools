@@ -4300,8 +4300,13 @@ const HUD = (() => {
     for (let i = 0; i < 24; i++) { const d = el('div', 'dmg'); d.style.display = 'none'; E.wui.appendChild(d); dmgs.push({ el: d, t: 1, pos: V3() }); }
   }
   function show(on) { E.hud.classList.toggle('on', on); E.wui.style.display = on ? '' : 'none'; if (!on) { for (const p of plates.values()) p.el.remove(); plates.clear(); E.reticle.style.display = 'none'; E.arrow.style.display = 'none'; E.feed.innerHTML = ''; E.chat.innerHTML = ''; E.acc.innerHTML = ''; E.ann.innerHTML = ''; E.intro.innerHTML = ''; E.vignette.style.opacity = 0; E.speedlines.style.opacity = 0; } hudReset(on); }
-  function score(a, b) { if (a !== lastS[0]) { E.sb0.textContent = a; lastS[0] = a; } if (b !== lastS[1]) { E.sb1.textContent = b; lastS[1] = b; } }
-  function clock(t, ot, inf) { const s = inf ? '∞' : (ot ? '+' : '') + fmtClock(t); if (s !== lastClock) { E.sbClock.textContent = s; lastClock = s; } E.sbc.classList.toggle('ot', !!ot); E.sbc.classList.toggle('low', !ot && !inf && t <= 30); }
+  function score(a, b) { [a, b].forEach((v, i) => { if (v === lastS[i]) return; const e = i ? E.sb1 : E.sb0, up = lastS[i] >= 0 && v > lastS[i]; e.textContent = v; lastS[i] = v; if (up) { popEl(e, 2, 420); pulse(e.parentNode, 'flash', 800); } }); }
+  function clock(t, ot, inf) {
+    const s = inf ? '∞' : (ot ? '+' : '') + fmtClock(t), crit = !ot && !inf && t <= 10 && t > 0;
+    if (s !== lastClock) { const was = lastClock; E.sbClock.textContent = s; lastClock = s; if (crit && was) { popEl(E.sbClock, 1.3, 300); clockTick(t <= 3.05); } }
+    cls(E.sbc, 'ot', ot); cls(E.sbc, 'low', !ot && !inf && t <= 30); cls(E.sbc, 'crit', crit);
+  }
+  function clockTick(hi) { if (!Sound.ready || !Sound.kit) return; try { const k = Sound.kit, n = k.now(); k.osc(k.sfx, 'sine', hi ? 1560 : 1180, n, 0.07, hi ? 0.09 : 0.06, 0.002, hi ? 1300 : 980); k.osc(k.sfx, 'triangle', hi ? 780 : 590, n, 0.05, 0.03, 0.002); } catch (e) { /* audio is optional */ } }
   function sub(s) { E.sbSub.textContent = s || ''; }
   function tn(g) { return `<span class="k${g.team}">${esc(g.name)}</span>`; }
   function feed(by, v, kind) {
