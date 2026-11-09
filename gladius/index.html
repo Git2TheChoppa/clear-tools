@@ -4964,6 +4964,12 @@ const Meta = (() => {
 body.touch .mt-go{ min-height:44px; align-items:center; margin-top:6px; }
 body.touch .mt-c-rivals .mt-rv:nth-of-type(n+3){ display:none; }
 body.touch .mt-card{ padding:10px 14px 11px; } body.touch .mt-card h3{ margin-bottom:5px; }
+@media (max-width: 640px){
+  .mt-heads{ margin:0; } .mt-head{ flex-wrap:wrap; gap:1px 8px; max-width:100%; box-sizing:border-box; padding:5px 12px 6px 10px; font-size:15px; line-height:1.25; }
+  .mt-head b{ white-space:nowrap; font-size:14px; } .mt-head span{ flex:1 1 100%; min-width:0; }
+  .mt-rk small{ font-size:11px; letter-spacing:.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .mt-rk b{ font-size:20px; }
+  .mt-hist li{ gap:8px; padding-right:8px; }
+}
 body.touch .mt-io .btn{ min-height:44px; } body.touch .mt-code{ min-height:44px; font-size:16px; }
 `)).id = 'meta-css';
   function onSave(ev) { cur = null; if (ev !== 'load') { io.mode = 'out'; io.arm = 0; live = null; last = null; stranger = null; lastMet = []; } D(); hook(); }
