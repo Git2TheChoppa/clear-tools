@@ -4731,6 +4731,57 @@ const Meta = (() => {
     if (!last || !last.daily) return ''; const all = last.daily.every((c) => c.done), s = streakNow();
     return `<div class="rank-row"><div class="rn" style="font-size:19px">Contracts of the day</div>${s.n ? `<span class="mt-streak ${s.st}" style="margin-left:auto">${ICON.flame}${s.n} day${s.n > 1 ? 's' : ''}</span>` : ''}</div><ul class="mt-daily" style="margin-top:8px">${last.daily.map((c) => contractRow(c, c.fresh, true)).join('')}</ul><div class="mt-foot${all ? ' done' : ''}">${all ? 'All done. Come back tomorrow for three more' : `All three: +${SWEEP_XP} XP &amp; Rare spoils`} · ${resetsIn()}${all ? '' : ' left'}</div>`;
   } });
+  // ---------- records, match history and the Tonight counter (real matches only; a first value is set quietly, beating it is called out)
+  const night = { n: 0, w: 0 }; // this page load
+  const n0 = (v) => Math.round(v).toLocaleString('en-US'), mmss = (v) => `${Math.floor(v / 60)}:${String(Math.round(v) % 60).padStart(2, '0')}`;
+  // key, label, the value this match set (null: none), format, lower is better
+  const REC = [
+    ['ko', 'Most KOs', (x) => x.st.ko, n0], ['dmg', 'Most damage', (x) => x.st.dmg, n0], ['score', 'Highest score', (x) => x.st.score, n0], ['demo', 'Most demolitions', (x) => x.st.demo, n0],
+    ['fast', 'Fastest win', (x) => (x.win && x.time > 5 ? Math.round(x.time) : null), mmss, 1], ['comeback', 'Biggest comeback', (x) => (x.win && x.low <= -2 ? -x.low : null), (v) => `${v} down`],
+    ['run', 'Longest win run', (x) => (x.win ? x.run : null), (v) => `${v} straight`], ['favor', 'Loudest crowd', (x) => x.st.favorPeak || 0, (v) => (Favor.NAMES && Favor.NAMES[v]) || String(v)],
+  ];
+  const RESULT = ['W', 'L', 'F'];
+  repairs.push((m) => {
+    const rc = isObj(m.rec) ? m.rec : {}; m.rec = {};
+    for (const [k] of REC) { const e = rc[k]; if (isObj(e) && fin(e.v) && e.v > 0) m.rec[k] = { v: e.v, t: int(e.t, 0, 0, 9e15), m: typeof e.m === 'string' ? e.m : '' }; }
+    m.hist = (Array.isArray(m.hist) ? m.hist : []).filter((e) => isObj(e) && typeof e.m === 'string' && RESULT.includes(e.r)).slice(0, 10)
+      .map((e) => ({ m: e.m, r: e.r, a: int(e.a), b: int(e.b), d: fin(e.d) ? Math.round(e.d) : null, k: int(e.k), t: int(e.t, 0, 0, 9e15) }));
+    m.wrun = int(m.wrun);
+  });
+  onStart.push((L) => { L.low = 0; });
+  onKo.push((L) => { setTimeout(() => { if (live !== L || !Match.me) return; const s = Match.score, t = Match.me.team; L.low = Math.min(L.low, (s[t] | 0) - (s[1 - t] | 0)); }, 0); }); // after the director has counted the KO
+  onEnd.push((L, M, res, out) => {
+    if (!L.real) return; const d = D(), st = M.me.stats, t = M.me.team, sc = M.score || [0, 0], win = out.win;
+    night.n++; if (win) night.w++;
+    d.wrun = win ? d.wrun + 1 : 0;
+    d.hist.unshift({ m: M.mode, r: M.forfeited ? 'F' : win ? 'W' : 'L', a: sc[t] | 0, b: sc[1 - t] | 0, d: res && fin(res.d) ? res.d : null, k: st.ko | 0, t: Date.now() }); if (d.hist.length > 10) d.hist.length = 10;
+    if (M.forfeited) return;
+    const x = { st, win, time: M.time || 0, low: Math.min(L.low || 0, (sc[t] | 0) - (sc[1 - t] | 0)), run: d.wrun }, fresh = [];
+    for (const [k, n, f, fmt, lower] of REC) {
+      const v = f(x); if (!fin(v) || v <= 0) continue; const p = d.rec[k];
+      if (!p || (lower ? v < p.v : v > p.v)) { if (p) fresh.push({ k, n, v, was: p.v, fmt }); d.rec[k] = { v, t: Date.now(), m: M.mode }; }
+    }
+    out.recs = fresh;
+    if (fresh.length) out.heads.push({ k: 'gold', i: 'star', t: fresh.length > 1 ? `${fresh.length} new records` : 'New record', s: fresh.slice(0, 3).map((r) => `${r.n} ${r.fmt(r.v)} (was ${r.fmt(r.was)})`).join(' · ') });
+  });
+  const ago = (t) => { const s = (Date.now() - t) / 1000; return !t ? '' : s < 90 ? 'just now' : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129600 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`; };
+  const modeName = (m) => (Prog.MODES[m] ? Prog.MODES[m].n : m);
+  // the last five, oldest on the left; the newest pip is ringed
+  const formPips = (h) => { let o = ''; for (let i = 4; i >= 0; i--) { const e = h[i]; o += e ? `<i class="${e.r}${i === 0 ? ' now' : ''}" title="${esc(modeName(e.m))} ${e.a}–${e.b}">${e.r === 'F' ? 'L' : e.r}</i>` : '<i></i>'; } return o; };
+  function formCard() {
+    const d = D(), h = d.hist, e = h[0], tn = night.n ? `Tonight ${night.w}–${night.n - night.w}` : '';
+    const last = e ? `${e.r === 'W' ? 'Won' : e.r === 'F' ? 'Forfeit' : 'Lost'} ${e.a}–${e.b} · ${esc(modeName(e.m))}${e.d != null ? ` · <b class="${e.d >= 0 ? 'up' : 'down'}">${e.d >= 0 ? '+' : ''}${e.d}</b>` : ''}` : 'Your last five matches show here.';
+    const best = ['ko', 'dmg', 'run'].filter((k) => d.rec[k]).map((k) => { const r = REC.find((x) => x[0] === k); return `${r[1].replace(/^(Most|Longest) /, '')} ${r[3](d.rec[k].v)}`; });
+    return `<h3>Form<small>${tn}</small></h3><div class="mt-form">${formPips(h)}<span class="mt-last">${last}</span></div><div class="mt-foot">${best.length ? 'Bests · ' + esc(best.join(' · ')) : 'Set your first records on the sand.'}</div>`;
+  }
+  titleCards.push({ id: 'form', order: 30, html: formCard });
+  function recordsCareer() {
+    const d = D(), tiles = REC.map(([k, n, , fmt]) => { const r = d.rec[k]; return `<div class="mt-rk${r ? '' : ' none'}"><small>${esc(n)}</small><b>${r ? esc(fmt(r.v)) : '–'}</b><i>${r ? `${esc(modeName(r.m))} · ${ago(r.t)}` : 'Not yet set'}</i></div>`; }).join('');
+    const rows = d.hist.map((e) => `<li class="${e.r}"><b>${e.r === 'F' ? 'L' : e.r}</b><span>${esc(modeName(e.m))}${e.r === 'F' ? ' · forfeit' : ''}</span><span class="sc">${e.a}–${e.b}</span><span class="mm ${e.d == null ? '' : e.d >= 0 ? 'up' : 'down'}">${e.d == null ? '' : (e.d >= 0 ? '+' : '') + e.d}</span><small>${ago(e.t)}</small></li>`).join('');
+    return `<div class="section-t">Records<small>${night.n ? `tonight ${night.n} played · ${night.w} won` : ''}</small></div><div class="mt-recs">${tiles}</div>`
+      + `<div class="section-t" style="margin-top:14px">Last ${Math.max(1, d.hist.length)} matches<small>${d.wrun > 1 ? `${d.wrun} wins in a row` : ''}</small></div>${rows ? `<ul class="mt-hist">${rows}</ul>` : '<p class="mt-empty">Nothing yet. Every real match is logged here.</p>'}`;
+  }
+  careerSecs.push({ id: 'records', order: 30, html: recordsCareer });
   // results: call-outs go right under the title, the detail cards after the grid (both are Meta's own elements inside #scr-results .res)
   Bus.on('results', () => {
     const host = document.querySelector('#scr-results .res'); if (!host) return;
@@ -4817,12 +4868,29 @@ const Meta = (() => {
 @keyframes mt-pop{ from{ opacity:0; transform:scale(1.25); } }
 .mt-res{ display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; }
 .mt-rl{ margin-top:8px; display:flex; flex-direction:column; gap:2px; }
+.mt-form{ display:flex; align-items:center; gap:5px; min-width:0; }
+.mt-form i{ flex:none; display:grid; place-items:center; width:26px; height:26px; font-style:normal; font-weight:900; font-size:14px; border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.3); color:var(--dim); }
+.mt-form i.W{ background:linear-gradient(180deg,#5fae4a,#2f6d26); border-color:#9fdc86; color:#f2ffe8; }
+.mt-form i.L,.mt-form i.F{ background:linear-gradient(180deg,#b8432f,#6d2014); border-color:#ff9c8a; color:#ffece8; }
+.mt-form i.now{ box-shadow:0 0 0 2px #2a1606, 0 0 0 3px var(--gold); }
+.mt-last{ min-width:0; margin-left:6px; font-size:15px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mt-last b.up,.mt-hist .up{ color:#9fdc86; } .mt-last b.down,.mt-hist .down{ color:#ff9c8a; }
+.mt-recs{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:6px; }
+.mt-rk{ padding:6px 10px 7px; border:1px solid rgba(255,255,255,.1); background:rgba(0,0,0,.2); min-width:0; }
+.mt-rk small{ display:block; font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--sand); }
+.mt-rk b{ display:block; font-size:22px; font-weight:800; line-height:1.15; color:var(--marble); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mt-rk i{ display:block; font-style:normal; font-size:13px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .mt-rk.none b{ color:var(--dim); }
+.mt-hist{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:3px; }
+.mt-hist li{ display:grid; grid-template-columns:20px minmax(0,1fr) auto 42px auto; gap:10px; align-items:center; min-height:28px; padding:2px 10px 2px 8px; font-size:15px; background:rgba(0,0,0,.2); border-left:3px solid #9fdc86; }
+.mt-hist li.L,.mt-hist li.F{ border-left-color:#ff9c8a; } .mt-hist li b{ font-weight:900; } .mt-hist li.W b{ color:#9fdc86; } .mt-hist li.L b,.mt-hist li.F b{ color:#ff9c8a; }
+.mt-hist span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .mt-hist .sc,.mt-hist .mm{ font-weight:800; font-variant-numeric:tabular-nums; } .mt-hist .mm{ text-align:right; }
+.mt-hist small{ font-size:13px; color:var(--dim); white-space:nowrap; }
 @media (prefers-reduced-motion: reduce){ .mt-head,.mt-daily li.fresh,.mt-streak.risk{ animation:none; } }
 #scr-title .side.mt-side{ max-height:calc(100% - 44px - var(--sat) - var(--sab)); overflow-y:auto; touch-action:pan-y; scrollbar-width:none; }
 #scr-title .side.mt-side::-webkit-scrollbar{ display:none; }
 `)).id = 'meta-css';
   function onSave(ev) { cur = null; if (ev !== 'load') { io.mode = 'out'; io.arm = 0; live = null; last = null; stranger = null; lastMet = []; } D(); hook(); }
-  return { onSave, D, renderCareer, renderTitle, titleHTML, careerHTML, ACT, seat, CAST, TEMPER, duelTarget, daily, rollDaily, streakNow, today, set clock(f) { clock = typeof f === 'function' ? f : () => new Date(); }, get live() { return live; }, get last() { return last; } };
+  return { onSave, D, renderCareer, renderTitle, titleHTML, careerHTML, ACT, seat, CAST, TEMPER, duelTarget, daily, rollDaily, streakNow, today, tonight: () => ({ n: night.n, w: night.w }), REC, set clock(f) { clock = typeof f === 'function' ? f : () => new Date(); }, get live() { return live; }, get last() { return last; } };
 })();
 __G.Meta = Meta;
 
