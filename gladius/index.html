@@ -3250,7 +3250,7 @@ const Prog = (() => {
   const TIERS = [['Bronze', '#c07a3e'], ['Silver', '#c9ced6'], ['Gold', '#f1c243'], ['Platinum', '#7fe0d8'], ['Diamond', '#6fb6ff'], ['Champion', '#b27cff'], ['Grand Champion', '#ff4d5a']];
   const MODES = { duel: { n: 'Duel', s: '1v1', size: 1, d: 'Just you, a blade, and one rival. Pure skill.' }, doubles: { n: 'Doubles', s: '2v2', size: 2, d: 'Fight beside a partner. Assists win games.' }, standard: { n: 'Standard', s: '3v3', size: 3, d: 'The full spectacle. Chaos, demos, glory.' }, spectacle: { n: 'Spectacle', s: '3v3', size: 3, d: 'The games of the day: one wild rule each match. Low gravity, endless fury, lightning and worse.', tag: 'Rotating rules', unranked: true }, training: { n: 'Training', s: 'Free play', size: 1, d: 'Practice on passive dummies. No clock, no rank.' } };
   const CH = [['win', 'Win {n} matches', 2, 3], ['ko', 'Score {n} KOs', 6, 10], ['demo', 'Demolish {n} gladiators', 1, 3], ['par', 'Land {n} parries', 3, 5], ['mvp', 'Earn MVP', 1, 1], ['pads', 'Collect {n} fury pads', 15, 25], ['flawless', "Win without being KO'd", 1, 1], ['bless', "Claim {n} Emperor's Blessings", 2, 3], ['dmg', 'Deal {n} damage', 800, 1200], ['splat', 'Wall-splat {n} foes', 1, 3], ['slam', 'Land {n} meteor slams', 2, 4], ['dh', 'Land {n} dodge strikes', 3, 5], ['as', 'Earn {n} assists', 3, 6], ['play', 'Play {n} matches', 3, 3]];
-  const NAMES = ['Flamma', 'Priscus', 'Verus', 'Crixus', 'Spiculus', 'Tetraites', 'Carpophorus', 'Celadus', 'Ursus', 'Tigris', 'Ferox', 'Velox', 'Taurus', 'Lupus', 'Corvus', 'Draco', 'Castor', 'Pollux', 'Brutus', 'Maximus', 'Invictus', 'Saltius', 'Calculus', 'Boomerus', 'Hermes', 'Triumphus', 'Aureolus', 'Scylax', 'Marcus', 'Cassius', 'Nero', 'Vulcan'];
+  const NAMES = ['Flamma', 'Priscus', 'Verus', 'Crixus', 'Spiculus', 'Tetraites', 'Carpophorus', 'Celadus', 'Ursus', 'Tigris', 'Ferox', 'Velox', 'Taurus', 'Lupus', 'Corvus', 'Draco', 'Castor', 'Pollux', 'Brutus', 'Maximus', 'Invictus', 'Saltius', 'Calculus', 'Boomerus', 'Hermes', 'Triumphus', 'Aureolus', 'Scylax', 'Marcus', 'Cassius', 'Nero', 'Vulcan', 'Achillia', 'Mevia', 'Amazonia'];
   const KEY = 'gladius.save.v3', KEY_V2 = 'gladius.save.v2';
   let S = null;
   const xpFor = (L) => 250 + 40 * (L - 1);
@@ -3505,6 +3505,184 @@ const Meta = (() => {
     try { UI.refreshDisplay(); if (UI.cur === 'career') UI.show('career'); else renderCareer(); } catch (e) { renderCareer(); } sfx('equip');
   };
   careerSecs.push({ id: 'save', order: 90, html: saveHTML });
+  // ---------- per-match plumbing: `live` is the match in progress, `last` what the results screen will say about the one that just ended
+  let live = null, last = null;
+  const onStart = [], onKo = [], onEnd = [];
+  const guard = (list, ...a) => { for (const f of list) { try { f(...a); } catch (e) { console.error(e); } } };
+  // the intro cards are drawn before 'matchStart': redraw them once titles and looks have changed (keeping the REMATCH tag)
+  function reintro(M) { try { const box = HUD.E.intro, tag = box && box.querySelector('.rematch-tag'); HUD.intro([0, 1].map((t) => M.glads.filter((g) => g.team === t))); if (tag && !box.querySelector('.rematch-tag')) box.insertAdjacentElement('afterbegin', tag); } catch (e) { /* HUD not up */ } }
+  Bus.on('matchStart', ({ M }) => {
+    live = null; last = null; if (!M || !M.me || M.attract) return;
+    live = { M, real: M.mode !== 'training', seated: [], rko: {}, rde: {}, dirty: false };
+    guard(onStart, live, M); if (live.dirty) reintro(M);
+  });
+  Bus.on('ko', (e) => { if (live && live.real && Match.active && Match.me) guard(onKo, live, e, Match.me); });
+  Bus.on('matchEnd', ({ M, res }) => {
+    const L = live; live = null; if (!L || !M || !M.me) return;
+    last = { mode: M.mode, win: M.winner === M.me.team && !M.forfeited, heads: [], rivals: [] };
+    guard(onEnd, L, M, res, last); Prog.save();
+  });
+  // a line of chat from a bot, now or in a moment (only while that match is still being played)
+  function say(g, text, ms) { const go = () => { if (!live || !Match.active || Match.paused || Match.phase === 'done' || !Match.glads.includes(g)) return; g._chat = performance.now(); Bus.emit('chat', { g, text }); }; if (ms) setTimeout(go, ms); else go(); }
+  // score + accolade outside the director's award(): shown after the accolades of the event that caused it
+  function bonus(g, text, pts) { setTimeout(() => { if (!live || !Match.active) return; g.stats.score += pts; if (g === Match.me) HUD.acc(text, pts); Bus.emit('award', { g, text, pts }); }, 0); }
+  const crate = (minR) => Prog.grant(Prog.rollDrop(minR));
+  const ICON = {
+    skull: '<svg class="mt-i" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" fill-rule="evenodd" d="M8 1.5C4.4 1.5 2 3.9 2 7.2c0 1.9.9 3.3 2.2 4.1v2.2h7.6v-2.2C13.1 10.5 14 9.1 14 7.2 14 3.9 11.6 1.5 8 1.5ZM5.6 9.2a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm4.8 0a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3Zm-3.2 3v-1.4h1.6v1.4Z"/></svg>',
+    swords: '<svg class="mt-i" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 2l8.2 8.2M13.5 2L5.3 10.2M2.2 11l2.8 2.8M13.8 11L11 13.8" stroke="currentColor" stroke-width="1.7" fill="none" stroke-linecap="round"/></svg>',
+    star: '<svg class="mt-i" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 1.2l2 4.3 4.7.6-3.5 3.2.9 4.7L8 11.7 3.9 14l.9-4.7L1.3 6.1 6 5.5Z"/></svg>',
+  };
+  // ---------- rivals: a fixed cast with looks, temperaments and a head-to-head record against you; whoever KOs you most becomes your Nemesis
+  // B(b): how a temperament bends the bot's band row (AI.BANDS) · swag: how often they showboat after a KO · hi / hit (they KO you) / hurt (you KO them): chat
+  const TEMPER = {
+    brute: { n: 'Brawler', swag: 0.3, B: (b) => ({ demo: Math.min(0.45, Math.max(b.demo, 0.06) + 0.1), fury: Math.max(25, Math.min(b.fury, 50) - 5), hvb: Math.min(0.9, b.hvb + 0.2) }), hi: ['No tricks. Just iron.', 'I am going to enjoy this.', 'Try to stay on your feet.'], hit: ['Stay down.', 'Too slow!', 'Is that all?'], hurt: ['Lucky.', 'That one I felt.', 'Again. Harder.'] },
+    showman: { n: 'Showman', swag: 0.7, B: (b) => ({ combo: 3, hvb: Math.min(0.9, b.hvb + 0.1) }), hi: ['Smile. They are all watching.', 'Do try to make it look close.', 'Listen to them. That is for me.'], hit: ['Did everyone see that?', 'For the cheap seats!', 'Encore?'], hurt: ['Careful, the face!', 'A little applause for the challenger.', 'Rude.'] },
+    stoic: { n: 'Stoic', swag: 0, B: (b) => ({ par: Math.min(0.6, b.par + 0.2), wall: Math.min(0.95, b.wall + 0.2) }), hi: ['Begin.', 'We shall see.', 'The sand decides.'], hit: ['As expected.', 'Hm.', 'Breathe. Try again.'], hurt: ['Well struck.', 'Good.', 'Noted.'] },
+    duelist: { n: 'Duelist', swag: 0.2, B: (b) => ({ par: Math.min(0.6, b.par + 0.1), jit: Math.max(0.03, b.jit * 0.7), hc: Math.min(0.95, b.hc + 0.2) }), hi: ['Show me your guard.', 'I have studied you.', 'Three exchanges. Then it ends.'], hit: ['Your guard drops when you rush.', 'Sloppy.', 'Read like a scroll.'], hurt: ['Clean. I will allow it.', 'So you can fight.', 'Interesting.'] },
+    hunter: { n: 'Hunter', swag: 0.4, B: (b) => ({ tk: Math.max(0.09, b.tk * 0.85), demo: Math.min(0.45, b.demo + 0.05) }), hi: ['I can smell the fear.', 'Run. It is more fun.', 'Nowhere to hide on the sand.'], hit: ['Got you.', 'Easy prey.', 'You ran the wrong way.'], hurt: ['The prey bites.', 'Clever.', 'I will find you again.'] },
+  };
+  const NEM = { hi: ['You again.', 'I was hoping it would be you.', 'The sand remembers you. So do I.', 'Shall we count them out loud?'], hit: ['Again.', 'I never tire of this.', 'Still mine.'], hurt: ['It changes nothing.', 'Enjoy it while it lasts.', 'One. I am still ahead.'] };
+  // id, name, epithet, temperament, skill offset (0.116 = one rank tier), skin tone, [helmet, emblem, sword, trail, KO effect, cape, emote], a line of lore
+  const CAST = [
+    ['flamma', 'Flamma', 'The Syrian', 'stoic', 0.04, 2, ['h_secutor', 'e_scorpion', 's_spatha', 't_dust', 'x_sand', 'c_night', 'e_salute'], 'Offered his freedom four times. Refused it four times.'],
+    ['spiculus', 'Spiculus', "Nero's Favourite", 'showman', 0.02, 0, ['h_laurel', 'e_sun', 's_golden', 't_gold', 'x_aureus', 'c_gold', 'e_entertained'], 'Paid in palaces. Plays to the stands.'],
+    ['crixus', 'Crixus', 'The Gaul', 'brute', 0.03, 5, ['h_murmillo', 'e_bolt', 's_falx', 't_embers', 'x_vesuvius', 'c_wolf', 'e_flex'], 'Charges first. Has never once thought second.'],
+    ['priscus', 'Priscus', 'The Celt', 'duelist', 0.05, 5, ['h_thraex', 'e_laurel', 's_spatha', 't_petals', 'x_rose', 'c_red', 'e_salute'], 'Fought Verus to a standstill before the Emperor.'],
+    ['verus', 'Verus', 'The Unyielding', 'stoic', 0.05, 1, ['h_hoplite', 'e_eagle', 's_bronze', 't_dust', 'x_neptune', 'c_team', 'e_bang'], 'Fought Priscus to a standstill. Tells it differently.'],
+    ['tetraites', 'Tetraites', 'The Glass Champion', 'brute', 0, 3, ['h_murmillo', 'e_spqr', 's_bronze', 't_embers', 'x_jupiter', 'c_none', 'e_bang'], 'His face is on drinking cups from here to Britannia.'],
+    ['carpophorus', 'Carpophorus', 'Beast Slayer', 'hunter', 0.06, 4, ['h_lion', 'e_wolf', 's_falx', 't_shadow', 'x_styx', 'c_wolf', 'e_point'], 'Twenty beasts in a single afternoon. Then lunch.'],
+    ['hermes', 'Hermes', 'Master of All Arms', 'duelist', 0.08, 1, ['h_centurion', 'e_trident', 's_obsidian', 't_lightning', 'x_jupiter', 'c_purple', 'e_point'], 'The poets say he is three gladiators in one.'],
+    ['tigris', 'Tigris', 'The Tigress', 'hunter', -0.02, 2, ['h_thraex', 'e_bolt', 's_spatha', 't_lightning', 'x_phoenix', 'c_none', 'e_point'], 'Fast enough that the crowd cheers a moment late.'],
+    ['ursus', 'Ursus', 'The Bear', 'brute', -0.03, 3, ['h_lion', 'e_skull', 's_bronze', 't_dust', 'x_vesuvius', 'c_wolf', 'e_flex'], 'Slow to anger. Slower to stop.'],
+    ['achillia', 'Achillia', 'The Gladiatrix', 'showman', 0, 0, ['h_hoplite', 'e_laurel', 's_golden', 't_petals', 'x_rose', 'c_purple', 'e_salute'], 'Earned an honourable draw, carved in marble.'],
+    ['scylax', 'Scylax', 'The Jackal', 'hunter', -0.05, 4, ['h_secutor', 'e_scorpion', 's_obsidian', 't_shadow', 'x_styx', 'c_night', 'e_entertained'], 'Wins ugly. Smiles about it.'],
+  ].map(([id, n, ep, tm, off, skin, c, bio]) => ({ id, n, ep, tm, off, skin, bio, cos: { helmet: c[0], emblem: c[1], sword: c[2], trail: c[3], explosion: c[4], cape: c[5], emote: c[6] } }));
+  const RIV = {}, RIV_NAME = {}; for (const r of CAST) { RIV[r.id] = r; RIV_NAME[r.n] = r; }
+  repairs.push((m) => {
+    const src = isObj(m.riv) ? m.riv : {}, out = {};
+    for (const r of CAST) { const s = src[r.id]; if (isObj(s)) out[r.id] = { w: int(s.w), l: int(s.l), ko: int(s.ko), de: int(s.de), met: int(s.met), run: int(s.run, 0, -99, 99), g: int(s.g), t: int(s.t, 0, 0, 9e15), last: s.last === 'W' || s.last === 'L' ? s.last : '' }; }
+    m.riv = out; if (!(typeof m.nem === 'string' && out[m.nem])) m.nem = null; m.nemBeat = int(m.nemBeat, 0, 0, 3);
+  });
+  const rec = (id) => { const d = D(); return d.riv[id] || (d.riv[id] = { w: 0, l: 0, ko: 0, de: 0, met: 0, run: 0, g: 0, t: 0, last: '' }); };
+  const myName = () => String(Prog.S.name || '').toLowerCase();
+  // Match.NAMESHUF() hands its shuffled names here. Bots take names with pop(): team-mates first, then the other side — so rivals go just before the tail.
+  let force = null, lastMet = [];
+  function seat(a, M) {
+    try {
+      const mode = M && M.mode, def = Prog.MODES[mode]; if (!M || M.attract || !def || mode === 'training') return a;
+      const d = D(), me = myName(), size = def.size, plain = a.filter((n) => !RIV_NAME[n] && n.toLowerCase() !== me), pool = CAST.filter((r) => r.n.toLowerCase() !== me), picks = [];
+      let n = Math.min(size, pool.length, size === 1 ? (chance(0.85) ? 1 : 0) : size === 2 ? 1 + (chance(0.4) ? 1 : 0) : 1 + (chance(0.65) ? 1 : 0) + (chance(0.2) ? 1 : 0));
+      if (force && RIV[force] && pool.includes(RIV[force]) && mode === 'duel') { picks.push(RIV[force]); n = 1; }
+      while (picks.length < n) { // weighted: the Nemesis three times as often, the unmet a little more, last match's faces rarely
+        const opts = pool.filter((r) => !picks.includes(r)), w = opts.map((r) => { const c = d.riv[r.id]; return (r.id === d.nem ? 3 : 1) * (!c || !c.met ? 1.6 : 1) * (lastMet.includes(r.id) ? 0.25 : 1); });
+        let x = Math.random() * w.reduce((p, q) => p + q, 0), i = 0; while (i < opts.length - 1 && (x -= w[i]) > 0) i++;
+        picks.push(opts[i]);
+      }
+      const foes = picks.map((r) => r.n).concat(plain.splice(0, size - picks.length)), mates = plain.splice(0, size - 1);
+      for (let i = foes.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [foes[i], foes[j]] = [foes[j], foes[i]]; }
+      return plain.concat(foes, mates);
+    } catch (e) { console.error(e); return a; }
+  }
+  // a seated rival keeps their name; skill, brain, look, swagger and title become their own (runs again on a rematch: the roster only remembers the roll)
+  function dress(g, r, M) {
+    const d = D(), c = d.riv[r.id], ease = clamp(((Prog.S.stats.matches || 0) - 3) / 8, 0, 1), T = TEMPER[r.tm];
+    g.rival = r; g.nemesis = d.nem === r.id;
+    g.skill = clamp(Prog.skillFor(M.mode) + (r.off > 0 ? r.off * ease : r.off) + clamp(c ? c.run : 0, -3, 3) * 0.012, 0.05, 0.97); // a rival you keep beating trains; one who keeps beating you eases off
+    g.brain = new AI.Brain(g); g.brain.B = Object.assign({}, g.brain.B, T.B(g.brain.B)); g.swagger = T.swag;
+    g.lvl = Math.max(2, Math.round(5 + g.skill * 60 + r.off * 40)); g.bandName = AI.bandName(g.skill);
+    g.cos = Object.assign({}, DEFAULT_COS, r.cos); g.skin = Rig.SKIN[r.skin] || g.skin; if (g.rig) g.rig.setLook({ cos: g.cos, skin: g.skin });
+    g.baseTitle = g.titleName = g.nemesis ? 'Your Nemesis' : r.ep;
+  }
+  const NUMW = ['', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
+  function introLine(g) {
+    const c = D().riv[g.rival.id], T = TEMPER[g.rival.tm];
+    if (g.nemesis) return pick(NEM.hi);
+    if (c && c.run <= -2) return pick(['Back for more?', 'Have you learned anything since?', 'This is becoming a habit.']);
+    if (c && c.run >= 2) return pick(['Not this time.', 'I have trained for you.', 'Your luck ends here.']);
+    return pick(T.hi);
+  }
+  onStart.push((L, M) => {
+    if (!L.real) return; const me = M.me, mine = myName();
+    for (const g of M.glads) { const r = !g.human && !g.passive && g.team !== me.team ? RIV_NAME[g.name] : null; if (r && r.n.toLowerCase() !== mine) { dress(g, r, M); L.seated.push(g); L.dirty = true; } }
+    force = null; lastMet = L.seated.map((g) => g.rival.id);
+    const sp = L.seated.find((g) => g.nemesis) || (L.seated.length && chance(0.7) ? pick(L.seated) : null);
+    if (sp && !(M.isRematch && sp.grudge)) say(sp, introLine(sp), 1300); // on a rematch the grudge line is theirs already
+  });
+  onKo.push((L, e, me) => {
+    const v = e.v, by = e.by;
+    if (by === me && v.rival) {
+      const c = rec(v.rival.id); c.ko++; L.rko[v.rival.id] = (L.rko[v.rival.id] || 0) + 1;
+      if (v.nemesis) bonus(me, 'Nemesis', 50);
+      if (chance(v.nemesis ? 0.7 : 0.4)) say(v, pick((v.nemesis ? NEM : TEMPER[v.rival.tm]).hurt));
+    } else if (v === me && by && by.rival) {
+      const c = rec(by.rival.id); c.de++; c.g++; L.rde[by.rival.id] = (L.rde[by.rival.id] || 0) + 1;
+      if (by.nemesis || chance(0.6)) say(by, by.nemesis && c.de > 2 && c.de < NUMW.length && chance(0.5) ? `That makes ${NUMW[c.de]}.` : pick((by.nemesis ? NEM : TEMPER[by.rival.tm]).hit));
+    }
+  });
+  onEnd.push((L, M, res, out) => {
+    if (!L.real) return; const d = D(), win = out.win;
+    for (const g of L.seated) {
+      const r = g.rival, c = rec(r.id); c.met++; c.t = Date.now(); c.last = win ? 'W' : 'L';
+      if (win) { c.w++; c.run = Math.max(1, c.run + 1); } else { c.l++; c.run = Math.min(-1, c.run - 1); }
+      out.rivals.push({ id: r.id, win, ko: L.rko[r.id] || 0, de: L.rde[r.id] || 0 });
+    }
+    if (win && L.seated.length) Prog.addXp(25 * L.seated.length, res, L.seated.length > 1 ? `Rivals defeated ×${L.seated.length}` : 'Rival defeated');
+    // the Nemesis: three wins over them break the hold, a loss to them undoes one
+    const ng = L.seated.find((g) => g.nemesis && g.rival.id === d.nem);
+    if (ng && win) {
+      d.nemBeat = (d.nemBeat || 0) + 1; Prog.addXp(150, res, 'Nemesis defeated');
+      if (d.nemBeat >= 3) { rec(d.nem).g = 0; d.nem = null; d.nemBeat = 0; d.vanq = int(d.vanq) + 1; Prog.addXp(300, res, 'Nemesis vanquished'); crate(3); out.heads.push({ k: 'gold', i: 'skull', t: 'Nemesis vanquished', s: `${ng.rival.n} holds nothing over you · +300 XP and Rare spoils` }); }
+      else out.heads.push({ k: 'gold', i: 'skull', t: 'Nemesis defeated', s: `${ng.rival.n} · ${d.nemBeat} of 3 to break the hold` });
+    } else if (ng) d.nemBeat = Math.max(0, (d.nemBeat || 0) - 1);
+    // crowned: the rival with the most KOs on you (three or more) since the last one was vanquished; a sitting Nemesis is only usurped by a clear margin
+    let top = null; for (const r of CAST) { const c = d.riv[r.id]; if (c && c.g >= 3 && (!top || c.g > top.c.g)) top = { r, c }; }
+    const cur = d.nem && d.riv[d.nem];
+    if (top && top.r.id !== d.nem && (!cur || top.c.g >= cur.g + 3)) { d.nem = top.r.id; d.nemBeat = 0; out.heads.push({ k: 'red', i: 'skull', t: 'A Nemesis rises', s: `${top.r.n} has slain you ${top.c.g} times · beat them for bonus XP` }); }
+  });
+  // one line on where a rivalry stands
+  function statusOf(r, c, d) {
+    if (d.nem === r.id) return ['Nemesis', 'nem'];
+    if (!c || !c.met) return ['Yet to meet', 'dim'];
+    if (c.run >= 3) return ['You own this one', 'up'];
+    if (c.run <= -3) return ['Has your number', 'down'];
+    if (c.w === c.l) return ['Dead even', ''];
+    if (c.last === 'W') return [c.w > c.l ? 'Wants revenge' : 'You struck back', 'up'];
+    return [c.l > c.w ? 'Leads the series' : 'Beat you last time', 'down'];
+  }
+  const pips = (d) => `<span class="mt-pips" title="Beat them three times to break the hold">${[0, 1, 2].map((i) => `<u${i < (d.nemBeat || 0) ? ' class="on"' : ''}></u>`).join('')}</span>`;
+  const emb = (r, s = 22) => `<img class="mt-emb" width="${s}" height="${s}" alt="" src="${Tex.emblemIcon(r.cos.emblem)}">`;
+  const metList = () => { const d = D(); return CAST.filter((r) => d.riv[r.id] && d.riv[r.id].met).sort((a, b) => (b.id === d.nem) - (a.id === d.nem) || d.riv[b.id].t - d.riv[a.id].t); };
+  // who a Rival Duel is against: the Nemesis, else whoever is on a run against you, else the latest face, else a stranger (kept until a match is played)
+  let stranger = null;
+  function duelTarget() {
+    const d = D(), met = metList(), me = myName(); if (d.nem && RIV[d.nem].n.toLowerCase() !== me) return RIV[d.nem];
+    const owed = met.filter((r) => d.riv[r.id].run < 0).sort((a, b) => d.riv[a.id].run - d.riv[b.id].run)[0]; if (owed) return owed;
+    if (met.length) return met[0];
+    if (!stranger || stranger.n.toLowerCase() === me) stranger = pick(CAST.filter((r) => r.n.toLowerCase() !== me && r.off <= 0.03));
+    return stranger;
+  }
+  ACT.rivalDuel = () => { const r = duelTarget(); if (!r || Match.active) return; force = r.id; stranger = null; sfx('click'); Match.queue('duel'); const t = document.getElementById('qTitle'); if (t) t.textContent = 'Calling out ' + r.n; };
+  const duelSub = () => { const r = duelTarget(), d = D(), c = d.riv[r.id]; return d.nem === r.id ? `${r.n} · your Nemesis` : c && c.met ? `${r.n} · ${c.w}–${c.l}` : `${r.n}, ${r.ep}`; };
+  function rivalsCard() {
+    const d = D(), met = metList(), top = met.slice(0, 3);
+    const rows = top.map((r) => { const c = d.riv[r.id], [t, cls] = statusOf(r, c, d); return `<div class="mt-rv ${cls}">${emb(r)}<b>${d.nem === r.id ? ICON.skull : ''}${esc(r.n)}</b><i>${esc(t)}${d.nem === r.id ? pips(d) : ''}</i><span class="mt-wl">${c.w}–${c.l}</span></div>`; }).join('');
+    return `<h3>Rivals<small>${met.length ? `${met.length} of ${CAST.length} met` : ''}</small></h3>${rows || '<p class="mt-empty">Twelve gladiators stand between you and the laurel. The arena remembers who beats you.</p>'}`
+      + `<button class="mt-go" data-meta="rivalDuel">${ICON.swords}<span>Rival Duel</span><small>${esc(duelSub())}</small></button>`;
+  }
+  titleCards.push({ id: 'rivals', order: 20, html: rivalsCard });
+  function rivalsCareer() {
+    const d = D(), met = metList(), list = met.concat(CAST.filter((r) => !met.includes(r)));
+    return `<div class="section-t">Rivals<small>${met.length} of ${CAST.length} met${d.vanq ? ` · ${d.vanq} Nemes${d.vanq > 1 ? 'es' : 'is'} vanquished` : ''}</small></div><div class="mt-cast">${list.map((r) => {
+      const c = d.riv[r.id], seen = c && c.met, [t, cls] = statusOf(r, c, d);
+      return `<div class="mt-riv ${cls}${seen ? '' : ' unmet'}">${emb(r, 34)}<div class="mt-who"><b>${d.nem === r.id ? ICON.skull : ''}${esc(r.n)}</b><small>${esc(r.ep)} · ${TEMPER[r.tm].n}</small></div><div class="mt-rec">${seen ? `<b>${c.w}–${c.l}</b><small>KOs ${c.ko} · ${c.de}</small>` : '<b>–</b>'}</div><p>${seen ? `<em>${esc(t)}</em>${d.nem === r.id ? `${pips(d)} three wins over them break the hold` : ''} · ` : ''}${esc(r.bio)}</p></div>`;
+    }).join('')}</div>`;
+  }
+  careerSecs.push({ id: 'rivals', order: 20, html: rivalsCareer });
+  resBlocks.push({ id: 'rivals', order: 20, html: () => {
+    if (!last || !last.rivals.length) return ''; const d = D();
+    return `<div class="rank-row"><div class="rn" style="font-size:19px">Rivals</div></div><div class="mt-rl">${last.rivals.map((x) => { const r = RIV[x.id], c = d.riv[x.id] || { w: 0, l: 0 }, lead = c.w === c.l ? 'level at' : c.w > c.l ? 'you lead' : 'they lead';
+      return `<div class="mt-rv ${x.win ? 'up' : 'down'}">${emb(r)}<b>${d.nem === x.id ? ICON.skull : ''}${esc(r.n)}</b><i>${x.win ? 'Defeated' : 'Beat you'} · ${lead} ${c.w}–${c.l}${x.ko || x.de ? ` · KOs ${x.ko}–${x.de}` : ''}</i></div>`; }).join('')}</div>`;
+  } });
   // ---------- surfaces
   const bySec = (a, b) => a.order - b.order;
   const cardHTML = (c) => `<div class="card plaque mt-card mt-c-${c.id}" data-meta-card="${c.id}">${c.html()}</div>`;
@@ -3520,10 +3698,25 @@ const Meta = (() => {
     if (key) { const n = w.querySelector(FOCUS_NEXT[key] || `[data-meta="${key}"]`); if (n) n.focus({ preventScroll: true }); }
   }
   function renderTitle() { for (const c of titleCards) { const w = document.querySelector(`[data-meta-card="${c.id}"]`); if (w) w.innerHTML = c.html(); } }
+  // results: call-outs go right under the title, the detail cards after the grid (both are Meta's own elements inside #scr-results .res)
+  Bus.on('results', () => {
+    const host = document.querySelector('#scr-results .res'); if (!host) return;
+    for (const o of host.querySelectorAll('.mt-heads, .mt-res')) o.remove();
+    if (!last) return;
+    try {
+      if (last.heads.length) {
+        const h = el('div', 'mt-heads', last.heads.map((x, i) => `<div class="mt-head ${x.k || ''}" style="animation-delay:${(0.5 + i * 0.22).toFixed(2)}s">${ICON[x.i] || ICON.star}<b>${esc(x.t)}</b><span>${esc(x.s || '')}</span></div>`).join(''));
+        const top = host.querySelector(':scope > .res-top'); if (top) top.insertAdjacentElement('afterend', h); else host.prepend(h);
+      }
+      const parts = resBlocks.sort(bySec).map((b) => { const h = b.html(); return h ? `<div class="res-card plaque mt-rc mt-r-${b.id}">${h}</div>` : ''; }).join('');
+      if (parts) { const box = el('div', 'mt-res', parts), act = host.querySelector(':scope > .res-actions'); if (act) host.insertBefore(box, act); else host.appendChild(box); }
+    } catch (e) { console.error(e); }
+  });
   // the hooks light up once the menus build reads them; until then (or if one is never read) the observers below add the same markup after each render
   let hooked = false;
   function hook() {
     if (hooked) return; hooked = true;
+    try { (UI.menuExtra = UI.menuExtra || []).push({ id: 'rivalDuel', label: 'Rival Duel', get sub() { return duelSub(); }, get badge() { return D().nem ? 'Nemesis' : ''; }, onClick: () => ACT.rivalDuel() }); } catch (e) { /* hook not writable */ }
     try { const a = (UI.titleExtra = UI.titleExtra || []); for (const c of titleCards.sort(bySec)) a.push(() => cardHTML(c)); } catch (e) { /* hook not writable */ }
     try { (UI.careerExtra = UI.careerExtra || []).push(careerHTML); } catch (e) { /* hook not writable */ }
     const watch = (sel, fn) => { const t = document.querySelector(sel); if (t && typeof MutationObserver !== 'undefined') new MutationObserver(fn).observe(t, { childList: true }); };
@@ -3542,11 +3735,47 @@ const Meta = (() => {
 .mt-code::selection{ background:rgba(245,192,69,.45); color:#fff; }
 .mt-note{ min-height:42px; margin:0 0 8px; font-size:16px; line-height:1.3; color:var(--dim); }
 .mt-note.ok{ color:#8fe06a; } .mt-note.bad{ color:#ff8a7a; } .mt-note.warn{ color:var(--gold); }
+.mt-i{ width:1em; height:1em; vertical-align:-.12em; margin-right:.3em; flex:none; }
+.mt-card{ padding:12px 16px 13px; }
+.mt-card h3{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; margin:0 0 7px; }
+.mt-card h3 small,.mt-career .section-t small{ font-family:var(--ui); font-weight:600; font-size:14px; letter-spacing:0; color:var(--dim); }
+.mt-career .section-t{ display:flex; align-items:baseline; justify-content:space-between; gap:10px; }
+.mt-empty{ margin:0 0 4px; font-size:15px; line-height:1.3; color:var(--dim); }
+.mt-rv{ display:grid; grid-template-columns:22px auto minmax(0,1fr) auto; align-items:center; gap:0 8px; min-height:26px; font-size:16px; line-height:1.1; }
+.mt-emb{ display:block; }
+.mt-rv b{ font-weight:800; white-space:nowrap; }
+.mt-rv i{ font-style:normal; font-size:15px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mt-wl{ font-weight:800; font-variant-numeric:tabular-nums; color:var(--sand); }
+.mt-rv.up i,.mt-riv.up em{ color:#9fdc86; } .mt-rv.down i,.mt-riv.down em{ color:#ff9c8a; }
+.mt-rv.nem b,.mt-rv.nem i,.mt-riv.nem .mt-who b,.mt-riv.nem em{ color:#ff6a5c; }
+.mt-pips{ display:inline-flex; gap:3px; margin-left:6px; vertical-align:1px; }
+.mt-pips u{ width:8px; height:8px; transform:rotate(45deg); border:1px solid #ff6a5c; background:transparent; } .mt-pips u.on{ background:#ff6a5c; }
+.mt-go{ display:flex; align-items:baseline; gap:6px; width:100%; margin:8px 0 0; padding:6px 10px; border:1px solid rgba(224,165,96,.45); background:rgba(0,0,0,.25); color:var(--gold); font-weight:800; font-size:16px; text-align:left; cursor:pointer; transition:background .12s, border-color .12s; }
+.mt-go:hover,.mt-go:focus-visible{ border-color:var(--gold); background:rgba(245,192,69,.14); }
+.mt-go .mt-i{ align-self:center; margin:0; }
+.mt-go small{ margin-left:auto; font-weight:600; font-size:14px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mt-cast{ display:grid; grid-template-columns:repeat(auto-fill, minmax(250px, 1fr)); gap:8px; }
+.mt-riv{ display:grid; grid-template-columns:34px minmax(0,1fr) auto; gap:2px 10px; align-items:center; padding:8px 10px; border:1px solid rgba(255,255,255,.1); background:rgba(0,0,0,.2); }
+.mt-riv.nem{ border-color:rgba(255,106,92,.6); background:rgba(120,20,12,.18); }
+.mt-riv.unmet{ opacity:.55; }
+.mt-who b{ display:block; font-size:18px; font-weight:800; line-height:1.05; } .mt-who small{ display:block; font-size:14px; color:var(--dim); line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mt-rec{ text-align:right; } .mt-rec b{ display:block; font-size:22px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; } .mt-rec small{ display:block; font-size:13px; color:var(--dim); white-space:nowrap; }
+.mt-riv p{ grid-column:1 / 4; margin:3px 0 0; font-size:14px; line-height:1.25; color:var(--dim); } .mt-riv em{ font-style:normal; font-weight:700; color:var(--marble); }
+.mt-heads{ display:flex; flex-wrap:wrap; gap:8px 10px; margin:-4px 0 0; }
+.mt-head{ display:flex; align-items:baseline; gap:8px; padding:6px 14px 6px 12px; border:1px solid rgba(255,226,154,.8); background:linear-gradient(90deg, rgba(230,169,44,.34), rgba(60,40,26,.6)); font-size:17px; animation:mt-pop .45s cubic-bezier(.2,.9,.3,1.35) both; }
+.mt-head .mt-i{ align-self:center; margin:0; width:18px; height:18px; color:#ffd66e; }
+.mt-head b{ font-family:var(--display); font-weight:900; letter-spacing:.06em; color:#ffe08a; text-transform:uppercase; }
+.mt-head span{ color:var(--marble); font-weight:600; }
+.mt-head.red{ border-color:rgba(255,106,92,.8); background:linear-gradient(90deg, rgba(160,30,20,.45), rgba(60,26,22,.6)); } .mt-head.red b,.mt-head.red .mt-i{ color:#ff8a7a; }
+@keyframes mt-pop{ from{ opacity:0; transform:scale(1.25); } }
+.mt-res{ display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; }
+.mt-rl{ margin-top:8px; display:flex; flex-direction:column; gap:2px; }
+@media (prefers-reduced-motion: reduce){ .mt-head{ animation:none; } }
 #scr-title .side.mt-side{ max-height:calc(100% - 44px - var(--sat) - var(--sab)); overflow-y:auto; touch-action:pan-y; scrollbar-width:none; }
 #scr-title .side.mt-side::-webkit-scrollbar{ display:none; }
 `)).id = 'meta-css';
-  function onSave(ev) { cur = null; if (ev !== 'load') { io.mode = 'out'; io.arm = 0; } D(); hook(); }
-  return { onSave, D, renderCareer, renderTitle, titleHTML, careerHTML, ACT };
+  function onSave(ev) { cur = null; if (ev !== 'load') { io.mode = 'out'; io.arm = 0; live = null; last = null; stranger = null; lastMet = []; } D(); hook(); }
+  return { onSave, D, renderCareer, renderTitle, titleHTML, careerHTML, ACT, seat, CAST, TEMPER, duelTarget, get live() { return live; }, get last() { return last; } };
 })();
 __G.Meta = Meta;
 
@@ -4422,7 +4651,7 @@ const Match = (() => {
     });
   }
   let NAMEPOOL = null;
-  function NAMESHUF() { const a = Prog.NAMES.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function NAMESHUF() { const a = Prog.NAMES.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return Meta.seat(a, M); } // Meta seats rivals where the enemy team pops its names
   return Object.assign(M, { init, queue, start, rematch, update, pause, resume, forfeit, toMenu, startAttract, stopAttract });
 })();
 
