@@ -498,13 +498,14 @@ body.touch #hud .scoreboard{ max-height:calc(100% - 20px); overflow:hidden; padd
   body.touch #hud .combo{ left:calc(12px + var(--sal)); top:calc(194px + var(--sat)); transform-origin:0 0; }
   body.touch #hud .chatlog{ left:calc(12px + var(--sal)); top:calc(244px + var(--sat)); max-width:36vw; }
   body.touch #hud .chatlog div{ font-size:13px; }
-  body.touch #hud .objective{ top:calc(60px + var(--sat)); width:220px; margin-left:-110px; padding:3px 8px 4px; }
+  body.touch #hud .objective{ top:calc(64px + var(--sat)); width:220px; margin-left:-110px; padding:3px 8px 4px; }
   body.touch #hud .ob-t b{ font-size:12px; } body.touch #hud .ob-t small{ font-size:11px; }
   body.touch #hud .feed{ top:calc(62px + var(--sat)); right:calc(10px + var(--sar)); }
   body.touch #hud .accolades{ top:calc(140px + var(--sat)); right:calc(112px + var(--sar)); }
   body.touch #hud .announce{ top:23%; }
   body.touch #hud .tip{ top:auto; bottom:calc(122px + var(--sab)); max-width:min(440px, 50vw); font-size:15px; }
-  body.touch #hud .hints{ bottom:calc(168px + var(--sab)); max-width:min(460px, 52vw); font-size:13px; }
+  body.touch #hud .hints{ bottom:calc(116px + var(--sab)); max-width:min(440px, 50vw); font-size:12px; flex-direction:column; align-items:center; gap:3px; }
+  body.touch #hud.hintson .tip{ bottom:calc(172px + var(--sab)); }
   body.touch #hud .respawn{ top:27%; }
   body.touch #hud .slain{ top:calc(27% + 112px); width:max-content; max-width:min(440px, 52vw); }
 }
@@ -4402,11 +4403,11 @@ const HUD = (() => {
   function hintChip(a, w) { const K = { kb: { move: 'WASD', jump: 'Space', boost: 'Shift', atk: 'LMB', block: 'RMB', lock: 'Q' }, pad: { move: 'L-stick', jump: 'A', boost: 'B', atk: 'X', block: 'LB', lock: 'Y' } }; let g = ''; if (Input.glyph) { try { g = Input.glyph(a) || ''; } catch (e) { g = ''; } } return `<span class="hn">${g || `<b>${(K[Input.device] || K.kb)[a] || a}</b>`} ${w}</span>`; }
   function hints(dt) {
     const S = Prog.S, ok = S && S.stats && (S.stats.matches || 0) < 3 && Match.mode !== 'training' && (Match.phase === 'play' || Match.phase === 'count');
-    if (!ok) { if (HN.on) { HN.on = false; cls(E.hints, 'on', false); } return; }
+    if (!ok) { if (HN.on) { HN.on = false; cls(E.hints, 'on', false); cls(E.hud, 'hintson', false); } return; }
     if (Match.phase === 'play') HN.t += dt;
     const want = HN.t > 0.6 && HN.t < 20;
     if (want && HN.dev !== Input.device) { HN.dev = Input.device; hid(E.hints, false); E.hints.innerHTML = Input.device === 'touch' ? '<span class="hn">Drag the left side to move · <b>Strike</b> tap, hold for heavy</span><span class="hn"><b>Block</b> as a blow lands to parry · <b>Boost</b> to go supersonic</span>' : hintChip('move', 'move') + hintChip('atk', 'strike · hold heavy') + hintChip('block', 'block · parry') + hintChip('boost', 'boost') + hintChip('jump', 'jump') + hintChip('lock', 'target cam'); }
-    if (want !== HN.on) { HN.on = want; cls(E.hints, 'on', want); }
+    if (want !== HN.on) { HN.on = want; cls(E.hints, 'on', want); cls(E.hud, 'hintson', want); }
   }  let numN = 0, numT = 0;
   function num(pos, text, cls) {
     if (!Game.settings.dmgNums) return;
@@ -4499,7 +4500,7 @@ const HUD = (() => {
   }
   function hudReset(on) {
     V.hp = -1; V.ghost = 1; V.ghostHold = 0; V.f = -1; V.buffs = ''; V.fury = -1; V.rs = -1;
-    hid(E.radar, true); RA.acc = 1; HN.t = 0; HN.dev = ''; HN.on = false; cls(E.hints, 'on', false); boardKey = '';
+    hid(E.radar, true); RA.acc = 1; HN.t = 0; HN.dev = ''; HN.on = false; cls(E.hints, 'on', false); cls(E.hud, 'hintson', false); boardKey = '';
     if (!on) { respawn2(null); favor(null); objective(null); rounds(null); finale(false); CB.n = 0; CB.on = false; hid(E.combo, true); ACC.el = null; }
   }
   const popEl = (e, from = 1.8, ms = 380, rot = '') => { if (e && e.animate && !REDUCED_MOTION) e.animate([{ transform: `${rot}scale(${from})`, opacity: 0.2 }, { transform: `${rot}scale(1)`, opacity: 1 }], { duration: ms, easing: 'cubic-bezier(.2,.9,.3,1.35)' }); };
@@ -4510,7 +4511,7 @@ const HUD = (() => {
     if (!FV.on) { FV.on = true; hid(E.favor, false); }
     const t = clamp(st.tier | 0, 0, 5), fq = t >= 5 ? 1 : Math.round(clamp(st.frac || 0, 0, 1) * 20) / 20, k = t + '|' + fq;
     if (k !== FV.k) { FV.k = k; const ps = E.fvPips.children; for (let i = 0; i < 5; i++) { const p = ps[i], v = i < t ? 1 : i === t ? fq : 0; cls(p, 'on', i < t); cls(p, 'cur', i === t); if (p._f !== v) { p._f = v; p.style.setProperty('--f', v); } } cls(E.favor, 't5', t >= 5); }
-    tx(E.fvName, st.name || 'Restless'); cls(E.favor, 'decay', !!st.decay && !st.up);
+    tx(E.fvName, st.name || 'Quiet'); cls(E.favor, 'decay', !!st.decay && !st.up);
     if (st.up) { pulse(E.favor, 'up', 900); popEl(E.fvPips.children[Math.max(0, t - 1)], 2.4, 500, 'skewX(-20deg) '); }
     const w = st.want || '';
     if (w !== FV.want) { FV.want = w; hid(E.fvWant, !w); if (w) E.fvWantT.innerHTML = `<span class="fw-long">The crowd wants</span><span class="fw-short">Wants</span> <b>${esc(w)}</b>`; }
