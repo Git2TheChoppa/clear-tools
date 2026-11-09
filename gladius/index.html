@@ -164,7 +164,7 @@ body.touch .dmg{ font-size:21px; } body.touch .dmg.crit{ font-size:28px; } body.
 
 /* ---------- HUD */
 #hud{ padding:0; --hs:1; --cw:108px; }
-#hud .hpanel{ background:linear-gradient(180deg, rgba(36,24,15,.86), rgba(18,11,7,.86)); border:1px solid rgba(224,165,96,.32); box-shadow:0 3px 10px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,220,160,.12); }
+#hud .objective,#hud .favor{ background:linear-gradient(180deg, rgba(36,24,15,.86), rgba(18,11,7,.86)); border:1px solid rgba(224,165,96,.32); box-shadow:0 3px 10px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,220,160,.12); }
 .scorebug{ position:absolute; left:50%; top:calc(10px + var(--sat)); transform:translateX(-50%) scale(var(--hs)); transform-origin:50% 0; display:flex; align-items:stretch; filter:drop-shadow(0 4px 10px rgba(0,0,0,.45)); }
 .sb-team{ position:relative; display:flex; align-items:center; gap:10px; padding:0 16px; min-width:150px; height:48px; font-weight:800; font-style:italic; --tc:#6aa8ff; }
 .sb-t0{ background:linear-gradient(180deg, #4a90f5, #1d5cc9 58%, #12398a); justify-content:flex-end; clip-path:polygon(16px 0,100% 0,100% 100%,0 100%); }
@@ -198,7 +198,7 @@ body.touch .dmg{ font-size:21px; } body.touch .dmg.crit{ font-size:28px; } body.
 .objective{ position:absolute; left:50%; top:calc(78px + var(--sat)); width:250px; margin-left:-125px; padding:5px 10px 6px; text-align:center; transform:scale(var(--hs)); transform-origin:50% 0; --oc:var(--gold); }
 .objective[hidden]{ display:none; }
 .objective.t0{ --oc:#5aa2ff; } .objective.t1{ --oc:#ff9a3c; }
-.ob-t b{ display:block; font-family:var(--display); font-weight:700; font-size:14px; letter-spacing:.08em; color:#ffe2a0; line-height:1.1; text-shadow:0 1px 2px #000; white-space:nowrap; }
+.ob-t b{ display:block; font-family:var(--display); font-weight:700; font-size:14px; letter-spacing:.08em; color:#ffe7a8; line-height:1.1; text-shadow:0 1px 2px #000; white-space:nowrap; }
 .ob-t small{ display:block; font-weight:700; font-size:13px; color:var(--marble); opacity:.85; line-height:1.15; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .ob-bar{ position:relative; display:block; height:6px; margin-top:4px; background:rgba(0,0,0,.55); border:1px solid rgba(243,233,214,.18); overflow:hidden; }
 .ob-bar i{ position:absolute; inset:0; background:var(--oc); box-shadow:0 0 8px var(--oc); transform-origin:left; transform:scaleX(0); transition:transform .12s linear; }
@@ -278,6 +278,7 @@ body.touch #hud .combo b{ font-size:32px; } body.touch #hud .combo span{ font-si
 .ann.b0{ --g1:#eef6ff; --g2:#9cc9ff; --g3:#2a64d6; --g4:#8fc3ff; --g5:#143a8a; --gl:rgba(47,141,255,.55); }
 .ann.b1{ --g1:#fff1e0; --g2:#ffc08a; --g3:#e0671a; --g4:#ffb46e; --g5:#7a320a; --gl:rgba(255,139,38,.55); }
 .ann.count{ font-size:clamp(76px, min(22vw, 30vh), 170px); letter-spacing:0; --g1:#ffffff; --g2:#fff0c4; --g3:#e0b050; --g4:#fff3d0; --g5:#b07a20; }
+.ann.count .as{ -webkit-text-stroke:.06em #1c0d04; }
 .ann.count .aw{ animation:anncount .7s cubic-bezier(.15,.9,.25,1.2) both; }
 .ann.round{ font-size:clamp(28px, min(7vw, 12vh), 64px); letter-spacing:.18em; }
 .ann.round .aw{ animation:annround .55s cubic-bezier(.2,.9,.3,1.2) both; }
@@ -297,7 +298,7 @@ body.touch #hud .combo b{ font-size:32px; } body.touch #hud .combo span{ font-si
 .tip.on{ opacity:1; }
 .hints{ position:absolute; left:50%; bottom:calc(78px + var(--sab)); transform:translateX(-50%); width:max-content; display:flex; gap:14px; flex-wrap:wrap; justify-content:center; max-width:min(720px, 80vw); font-weight:700; font-size:15px; color:var(--marble); opacity:0; transition:opacity .6s; pointer-events:none; }
 .hints.on{ opacity:.92; }
-.hn{ padding:3px 10px; background:rgba(15,9,5,.66); border:1px solid rgba(224,165,96,.3); white-space:nowrap; }
+.hn{ padding:2px 9px; background:rgba(15,9,5,.5); border-left:2px solid rgba(245,192,69,.7); white-space:nowrap; text-shadow:0 1px 2px #000; }
 .hn b{ display:inline-block; min-width:1.6em; padding:0 5px; margin-right:2px; text-align:center; color:#2a1606; background:var(--sand); font-weight:800; }
 .hints[hidden]{ display:none; }
 .vitals{ position:absolute; left:calc(22px + var(--sal)); bottom:calc(20px + var(--sab)); width:min(330px, 40vw); transform:scale(var(--hs)); transform-origin:0 100%; }
@@ -544,7 +545,7 @@ body.touch #hud .scoreboard{ max-height:calc(100% - 20px); overflow:hidden; padd
   body.touch #hud .hints{ bottom:calc(var(--cb) + 54px + var(--sab)); max-width:88vw; font-size:12px; gap:8px; }
   body.touch #hud .scoreboard{ top:calc(66px + var(--sat)); transform:translateX(-50%); width:96vw; }
   body.touch #hud .board th:nth-child(6),body.touch #hud .board td:nth-child(6),body.touch #hud .board th:nth-child(7),body.touch #hud .board td:nth-child(7){ display:none; }
-  body.touch #hud .hints{ flex-direction:column; align-items:center; gap:4px; } body.touch #hud .hn{ white-space:normal; text-align:center; }
+  body.touch #hud .hints{ flex-direction:column; align-items:center; gap:3px; font-size:11px; } body.touch #hud .hn{ white-space:normal; text-align:center; }
 }
 .fm-l{ font-weight:800; font-size:11px; letter-spacing:.14em; color:var(--sand); align-self:end; line-height:1; text-shadow:0 1px 2px #000; }
 #fmNum{ grid-column:2; grid-row:1; justify-self:end; font-weight:800; font-style:italic; font-size:16px; line-height:1; text-shadow:0 1px 2px #000; font-variant-numeric:tabular-nums; }
@@ -4509,7 +4510,7 @@ const HUD = (() => {
     if (!FV.on) { FV.on = true; hid(E.favor, false); }
     const t = clamp(st.tier | 0, 0, 5), fq = t >= 5 ? 1 : Math.round(clamp(st.frac || 0, 0, 1) * 20) / 20, k = t + '|' + fq;
     if (k !== FV.k) { FV.k = k; const ps = E.fvPips.children; for (let i = 0; i < 5; i++) { const p = ps[i], v = i < t ? 1 : i === t ? fq : 0; cls(p, 'on', i < t); cls(p, 'cur', i === t); if (p._f !== v) { p._f = v; p.style.setProperty('--f', v); } } cls(E.favor, 't5', t >= 5); }
-    tx(E.fvName, st.name || ''); cls(E.favor, 'decay', !!st.decay && !st.up);
+    tx(E.fvName, st.name || 'Restless'); cls(E.favor, 'decay', !!st.decay && !st.up);
     if (st.up) { pulse(E.favor, 'up', 900); popEl(E.fvPips.children[Math.max(0, t - 1)], 2.4, 500, 'skewX(-20deg) '); }
     const w = st.want || '';
     if (w !== FV.want) { FV.want = w; hid(E.fvWant, !w); if (w) E.fvWantT.innerHTML = `<span class="fw-long">The crowd wants</span><span class="fw-short">Wants</span> <b>${esc(w)}</b>`; }
