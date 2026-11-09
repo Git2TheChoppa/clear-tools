@@ -2918,6 +2918,8 @@ const AI = (() => {
           I.mx = ux * radial - uz * this.strafe * sw; I.mz = uz * radial + ux * this.strafe * sw; direct = true;
         }
       }
+      // objective pull (set by Decree): head for a point unless a fight is close enough to take; an explicit sidestep below still wins
+      if (this.goalT > S.time && this.mode !== 'retreat' && !(e && e.alive && dist(g, e) < 5.5)) { const dx = this.goal[0] - g.pos.x, dz = this.goal[1] - g.pos.z, l = Math.hypot(dx, dz) || 1; if (l > this.goal[2]) { I.mx = dx / l; I.mz = dz / l; boost = l > 16 && g.fury > 45; } else { I.mx = dx / l * 0.25; I.mz = dz / l * 0.25; } direct = true; }
       if (this.sideT > S.time) { I.mx = this.side[0]; I.mz = this.side[1]; direct = true; }
       if (!direct) { if (tx == null) I.mx = I.mz = 0; else { const dx = tx - g.pos.x, dz = tz - g.pos.z, l = Math.hypot(dx, dz); if (l > 0.3) { I.mx = dx / l; I.mz = dz / l; } else I.mx = I.mz = 0; } }
       for (const al of S.glads) if (al !== g && al.alive && al.team === g.team) { const dx = g.pos.x - al.pos.x, dz = g.pos.z - al.pos.z, l = Math.hypot(dx, dz); if (l < 2.6 && l > 0.01) { I.mx += dx / l * (2.6 - l) * 0.5; I.mz += dz / l * (2.6 - l) * 0.5; } }
@@ -3676,6 +3678,64 @@ const Mutators = (() => {
 })();
 __G.Mutators = Mutators;
 
+// ---------------------------------------------------------------- the Emperor's Decree: a hold-the-ring objective for team playlists
+const Decree = (() => {
+  const SPOTS = [[0, 0], [-13, 8], [13, -8], [-13, -8], [13, 8], [0, 12], [0, -12]], HOLD = 6, GOLD = new THREE.Color('#ffd24a');
+  const D = { on: false, enabled: false, x: 0, z: 0, r: 5.5, team: -1, contested: false, prog: [0, 0], next: 0, life: 0 };
+  let grp = null, ringM, beamM, last = -1, hudT = 0, aiT = 0, vis = 0, t = 0; const _c = new THREE.Color(), _p = V3();
+  function build() {
+    grp = new THREE.Group(); grp.visible = false;
+    const u = { uC: { value: new THREE.Color() }, uA: { value: 0 }, uP: { value: 0 }, uT: { value: 0 } };
+    ringM = new THREE.ShaderMaterial({ uniforms: u, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, polygonOffset: true, polygonOffsetFactor: -3,
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `uniform vec3 uC; uniform float uA, uP, uT; varying vec2 vUv;
+void main(){ vec2 p = vUv - 0.5; float r = length(p) * 2.0, ang = atan(p.x, p.y) / 6.2831853 + 0.5;
+ float band = smoothstep(0.85, 0.89, r) * (1.0 - smoothstep(0.96, 1.0, r)), glow = smoothstep(0.45, 0.88, r) * (1.0 - step(0.88, r));
+ float dash = 0.55 + 0.45 * step(0.5, fract(ang * 28.0 - uT * 0.35)), fill = step(ang, uP);
+ float a = band * mix(0.5 * dash, 1.25, fill) + glow * (0.07 + 0.05 * sin(uT * 3.0)) + fill * glow * 0.08;
+ gl_FragColor = vec4(uC * a * uA * 1.4, a * uA); }` });
+    const pg = new THREE.PlaneGeometry(2, 2); pg.rotateX(-Math.PI / 2); const ring = new THREE.Mesh(pg, ringM); ring.position.y = 0.05; ring.scale.set(D.r, 1, D.r); ring.renderOrder = 2; grp.add(ring);
+    beamM = new THREE.ShaderMaterial({ uniforms: { uC: u.uC, uA: u.uA }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+      vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: 'uniform vec3 uC; uniform float uA; varying vec2 vUv; void main(){ float f = pow(1.0 - vUv.y, 2.4) * 0.38 * uA; gl_FragColor = vec4(uC * f, f); }' });
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(D.r * 0.93, D.r * 0.93, 6, 48, 1, true), beamM); beam.position.y = 3; grp.add(beam);
+    grp.traverse((o) => { o.frustumCulled = false; }); __G.scene.add(grp);
+  }
+  function hud(force) { if (!HUD.objective) return; if (!D.on) { HUD.objective(null); return; } const lead = D.prog[0] >= D.prog[1] ? 0 : 1; HUD.objective({ text: "EMPEROR'S DECREE", sub: D.contested ? 'Contested' : D.team >= 0 ? TEAM[D.team].name + ' holds the ring' : 'Hold the ring · +2', team: D.team >= 0 ? D.team : (D.prog[lead] > 0 ? lead : -1), frac: clamp(Math.max(D.prog[0], D.prog[1]) / HOLD, 0, 1), x: D.x, z: D.z, r: D.r, life: D.life }); }
+  function reset(enabled) { D.on = false; D.enabled = !!enabled; D.next = 32; D.prog[0] = D.prog[1] = 0; D.team = -1; D.contested = false; if (grp) grp.visible = false; vis = 0; hud(); }
+  function call() {
+    if (!grp) build();
+    let i; do { i = (Math.random() * SPOTS.length) | 0; } while (i === last); last = i; D.x = SPOTS[i][0]; D.z = SPOTS[i][1];
+    D.on = true; D.life = 26; D.prog[0] = D.prog[1] = 0; D.team = -1; D.contested = false; grp.position.set(D.x, 0, D.z);
+    Bus.emit('decreeCall', { x: D.x, z: D.z, r: D.r }); hud();
+  }
+  function end(next) { D.on = false; D.next = next; D.team = -1; hud(); }
+  function update(dt, M) {
+    t += dt;
+    if (grp) { // visuals ease in/out and take the holder's colour
+      vis = damp(vis, D.on ? 1 : 0, 5, dt); grp.visible = vis > 0.01;
+      if (grp.visible) { const lead = D.prog[0] >= D.prog[1] ? 0 : 1; _c.copy(D.team >= 0 ? _c.set(TEAM[D.team].lite) : GOLD); ringM.uniforms.uC.value.lerp(_c, 1 - Math.exp(-8 * dt)); ringM.uniforms.uA.value = vis * (D.contested ? 0.75 + 0.25 * Math.sin(t * 16) : 1); ringM.uniforms.uP.value = clamp(D.prog[lead] / HOLD, 0, 1); ringM.uniforms.uT.value = t; }
+    }
+    if (!D.enabled || Sim.frozen || !Sim.play || M.phase !== 'play' || M.roundT > 0) return;
+    if (!D.on) { D.next -= dt; if (D.next <= 0 && M.clock > 40) call(); return; }
+    let c0 = 0, c1 = 0;
+    for (const g of M.glads) if (g.alive && g.pos.y < 3.5 && Math.hypot(g.pos.x - D.x, g.pos.z - D.z) < D.r) { if (g.team) c1++; else c0++; }
+    D.team = c0 > c1 ? 0 : c1 > c0 ? 1 : -1; D.contested = c0 > 0 && c1 > 0;
+    if (D.team >= 0) { D.prog[D.team] += dt * (1 + 0.25 * (Math.abs(c0 - c1) - 1)); if (D.prog[D.team] >= HOLD) { const team = D.team, inside = M.glads.filter((g) => g.alive && g.team === team && Math.hypot(g.pos.x - D.x, g.pos.z - D.z) < D.r); end(rand(42, 52)); Bus.emit('decree', { team, inside, x: D.x, z: D.z, r: D.r }); return; } }
+    D.life -= dt; if (D.life <= 0) { end(rand(36, 46)); Bus.emit('decreeLapse', {}); return; }
+    hudT -= dt; if (hudT <= 0) { hudT = 0.1; hud(); }
+    // bots: the closest living bot of each team anchors the ring; a second joins while the other side is ahead on the count
+    aiT -= dt; if (aiT > 0) return; aiT = 0.2;
+    for (const team of [0, 1]) {
+      const bots = M.glads.filter((g) => g.team === team && g.alive && g.brain && !g.passive).sort((a, b) => Math.hypot(a.pos.x - D.x, a.pos.z - D.z) - Math.hypot(b.pos.x - D.x, b.pos.z - D.z));
+      const n = Math.min(bots.length, D.prog[1 - team] > D.prog[team] + 1.5 || D.life < 10 ? 2 : 1);
+      for (let i = 0; i < n; i++) { const b = bots[i].brain; b.goal = [D.x, D.z, D.r * 0.5]; b.goalT = Sim.time + 0.45; }
+    }
+  }
+  return Object.assign(D, { reset, update, HOLD });
+})();
+__G.Decree = Decree;
+
 // ---------------------------------------------------------------- match flow + event director
 const Match = (() => {
   const M = { active: false, attract: false, mode: 'duel', phase: 'none', t: 0, clock: 180, ot: false, score: [0, 0], glads: [], me: null, lockOn: true, lockT: null, freeze: 0, slowT: 0, winner: -1, mvpId: -1, forfeited: false, count: 0, firstBlood: false, time: 0, paused: false, roster: null, isRematch: false, skipReq: false };
@@ -3731,6 +3791,7 @@ const Match = (() => {
     UI.show('hud'); HUD.show(true); HUD.E.hud.classList.remove('cel'); HUD.score(0, 0); HUD.clock(M.clock, false, mode === 'training'); HUD.sub(Prog.MODES[mode].s.toUpperCase());
     if (HUD.rounds) HUD.rounds(mode === 'duel' ? 0 : null, 0, M.target); if (HUD.finale) HUD.finale(false);
     if (M.mutator) { HUD.sub(M.mutator.name.toUpperCase()); HUD.ann(esc(M.mutator.name), 'gold', esc(M.mutator.desc), 2.8); }
+    Decree.reset(size > 1 && mode !== 'training');
     HUD.intro([0, 1].map((t) => M.glads.filter((g) => g.team === t)));
     Arena.gatesOpen = 0; Arena.excite = 0.45; Arena.gesture = 2; Cam.set('intro'); Sound.music('match', 0); Sound.cheer(0.8);
     if (UI.display) UI.display.root.visible = false;
@@ -3797,6 +3858,23 @@ const Match = (() => {
   }
   function initFlow() {
     Bus.on('respawn', (e) => { const g = e.g; if (g.underdog) { g.underdog = false; g.fury = Math.max(g.fury, 66); } });
+    Bus.on('decreeCall', (e) => {
+      if (!M.active) return;
+      HUD.ann('THE EMPEROR DECREES', 'gold', 'Hold the ring · +2', 1.8); HUD.tip('Stand in the ring with more gladiators than they have. Six seconds claims it.', 4.5);
+      Sound.kit.horn([[0, 0.22], [5, 0.22], [12, 0.6]], 0.2, 196); Sound.cheer(0.7); Arena.gesture = 2; MT.set('decreeWave', () => { if (Arena.gesture === 2) Arena.gesture = 0; }, 2600);
+      FX.ring(V3(e.x, 0.1, e.z), '#ffd24a', 0.5, e.r * 1.3, 0.7, 1, null, 0.16);
+    });
+    Bus.on('decree', (e) => {
+      if (!M.active || (M.phase !== 'play' && M.phase !== 'ot')) return;
+      M.score[e.team] += 2; HUD.score(M.score[0], M.score[1]);
+      for (const g of M.glads) if (g.team === e.team && g.alive) g.fury = Math.min(100, g.fury + 30);
+      for (const g of e.inside) { g.stats.decree = (g.stats.decree || 0) + 1; award(g, 'Decree', 75); }
+      const mine = M.me && M.me.team === e.team, c = TEAM[e.team].lite;
+      HUD.ann(mine ? 'DECREE CLAIMED' : 'DECREE LOST', mine ? 'gold' : 'red', TEAM[e.team].name + ' +2', 1.6);
+      Sound.cheer(1.3); Arena.cheer[e.team] = 1.2; Arena.excite = Math.min(1, Arena.excite + 0.3); FX.shake(0.2);
+      FX.ring(V3(e.x, 0.12, e.z), c, e.r * 0.4, e.r * 2.2, 0.7, 1, null, 0.2); FX.burstAt(true, e.x, 1, e.z, FX.qn(70), { life: [0.6, 1.5], speed: [3, 10], up: 1, upAdd: 0.5, s0: 0.34, s1: 0.02, col: [c, '#fff2b0', '#ffd24a'], f: [1, 8], g: -1, drag: 1.2, r: e.r * 0.8, flat: 0.2 });
+    });
+    Bus.on('decreeLapse', () => { if (M.active) HUD.tip('The decree lapses unclaimed.', 2.5); });
   }
   function endMatch(winner) {
     M.phase = 'end'; M.t = 0; M.winner = winner; Sim.play = false; Sim.respawns = false;
@@ -3826,7 +3904,7 @@ const Match = (() => {
     M.skipReq = false; skipBtn(true);
   }
   function finish() {
-    M.phase = 'done'; HUD.show(false); Input.enable(false); skipBtn(false); MT.clearAll(); Mutators.restore();
+    M.phase = 'done'; HUD.show(false); Input.enable(false); skipBtn(false); MT.clearAll(); Mutators.restore(); Decree.reset(false);
     for (const g of M.glads) g.pose = null;
     const me = M.me, training = M.mode === 'training';
     if (M.roster) { const bots = M.glads.filter((g) => !g.human); M.roster.bots.forEach((b, i) => { b.grudge = !!(bots[i] && bots[i].lastKiller === me && bots[i].team !== me.team); }); }
@@ -3838,7 +3916,7 @@ const Match = (() => {
   function pause() { if (!M.active || M.phase === 'celebrate' || M.phase === 'done') return; M.paused = true; UI.show('pause'); Sound.boost(false, 0); }
   function resume() { M.paused = false; UI.show('hud'); }
   function forfeit() { if (!M.active) return; M.paused = false; UI.show('hud'); M.forfeited = M.mode !== 'training'; M.winner = M.mode === 'training' ? -1 : 1 - M.me.team; finish(); }
-  function toMenu() { MT.clearAll(); Mutators.restore(); clearGlads(); M.active = false; M.phase = 'none'; startAttract(); UI.show('title'); Sound.music('menu'); }
+  function toMenu() { MT.clearAll(); Mutators.restore(); Decree.reset(false); clearGlads(); M.active = false; M.phase = 'none'; startAttract(); UI.show('title'); Sound.music('menu'); }
   // ---------- attract mode (bots sparring behind the menus)
   function startAttract() {
     if (M.attract) return; clearGlads(); Sim.reset(); M.attract = true; Arena.setPreset(Game.settings.arena !== 'random' && PRESETS[Game.settings.arena] ? Game.settings.arena : 'dusk');
@@ -3897,6 +3975,7 @@ const Match = (() => {
       else if (M.phase === 'celebrate') { FX.confetti(dt, 70); if (M.t > 4.8 || (M.t > 1.0 && skipWanted())) finish(); }
       HUD.clock(M.clock, M.ot, M.mode === 'training');
       if (M.mutator) Mutators.update(dt, M.glads);
+      Decree.update(dt, M);
       if (M.phase !== 'done') playerCtl();
       if (Input.down('board') !== HUD.board) HUD.scoreboard(Input.down('board'), M.glads, M.mvpId);
       // music/crowd intensity
