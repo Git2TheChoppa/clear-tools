@@ -3336,7 +3336,7 @@ const Prog = (() => {
     res.chal = [];
     if (!r.forfeit && !training) {
       const inc = { win: r.win ? 1 : 0, ko: st.ko, demo: st.demo, par: st.par, mvp: r.mvp ? 1 : 0, pads: st.pads, flawless: r.win && st.de === 0 ? 1 : 0, bless: st.bless, dmg: st.dmg, splat: st.splat, slam: st.slam, dh: st.dh, as: st.as, play: 1 };
-      for (const c of S.chal) { const p0 = c.p; c.p = Math.min(c.n, c.p + (inc[c.k] || 0)); const done = c.p >= c.n && p0 < c.n; res.chal.push({ t: c.t, p0, p: c.p, n: c.n, done }); if (done) { add('Challenge: ' + c.t, 300); grant(rollDrop(2)); } }
+      for (const c of S.chal) { const p0 = c.p; c.p = Math.min(c.n, c.p + (c.k in inc ? inc[c.k] : +st[c.k] || 0)); const done = c.p >= c.n && p0 < c.n; res.chal.push({ t: c.t, p0, p: c.p, n: c.n, done }); if (done) { add('Challenge: ' + c.t, 300); grant(rollDrop(2)); } }
       S.chal = S.chal.filter((c) => c.p < c.n); refill();
     }
     const xp = res.xpLines.reduce((a, b) => a + b[1], 0); res.xp = xp;
@@ -3662,7 +3662,7 @@ const Match = (() => {
   const GRUDGE = ['You got lucky.', 'Not this time.', 'Again? Fine.', 'The sand remembers.'];
   function start(mode, roster) {
     stopAttract(); clearGlads(); Sim.reset(); MT.clearAll();
-    Object.assign(M, { active: true, attract: false, mode, phase: 'intro', t: roster ? 1.5 : 0, clock: mode === 'training' ? 0 : 180, ot: false, score: [0, 0], freeze: 0, slowT: 0, winner: -1, mvpId: -1, forfeited: false, firstBlood: false, time: 0, paused: false, lockOn: Game.settings.lock, lockT: null, isRematch: !!roster, skipReq: false });
+    Object.assign(M, { active: true, attract: false, mode, phase: 'intro', t: roster ? 1.5 : 0, clock: mode === 'training' ? 0 : 180, ot: false, score: [0, 0], freeze: 0, slowT: 0, winner: -1, mvpId: -1, forfeited: false, firstBlood: false, time: 0, paused: false, lockOn: Game.settings.lock, lockT: null, isRematch: !!roster, skipReq: false, round: 1, roundT: 0, target: 7, finale: false, lastStand: false, deciding: null });
     Arena.setPreset(roster && PRESETS[roster.preset] ? roster.preset : pickPreset());
     const S = Prog.S, size = Prog.MODES[mode].size, sk = Prog.skillFor(mode), names = NAMESHUF();
     M.me = makeGlad({ id: 0, team: 0, name: S.name, human: true, cos: S.equip, skin: Rig.SKIN[0] });
@@ -3675,6 +3675,7 @@ const Match = (() => {
     M.roster = snapshotRoster(mode);
     kickoff(); Sim.frozen = true; Sim.play = false; Sim.respawns = true; Sim.blessOn = mode !== 'training';
     UI.show('hud'); HUD.show(true); HUD.E.hud.classList.remove('cel'); HUD.score(0, 0); HUD.clock(M.clock, false, mode === 'training'); HUD.sub(Prog.MODES[mode].s.toUpperCase());
+    if (HUD.rounds) HUD.rounds(mode === 'duel' ? 0 : null, 0, M.target); if (HUD.finale) HUD.finale(false);
     HUD.intro([0, 1].map((t) => M.glads.filter((g) => g.team === t)));
     Arena.gatesOpen = 0; Arena.excite = 0.45; Arena.gesture = 2; Cam.set('intro'); Sound.music('match', 0); Sound.cheer(0.8);
     if (UI.display) UI.display.root.visible = false;
@@ -3698,12 +3699,49 @@ const Match = (() => {
     if (on) skipEl.querySelector('span').textContent = Input.device === 'kb' ? 'Skip ▸ Enter' : 'Skip ▸';
   }
   function skipWanted() { const w = M.skipReq || Input.pressed('confirm') || Input.pressed('jump') || Input.pressed('atk') || Input.pressed('pause'); M.skipReq = false; return w; }
-  function beginCount(ot) { M.phase = 'count'; M.t = 0; prevCount = -1; HUD.E.intro.innerHTML = ''; Cam.set('play'); Cam.yaw = M.me.team ? -Math.PI / 2 : Math.PI / 2; Cam.pitch = 0.2; HUD.tip(pick(TIPS), 3.2); Arena.gesture = 0; if (ot) HUD.ann('OVERTIME', 'red', 'Next KO wins', 1.6); }
+  // quick = a between-rounds kickoff (duel): the count starts at 2 and names the round
+  function beginCount(ot, quick) {
+    M.phase = 'count'; M.t = quick ? 0.8 : 0; M.quick = !!quick; prevCount = -1; HUD.E.intro.innerHTML = ''; Cam.set('play'); Cam.yaw = M.me.team ? -Math.PI / 2 : Math.PI / 2; Cam.pitch = 0.2; Arena.gesture = 0;
+    if (!quick) HUD.tip(M.mode === 'duel' && !ot ? 'First to ' + ROMAN_N(M.target) + ' wins, or the most KOs when the clock runs out. Every KO is a fresh kickoff.' : pick(TIPS), M.mode === 'duel' && !ot ? 4.5 : 3.2);
+    if (M.mode === 'duel' && !ot) HUD.sub('ROUND ' + M.round);
+    if (ot) { HUD.sub(M.lastStand ? 'LAST STAND' : 'SUDDEN DEATH'); HUD.ann(M.lastStand ? 'LAST STAND' : 'OVERTIME', 'red', M.lastStand ? 'No respawns · last team standing' : 'Next KO wins', 1.6); }
+  }
+  const ROMAN_N = (n) => ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][n] || String(n);
   function go() {
-    M.phase = M.ot ? 'ot' : 'play'; Sim.frozen = false; Sim.play = true; Arena.gatesOpen = 1;
-    if (M.mode !== 'training') { Sim.bless.active = true; Sim.bless.next = Sim.bless.every; Sound.S.blessingSpawn(); }
-    HUD.ann('GO!', 'gold', '', 0.8); Sound.S.count(0); Sound.cheer(1);
-    for (const g of M.glads) if (g.brain && chance(0.25)) AI.chat(g, 'kickoff');
+    const later = M.round > 1 && !M.ot;
+    M.phase = M.ot ? 'ot' : 'play'; Sim.frozen = false; Sim.play = true; Arena.gatesOpen = 1; Sim.respawns = !(M.ot && M.lastStand);
+    // the Blessing opens every team kickoff; in a duel it appears on odd rounds (and always in the final thirty)
+    if (M.mode !== 'training') { Sim.bless.active = M.mode !== 'duel' || M.round % 2 === 1 || M.finale || M.ot; Sim.bless.warn = 0; Sim.bless.next = Sim.bless.every; if (Sim.bless.active) Sound.S.blessingSpawn(); }
+    HUD.ann(later ? 'FIGHT!' : 'GO!', 'gold', '', 0.8); Sound.S.count(0); Sound.cheer(later ? 0.5 : 1);
+    for (const g of M.glads) if (g.brain && chance(later ? 0.06 : 0.25)) AI.chat(g, 'kickoff');
+  }
+  // ---------- match structure: duel rounds, the final thirty, last-stand overtime, underdog respawns
+  // does this KO end the match? sudden death / last gladiator standing in overtime, or the duel target
+  function decides(v) {
+    if (M.phase === 'ot') return !M.lastStand || !M.glads.some((g) => g.team === v.team && g.alive);
+    return M.phase === 'play' && M.mode === 'duel' && M.score[1 - v.team] >= M.target;
+  }
+  function afterKo(e) {
+    const v = e.v, team = M.mode === 'doubles' || M.mode === 'standard' || Prog.MODES[M.mode].size > 1;
+    if (decides(v)) { endMatch(1 - v.team); return; }
+    if (M.phase === 'ot' && M.lastStand) { const left = M.glads.filter((g) => g.team === v.team && g.alive).length; if (left === 1) HUD.ann(TEAM[v.team].name.toUpperCase() + ' · LAST ONE', 'b' + v.team, '', 1.2); return; }
+    if (M.phase !== 'play') return;
+    if (M.mode === 'duel') { if (!(M.roundT > 0)) M.roundT = 1.3; return; }
+    // underdog: a team trailing by 3+ comes back faster and angrier
+    if (team && M.score[1 - v.team] - M.score[v.team] >= 3) { v.deadT = Math.min(v.deadT, 2.5); v.underdog = true; }
+  }
+  function nextRound() {
+    M.round++; M.roundT = 0; kickoff(); for (const p of Sim.pads) { p.active = true; p.t = 0; }
+    Sim.frozen = true; Sim.play = false; FX.screen(1, '#0a0604'); beginCount(false, true);
+  }
+  function startFinale() {
+    M.finale = true; if (HUD.finale) HUD.finale(true);
+    const d = Math.abs(M.score[0] - M.score[1]);
+    HUD.ann('FINAL THIRTY', 'red', d === 0 ? 'All square' : d === 1 ? 'One KO in it' : '', 1.5); Sound.cheer(1.1); Sound.S.blessingSpawn();
+    if (!Sim.bless.active) { Sim.bless.active = true; Sim.bless.warn = 0; Sim.bless.next = Sim.bless.every; Bus.emit('blessSpawn', {}); }
+  }
+  function initFlow() {
+    Bus.on('respawn', (e) => { const g = e.g; if (g.underdog) { g.underdog = false; g.fury = Math.max(g.fury, 66); } });
   }
   function endMatch(winner) {
     M.phase = 'end'; M.t = 0; M.winner = winner; Sim.play = false; Sim.respawns = false;
@@ -3783,10 +3821,21 @@ const Match = (() => {
     if (M.active && !M.paused) {
       M.t += dt;
       if (M.phase === 'intro' && (M.t > 2.9 || (M.t > 0.6 && (Input.pressed('jump') || Input.pressed('confirm') || Input.pressed('atk'))))) beginCount(false);
-      else if (M.phase === 'count') { const c = 3 - Math.floor(M.t / 0.8); if (c !== prevCount && c > 0) { prevCount = c; HUD.ann(String(c), '', '', 0.7); Sound.S.count(c); } if (M.t >= 2.4) go(); }
+      else if (M.phase === 'count') { const c = 3 - Math.floor(M.t / 0.8); if (c !== prevCount && c > 0) { prevCount = c; HUD.ann(String(c), 'count', M.quick && c === 2 ? 'Round ' + M.round : '', 0.7); Sound.S.count(c); } if (M.t >= 2.4) go(); }
       else if (M.phase === 'play') {
-        if (M.mode !== 'training') { M.clock -= dt; if (M.clock <= 0) { M.clock = 0; if (M.score[0] === M.score[1]) { M.ot = true; M.phase = 'otc'; M.t = 0; Sim.frozen = true; HUD.ann('OVERTIME', 'red', 'Next KO wins', 2); Sound.S.fanfare(false); } else endMatch(M.score[0] > M.score[1] ? 0 : 1); } }
-        M.time += dt;
+        if (M.roundT > 0) { // duel: the aftermath of a KO; the clock waits, then a dip to black covers the reset
+          M.roundT -= dt; if (M.roundT < 0.28) FX.screen(clamp(1 - M.roundT / 0.28, 0, 1), '#0a0604'); if (M.roundT <= 0) nextRound();
+        } else {
+          if (M.mode !== 'training') {
+            M.clock -= dt; if (!M.finale && M.clock <= 30 && M.clock > 0) startFinale();
+            if (M.clock <= 0) {
+              M.clock = 0;
+              if (M.score[0] === M.score[1]) { M.ot = true; M.lastStand = Prog.MODES[M.mode].size > 1; M.phase = 'otc'; M.t = 0; Sim.frozen = true; if (HUD.finale) HUD.finale(false); HUD.ann('OVERTIME', 'red', M.lastStand ? 'Last team standing' : 'Next KO wins', 2); Sound.S.fanfare(false); }
+              else endMatch(M.score[0] > M.score[1] ? 0 : 1);
+            }
+          }
+          M.time += dt;
+        }
       } else if (M.phase === 'ot') { M.clock += dt; M.time += dt; }
       else if (M.phase === 'otc' && M.t > 2) { kickoff(); for (const g of M.glads) { g.alive = true; g.hp = TUNE.HP; } Sim.frozen = true; Sim.play = false; beginCount(true); }
       else if (M.phase === 'end') { if (M.t > 1.2) skipBtn(true); if (M.t > 2.2) celebrate(); else if (M.t > 1.2 && skipWanted()) { celebrate(); finish(); } }
@@ -3796,8 +3845,8 @@ const Match = (() => {
       if (Input.down('board') !== HUD.board) HUD.scoreboard(Input.down('board'), M.glads, M.mvpId);
       // music/crowd intensity
       const close = Math.abs(M.score[0] - M.score[1]) <= 1;
-      Sound.setIntensity(M.ot ? 2 : M.phase === 'play' && M.clock < 60 && close ? 1 : 0);
-      Arena.excite = Math.max(M.phase === 'end' || M.phase === 'celebrate' ? 1 : clamp(0.28 + (M.ot ? 0.35 : 0) + (M.clock < 30 && close ? 0.25 : 0), 0, 1), Arena.excite - dt * 0.25);
+      Sound.setIntensity(M.ot || (M.finale && M.phase === 'play') ? 2 : M.phase === 'play' && M.clock < 60 && close ? 1 : 0);
+      Arena.excite = Math.max(M.phase === 'end' || M.phase === 'celebrate' ? 1 : clamp(0.28 + (M.ot ? 0.35 : 0) + (M.finale ? (close ? 0.3 : 0.15) : 0), 0, 1), Arena.excite - dt * 0.25);
     }
     if (M.paused) { renderRigs(0); Cam.update(0, me, M.lockT, M.lockOn); return; }
     // brains
@@ -3812,9 +3861,11 @@ const Match = (() => {
     crowdAudio();
     // camera & hud
     if (M.active && me) {
-      if (M.phase === 'play' || M.phase === 'ot' || M.phase === 'count' || M.phase === 'otc' || M.phase === 'end') Cam.set(me.alive ? 'play' : 'dead');
-      Cam.update(dt, me, M.lockT, M.lockOn);
-      if (M.phase !== 'done' && M.phase !== 'celebrate') { HUD.vitals(me, M.lockOn); HUD.respawn(!me.alive && Sim.respawns ? me.deadT : null); }
+      const spec = !me.alive && M.lastStand && M.phase === 'ot' ? M.glads.find((g) => g.team === me.team && g.alive) || null : null;
+      if (spec !== M.spec) { M.spec = spec; if (spec) HUD.tip('Spectating ' + spec.name, 3); }
+      if (M.phase === 'play' || M.phase === 'ot' || M.phase === 'count' || M.phase === 'otc' || M.phase === 'end') Cam.set(me.alive || spec ? 'play' : 'dead');
+      Cam.update(dt, spec || me, M.lockT, M.lockOn);
+      if (M.phase !== 'done' && M.phase !== 'celebrate') { HUD.vitals(me, M.lockOn); HUD.respawn(!me.alive && Sim.respawns && !(M.roundT > 0) ? me.deadT : null, me.underdog ? 'Underdog · fast respawn' : ''); }
       HUD.update(dt, M.glads, me, M.lockT, M.lockOn && (M.phase === 'play' || M.phase === 'ot'));
       Sound.boost(me.boosting && me.alive, Math.hypot(me.vel.x, me.vel.z));
       if (me.alive && me.ground && Math.hypot(me.vel.x, me.vel.z) > 7 && Math.random() < dt * 5) Sound.S.step(me.pos, 0.8);
@@ -3908,7 +3959,7 @@ const Match = (() => {
     if (me || mine) M.slowT = Math.max(M.slowT, 0.6);
     if (me) slainFeel(e);
     if (by && M.phase === 'play' && M.clock <= 15 && M.mode !== 'training') award(by, 'Clutch', 50);
-    const otEnd = M.ot && M.phase === 'ot', lead = Math.sign(M.score[0] - M.score[1]);
+    const otEnd = decides(v), lead = Math.sign(M.score[0] - M.score[1]);
     const late = !otEnd && M.phase === 'play' && M.clock <= 8 && lead !== 0 && lead !== leaderBefore && M.mode !== 'training';
     if (!by || !(otEnd || late)) return;
     hitstop(0.25); M.slowK = 0.18; M.slowT = otEnd ? 2.0 : 1.0;
@@ -3932,7 +3983,7 @@ const Match = (() => {
     HUD.slain(by ? 'Slain by ' + esc(by.name) + ' — ' + esc(kn(kind)) + (last && e.kind !== 'demo' ? ' (' + last.dmg + ')' : '') : 'You fell', tip); slainShown = true;
   }
   function init(sc) {
-    scene = sc;
+    scene = sc; initFlow();
     Bus.on('hit', (e) => {
       const ak = e.a && e.a.atk ? e.a.atk.kind : e.kind, asp = e.a ? Math.hypot(e.a.vel.x, e.a.vel.z) : 0; // combo step + attacker speed drive the hit audio (feel-5)
       FX.hit(e.pos, e.heavy || e.dmg >= 20); (e.heavy || e.dmg >= 20 ? Sound.S.heavyHit : Sound.S.hit)(e.pos, clamp(e.dmg / 12, 0.7, 1.6), ak, asp);
@@ -3984,7 +4035,7 @@ const Match = (() => {
       if (!M.active) return;
       const leaderBefore = Math.sign(M.score[0] - M.score[1]);
       if (M.phase === 'play' || M.phase === 'ot') M.score[1 - v.team]++;
-      HUD.score(M.score[0], M.score[1]); HUD.feed(by, v, e.kind);
+      HUD.score(M.score[0], M.score[1]); HUD.feed(by, v, e.kind); if (HUD.rounds && M.mode === 'duel') HUD.rounds(M.score[0], M.score[1], M.target);
       if (by) {
         const t = Sim.time; by.koTimes = by.koTimes.filter((x) => t - x < 6); by.koTimes.push(t);
         award(by, e.kind === 'demo' ? 'Demolition' : 'KO', e.kind === 'demo' ? 150 : 100);
@@ -4002,7 +4053,7 @@ const Match = (() => {
       if (isMe(v)) { HUD.ann("KO'D", 'red', by ? 'by ' + esc(by.name) : '', 1.4); FX.shake(0.5); }
       if (v.brain && chance(0.35)) AI.chat(v, e.kind === 'demo' ? 'demoed' : 'died');
       koLate(e, leaderBefore);
-      if (M.ot && M.phase === 'ot') endMatch(1 - v.team);
+      afterKo(e);
     });
   }
   let NAMEPOOL = null;
