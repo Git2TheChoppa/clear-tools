@@ -356,6 +356,24 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 #scr-career.on,#scr-settings.on{ display:flex; }
 #scr-career .scr-head,#scr-settings .scr-head{ width:min(920px, 100%); flex:none; }
 #scr-career .panel,#scr-settings .panel{ width:min(920px, 100%); flex:1 1 auto; min-height:0; max-height:none; margin:0; padding:16px 18px 20px; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:rgba(224,165,96,.45) transparent; background:linear-gradient(180deg, rgba(34,23,15,.94), rgba(22,14,9,.94)); }
+/* pause */
+#scr-pause{ display:none; place-items:center; }
+#scr-pause.on{ display:grid; }
+.pause-p{ width:min(440px, 92vw); max-height:100%; margin:0; padding:22px 26px 20px; text-align:center; background:linear-gradient(180deg, rgba(40,27,17,.97), rgba(22,14,9,.97)); box-shadow:0 20px 60px rgba(0,0,0,.6); }
+.pause-h{ margin:0 0 16px; font-family:var(--display); font-weight:900; font-size:36px; letter-spacing:.12em; color:#ffe08a; text-shadow:0 2px 0 #3a2208; }
+#scr-pause .menu-list{ align-items:stretch; gap:10px; }
+#scr-pause .menu-list .btn{ min-width:0; width:100%; min-height:54px; justify-content:center; font-size:22px; }
+#scr-pause .menu-list .btn.primary{ min-height:62px; font-size:27px; }
+.pause-n{ margin:14px 0 0; color:var(--dim); font-size:15px; }
+@media (max-height:520px){ .pause-p{ padding:12px 18px; } .pause-h{ font-size:26px; margin-bottom:8px; } #scr-pause .menu-list{ gap:7px; } #scr-pause .menu-list .btn{ min-height:44px; font-size:18px; } #scr-pause .menu-list .btn.primary{ min-height:50px; font-size:22px; } .pause-n{ margin-top:8px; font-size:13px; } }
+/* queue */
+.qspin{ position:relative; width:124px; height:124px; margin:0 auto 16px; }
+.qspin svg{ position:absolute; inset:0; width:100%; height:100%; }
+.qspin .laurel-spin{ margin:0; }
+.qsw{ inset:auto !important; left:41px !important; top:41px !important; width:42px !important; height:42px !important; fill:none; stroke:#ffe08a; stroke-width:2; stroke-linecap:round; }
+.qmode{ margin-top:8px; font-weight:800; font-size:15px; letter-spacing:.22em; text-transform:uppercase; color:var(--sand); }
+.queue p{ margin:14px auto 0; padding:10px 14px; max-width:min(44ch, 88vw); border-left:3px solid var(--gold); background:rgba(0,0,0,.3); text-align:left; line-height:1.3; }
+.queue p:empty{ display:none; }
 /* career */
 #careerBody .section-t{ display:flex; align-items:center; gap:10px; margin:20px 0 10px; padding-bottom:6px; border-bottom:1px solid rgba(224,165,96,.25); font-size:20px; }
 #careerBody > .section-t:first-child{ margin-top:0; }
@@ -410,6 +428,7 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 #armTabs{ flex:none; flex-wrap:nowrap; gap:6px; margin:0 -16px 8px; padding:0 16px 4px; overflow-x:auto; overflow-y:hidden; touch-action:pan-x; scrollbar-width:none; overscroll-behavior:contain; }
 #armTabs::-webkit-scrollbar{ display:none; }
 #armTabs .tab{ position:relative; flex:none; display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:46px; padding:2px 14px; line-height:1.05; white-space:nowrap; color:var(--marble); }
+#armTabs .tab.on{ color:#2a1606; }
 #armTabs .tab small{ font-size:12px; font-weight:700; opacity:.7; }
 #armTabs .tab.hasnew::after{ content:""; position:absolute; right:4px; top:4px; width:8px; height:8px; border-radius:50%; background:var(--blood); box-shadow:0 0 0 2px rgba(20,12,7,.9); }
 .arm-note{ flex:none; min-height:22px; margin:0 0 8px; font-size:15px; line-height:1.25; color:var(--dim); }
@@ -678,7 +697,17 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
 }
 #loading{ position:fixed; inset:0; z-index:20; display:grid; place-items:center; background:#1a110b; transition:opacity .5s; }
 #loading.gone{ opacity:0; pointer-events:none; }
-#loading h1{ font-family:var(--display); font-weight:900; font-size:56px; letter-spacing:.08em; color:#e9b44c; margin:0; text-align:center; }
+#loading{ background:radial-gradient(ellipse 70% 60% at 50% 45%, #3a2414 0%, #1a110b 70%); }
+.lwrap{ display:flex; flex-direction:column; align-items:center; width:min(440px, 86vw); text-align:center; }
+#loading .logo{ font-size:min(14vw, 76px); padding-left:.07em; }
+#loading .sublogo{ justify-content:center; margin:2px 0 26px; font-size:14px; }
+.lbar{ position:relative; width:100%; height:6px; overflow:hidden; background:rgba(255,255,255,.08); border:1px solid rgba(224,165,96,.35); }
+.lbar i{ position:absolute; inset:0; background:linear-gradient(90deg, #a86a1c, #ffd66e); transform-origin:0 50%; transform:scaleX(var(--p, .04)); transition:transform .35s ease-out; }
+.lbar::after{ content:""; position:absolute; top:0; bottom:0; width:30%; background:linear-gradient(90deg, transparent, rgba(255,250,230,.5), transparent); animation:lbarShine 1.4s linear infinite; }
+@keyframes lbarShine{ from{ transform:translateX(-100%); } to{ transform:translateX(340%); } }
+#loading p.ltip{ min-height:2.6em; margin-top:18px; font-size:16px; line-height:1.3; color:var(--sand); opacity:.85; transition:opacity .3s; }
+#loading.err .lbar,#loading.err .ltip{ display:none; }
+@media (prefers-reduced-motion: reduce){ .lbar::after,#loading .logo::after{ animation:none; } }
 #loading p{ margin:10px 0 0; text-align:center; color:var(--dim); font-size:19px; }
 #loading.err p{ color:#ff8a7a; max-width:46ch; }
 </style>
@@ -744,8 +773,9 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
 
   <section id="scr-queue" class="screen menu scrim-full">
     <div class="queue">
-      <svg class="laurel-spin" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="40" fill="none" stroke="#5a3a1c" stroke-width="6"/><path d="M50 10 A40 40 0 0 1 90 50" fill="none" stroke="#f5c045" stroke-width="6" stroke-linecap="round"/></svg>
+      <div class="qspin" aria-hidden="true"><svg class="qwreath" viewBox="0 0 120 120"><g fill="#c9a03a"><ellipse cx="22" cy="78" rx="9" ry="4" transform="rotate(-62 22 78)"/><ellipse cx="17" cy="58" rx="9" ry="4" transform="rotate(-88 17 58)"/><ellipse cx="22" cy="38" rx="9" ry="4" transform="rotate(-118 22 38)"/><ellipse cx="35" cy="22" rx="9" ry="4" transform="rotate(-145 35 22)"/><ellipse cx="98" cy="78" rx="9" ry="4" transform="rotate(62 98 78)"/><ellipse cx="103" cy="58" rx="9" ry="4" transform="rotate(88 103 58)"/><ellipse cx="98" cy="38" rx="9" ry="4" transform="rotate(118 98 38)"/><ellipse cx="85" cy="22" rx="9" ry="4" transform="rotate(145 85 22)"/></g><path d="M44 104 Q16 92 14 60 M76 104 Q104 92 106 60" stroke="#a07a24" stroke-width="3" fill="none"/></svg><svg class="laurel-spin" viewBox="0 0 120 120"><circle cx="60" cy="60" r="30" fill="none" stroke="rgba(245,192,69,.18)" stroke-width="5"/><path d="M60 30 A30 30 0 0 1 90 60" fill="none" stroke="#ffd66e" stroke-width="5" stroke-linecap="round"/></svg><svg class="qsw" viewBox="0 0 24 24"><path d="M4 4l10.5 10.5M20 4L9.5 14.5M6.5 13.5l4 4M17.5 13.5l-4 4M5 19l2.5-2.5M19 19l-2.5-2.5"/></svg></div>
       <h2 id="qTitle">Finding opponents</h2>
+      <div class="qmode" id="qMode"></div>
       <p id="qTip"></p>
     </div>
   </section>
@@ -783,14 +813,14 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
   </section>
 
   <section id="scr-pause" class="screen menu scrim-full">
-    <div class="panel plaque" style="width:min(420px,92vw);text-align:center;margin-top:8vh">
-      <h2 style="font-family:var(--display);margin:0 0 18px;font-size:34px">Paused</h2>
-      <div class="menu-list" style="align-items:center">
+    <div class="panel plaque pause-p">
+      <h2 class="pause-h">Paused</h2>
+      <div class="menu-list stag up">
         <button class="btn primary" id="btnResume"><span>Resume</span></button>
         <button class="btn" id="btnPauseSet"><span>Settings</span></button>
         <button class="btn" id="btnForfeit"><span>Forfeit match</span></button>
       </div>
-      <p style="color:var(--dim);font-size:16px;margin:16px 0 0">Forfeiting counts as a loss in ranked playlists.</p>
+      <p class="pause-n">Forfeiting counts as a loss in ranked playlists.</p>
     </div>
   </section>
 
@@ -841,7 +871,7 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
   <div class="tbtn" data-b="atk">Strike</div>
 </div>
 
-<div id="loading"><div><h1>GLADIUS</h1><p id="loadMsg">Raking the sand…</p></div></div>
+<div id="loading"><div class="lwrap"><h1 class="logo" data-t="GLADIUS"><span>GLADIUS</span></h1><div class="sublogo"><i></i>Arena League<i></i></div><div class="lbar"><i></i></div><p id="loadMsg">Raking the sand…</p><p class="ltip" id="loadTip"></p></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script>
@@ -5120,6 +5150,7 @@ __G.Meta = Meta;
 // ---------------------------------------------------------------- menus & screens
 const TIPS = ['Tap Block just as a blow lands to PARRY and stagger your foe.', 'Hit anyone at supersonic speed to DEMOLISH them. Blocking head-on stops it.', 'Hold Strike to charge a heavy blow. It breaks guards.', 'Jump, then jump again with a direction to dodge-strike.', 'Hold Strike in the air to Meteor Slam the sand.', 'Launch a foe into the wall for a WALL SPLAT.', 'Amphorae refill all your fury. Small pads give a little.', "Grab the Emperor's Blessing for full fury and gilded damage.", 'Block + Boost is a shield charge. Fast enough, it demolishes.', 'Boost in the air and hold Jump to fly.', 'Faster strikes hit harder. Momentum is damage.', 'Jump at the wall in mid-air to wall-kick.'];
 const UI = (() => {
+  { const lt = document.getElementById('loadTip'); if (lt) { let i = Math.floor(Math.random() * TIPS.length); const nx = () => { if (!lt.isConnected) { clearInterval(iv); return; } lt.textContent = TIPS[i++ % TIPS.length]; }; const iv = setInterval(nx, 2600); nx(); } }
   let cur = 'title', prevScr = 'title', armTab = 'helmet', lastRes = null, revealQ = [], revealAfter = 'results', display = null;
   const scr = (n) => document.getElementById('scr-' + n) || document.getElementById(n);
   const svgI = (d) => `<svg class="mi" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
@@ -6229,15 +6260,15 @@ const Match = (() => {
   // keyed timers scoped to the match flow (bugs-13): a new queue/rematch cancels the previous one, finish()/toMenu() clear them
   const MT = { m: {}, set(k, fn, ms) { clearTimeout(this.m[k]); this.m[k] = setTimeout(() => { delete this.m[k]; fn(); }, ms); }, clear(k) { clearTimeout(this.m[k]); delete this.m[k]; }, clearAll() { for (const k in this.m) this.clear(k); } };
   function queueTip(mode) {
-    const S = Prog.S, ranked = mode !== 'training', nu = ranked && Prog.nextUp ? Prog.nextUp(mode) : [];
+    const S = Prog.S, ranked = S.mmr[mode] != null, nu = ranked && Prog.nextUp ? Prog.nextUp(mode) : [];
     if (ranked && S.streak >= 2 && chance(0.5)) return `Keep the streak alive · ×${S.streak} and counting`;
     if (nu.length && chance(0.5)) return nu[0].q;
     return pick(TIPS);
   }
   function queue(mode) {
     Sound.init(); M.mode = mode; if (Prog.S && Prog.MODES[mode]) Prog.S.lastMode = mode; UI.show('queue');
-    const tier = mode !== 'training' && Prog.S.games[mode] >= 3 ? Prog.rankOf(Prog.S.mmr[mode]).name.replace(/ [IVX]+$/, '') + '-tier rivals' : '';
-    $('#qTitle').textContent = mode === 'training' ? 'Preparing the arena' : tier ? 'Finding ' + tier : 'Finding opponents'; $('#qTip').textContent = queueTip(mode);
+    const tier = Prog.S.mmr[mode] != null && Prog.S.games[mode] >= 3 ? Prog.rankOf(Prog.S.mmr[mode]).name.replace(/ [IVX]+$/, '') + '-tier rivals' : '';
+    $('#qTitle').textContent = mode === 'training' ? 'Preparing the arena' : tier ? 'Finding ' + tier : 'Finding opponents'; $('#qTip').textContent = queueTip(mode); const qm = $('#qMode'), md = Prog.MODES[mode]; if (qm) qm.textContent = md ? `${md.n} · ${md.s}${Prog.S.mmr[mode] != null ? ' · Ranked' : md.unranked ? ' · Unranked' : ''}` : '';
     MT.set('queue', () => { if (UI.cur === 'queue') start(mode); }, mode === 'training' ? 300 : rand(400, 800));
   }
   // loop-1: the roster is everything start() rolled for the bots, so a rematch replays the same names, skills, looks and arena
