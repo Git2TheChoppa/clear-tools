@@ -1302,7 +1302,7 @@ const PRESETS = {
 };
 const Arena = (() => {
   const { A, B, WALL } = ARENA;
-  const R = { pads: [], braziers: [], preset: 'dusk', crowdU: null, gatesOpen: 1, gateY: 0, excite: 0.2, cheer: [0, 0], wave: -1, waveT: 0, gesture: 0, gestT: 0 };
+  const R = { pads: [], braziers: [], preset: 'dusk', fire: 0.85, fireL: 0, crowdU: null, gatesOpen: 1, gateY: 0, excite: 0.2, cheer: [0, 0], wave: -1, waveT: 0, gesture: 0, gestT: 0 };
   let scene, renderer, Q, group, sky, sun, hemi, envRT = null, pmrem, padMesh, padState, orbMesh, amphorae = [], blessG, beam, beamMat, wreath, emperorArm, bars = [], nightLights = [], coalMat, floorMat;
   const eP = (t) => [A * Math.cos(t), B * Math.sin(t)];
   const eN = (t) => { const nx = Math.cos(t) / A, nz = Math.sin(t) / B, l = Math.hypot(nx, nz); return [nx / l, nz / l]; };
@@ -1381,7 +1381,8 @@ const Arena = (() => {
     }
     scene.add(sun); scene.add(sun.target);
     const nl = Q === 2 ? 4 : Q === 1 ? 2 : 0;
-    for (let i = 0; i < nl; i++) { const b = R.braziers[(i * 3 + 1) % R.braziers.length]; const l = new THREE.PointLight(0xff9a48, 90, 46, 1.6); l.position.set(b.x, b.y + 1.4, b.z); l.visible = false; scene.add(l); nightLights.push(l); }
+    // brazier lights stay in the scene at all times: toggling .visible changes the light count, which recompiles every lit material (the old preset stall)
+    for (let i = 0; i < nl; i++) { const b = R.braziers[(i * 3 + 1) % 12]; const l = new THREE.PointLight(0xff9a48, 0, 46, 1.6); l.position.set(b.x, b.y + 1.4, b.z); scene.add(l); nightLights.push(l); }
     scene.fog = new THREE.Fog(0xffffff, 80, 500);
   }
   function buildCrowd(rows, segs) {
@@ -1623,17 +1624,23 @@ void main(){ vec3 d = normalize(vDir); float y = d.y;
     }));
     sky.frustumCulled = false; group.add(sky);
   }
+  // The little scene the reflections are baked from is built once and re-coloured per preset (re-creating and disposing its
+  // materials on every switch threw their shader programs away, so each preset change recompiled them).
+  let envS = null;
   function makeEnv(p) {
-    const s = new THREE.Scene(), geo = new THREE.SphereGeometry(10, 32, 16), cols = [], pos = geo.attributes.position;
-    const top = new THREE.Color(p.top), hor = new THREE.Color(p.hor), bot = new THREE.Color(p.bot).lerp(new THREE.Color('#b08a5a'), 0.5);
-    for (let i = 0; i < pos.count; i++) { const y = pos.getY(i) / 10, c = y > 0 ? hor.clone().lerp(top, Math.pow(y, 0.6)) : hor.clone().lerp(bot, Math.pow(-y, 0.5)); cols.push(c.r, c.g, c.b); }
-    geo.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
-    s.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
-    const sm = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(p.sunCol).multiplyScalar(p.sunI * 5) }));
-    sm.position.set(...p.sun).normalize().multiplyScalar(8); s.add(sm);
-    const rt = pmrem.fromScene(s, 0.03);
-    s.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
-    return rt;
+    if (!envS) {
+      const s = new THREE.Scene(), geo = new THREE.SphereGeometry(10, 32, 16);
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(geo.attributes.position.count * 3), 3));
+      s.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })));
+      const sm = new THREE.Mesh(new THREE.SphereGeometry(0.9, 12, 8), new THREE.MeshBasicMaterial({ color: 0xffffff })); s.add(sm);
+      envS = { s, geo, sm, top: new THREE.Color(), hor: new THREE.Color(), bot: new THREE.Color(), c: new THREE.Color(), sand: new THREE.Color('#b08a5a') };
+    }
+    const E = envS, pos = E.geo.attributes.position, col = E.geo.attributes.color;
+    E.top.set(p.top); E.hor.set(p.hor); E.bot.set(p.bot).lerp(E.sand, 0.5);
+    for (let i = 0; i < pos.count; i++) { const y = pos.getY(i) / 10; if (y > 0) E.c.copy(E.hor).lerp(E.top, Math.pow(y, 0.6)); else E.c.copy(E.hor).lerp(E.bot, Math.pow(-y, 0.5)); col.setXYZ(i, E.c.r, E.c.g, E.c.b); }
+    col.needsUpdate = true;
+    E.sm.material.color.set(p.sunCol).multiplyScalar(p.sunI * 5); E.sm.position.set(...p.sun).normalize().multiplyScalar(8);
+    return pmrem.fromScene(E.s, 0.03);
   }
   function setPreset(name) {
     const p = PRESETS[name] || PRESETS.dusk; R.preset = name;
@@ -1644,7 +1651,7 @@ void main(){ vec3 d = normalize(vDir); float y = d.y;
     scene.fog.color.set(p.fog); scene.fog.near = p.fogN; scene.fog.far = p.fogF;
     renderer.toneMappingExposure = p.exp;
     coalMat.color.set('#ff7a2a').multiplyScalar(0.6 + p.fire * 0.8);
-    nightLights.forEach((l) => (l.visible = p.pl));
+    R.fireL = p.fireL != null ? p.fireL : p.pl ? 90 : 0;
     if (envRT) envRT.dispose();
     envRT = makeEnv(p); scene.environment = envRT.texture;
     R.fire = p.fire;
@@ -1682,8 +1689,9 @@ void main(){ vec3 d = normalize(vDir); float y = d.y;
     emperorArm.rotation.x = damp(emperorArm.rotation.x, ea + (R.gesture === 2 ? Math.sin(t * 6) * 0.3 : 0), 5, dt);
     emperorArm.rotation.z = damp(emperorArm.rotation.z, R.gesture === -1 ? Math.PI : 0, 5, dt);
     sky.material.uniforms.uTime.value = t;
-    // fires
+    // fires (the brazier lights breathe with the flames; intensity 0 by day, never toggled)
     if (typeof FX !== 'undefined' && FX.ready) for (const br of R.braziers) FX.fire(br, R.fire, dt);
+    for (let i = 0; i < nightLights.length; i++) nightLights[i].intensity = R.fireL * (0.86 + 0.08 * Math.sin(t * 11.3 + i * 1.7) + 0.06 * Math.sin(t * 23.7 + i * 2.9) + 0.05 * Math.sin(t * 5.1 + i * 4.1));
   }
   function shadowFollow(x, z) { sun.target.position.set(0, 0, 0); }
   return Object.assign(R, { build, setPreset, update, shadowFollow, eP, eN, get sky() { return sky; } });
