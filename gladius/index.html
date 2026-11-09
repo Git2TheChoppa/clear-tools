@@ -5957,8 +5957,10 @@ const Match = (() => {
   function celebrate() {
     M.phase = 'celebrate'; M.t = 0; Sim.frozen = true; Input.enable(false); HUD.E.hud.classList.add('cel'); HUD.scoreboard(false);
     const w = M.glads.filter((g) => g.team === M.winner), l = M.glads.filter((g) => g.team !== M.winner);
-    w.forEach((g, i) => { Sim.place(g, (i - (w.length - 1) / 2) * 2.4, 2, 0); g.alive = true; g.invT = 0; g.hp = Math.max(g.hp, 1); g.pose = 'victory'; });
-    l.forEach((g, i) => { Sim.place(g, (i - (l.length - 1) / 2) * 2.4, -3, 0); g.alive = true; g.invT = 0; g.pose = 'kneel'; });
+    // winners show their equipped emote in turn (the human, when among them, goes first), then hold the victory pose
+    w.sort((a, b) => (b.human ? 1 : 0) - (a.human ? 1 : 0)); const xs = w.map((g, j) => (j - (w.length - 1) / 2) * 2.4).sort((a, b) => Math.abs(a) - Math.abs(b));
+    w.forEach((g, i) => { Sim.place(g, xs[i], 2, 0); g.alive = true; g.invT = 0; g.hp = Math.max(g.hp, 1); g.pose = 'victory'; const em = Rig.EMOTES && Rig.EMOTES[g.cos && g.cos.emote]; g.cel = em ? { at: 0.9 + i * 0.5, dur: em.dur, pose: em.pose } : null; });
+    l.forEach((g, i) => { Sim.place(g, (i - (l.length - 1) / 2) * 2.4, -3, 0); g.alive = true; g.invT = 0; g.pose = 'kneel'; g.cel = null; });
     Cam.focus.set(0, 0, 0.5); Cam.set('end'); Arena.gesture = M.winner === M.me.team ? 1 : -1; HUD.E.ann.innerHTML = ''; $('#touch').hidden = true;
     M.skipReq = false; skipBtn(true);
   }
@@ -6031,7 +6033,7 @@ const Match = (() => {
       } else if (M.phase === 'ot') { M.clock += dt; M.time += dt; }
       else if (M.phase === 'otc' && M.t > 2) { kickoff(); for (const g of M.glads) { g.alive = true; g.hp = TUNE.HP; } Sim.frozen = true; Sim.play = false; beginCount(true); }
       else if (M.phase === 'end') { if (M.t > 1.2) skipBtn(true); if (M.t > 2.2) celebrate(); else if (M.t > 1.2 && skipWanted()) { celebrate(); finish(); } }
-      else if (M.phase === 'celebrate') { FX.confetti(dt, 70); if (M.t > 4.8 || (M.t > 1.0 && skipWanted())) finish(); }
+      else if (M.phase === 'celebrate') { FX.confetti(dt, 70); for (const g of M.glads) { const c = g.cel; if (c) g.pose = M.t >= c.at && M.t < c.at + c.dur ? c.pose : 'victory'; } if (M.t > 4.8 || (M.t > 1.0 && skipWanted())) finish(); }
       HUD.clock(M.clock, M.ot, M.mode === 'training');
       if (M.mutator) Mutators.update(dt, M.glads);
       Decree.update(dt, M); Favor.update(dt, M);
