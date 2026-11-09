@@ -185,11 +185,11 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 .sb-rounds{ position:absolute; top:100%; left:0; right:0; display:flex; margin-top:5px; pointer-events:none; }
 .sb-rounds[hidden]{ display:none; }
 .sb-rounds .rp{ flex:1 1 0; display:flex; gap:5px; align-items:center; }
-.sb-rounds .rp.t0{ justify-content:flex-end; padding-right:6px; } .sb-rounds .rp.t1{ padding-left:6px; }
+.sb-rounds .rp.t0{ flex-direction:row-reverse; justify-content:flex-start; padding-right:6px; } .sb-rounds .rp.t1{ padding-left:6px; }
 .sb-rounds .rs{ width:var(--cw); flex:none; }
 .sb-rounds i{ display:block; width:9px; height:9px; transform:rotate(45deg); background:rgba(12,7,4,.75); border:1px solid rgba(243,233,214,.4); }
 .sb-rounds .t0 i.on{ background:#7fb6ff; border-color:#d8e9ff; box-shadow:0 0 6px #2f8dff; } .sb-rounds .t1 i.on{ background:#ffad5e; border-color:#ffe6c8; box-shadow:0 0 6px #ff8b26; }
-.sb-rounds i.mp{ border-color:var(--gold); }
+.sb-rounds i.mp{ border-color:var(--gold); animation:finpulse .6s ease-in-out infinite alternate; }
 .objective{ position:absolute; left:50%; top:calc(78px + var(--sat)); width:250px; margin-left:-125px; padding:5px 10px 6px; text-align:center; transform:scale(var(--hs)); transform-origin:50% 0; --oc:var(--gold); }
 .objective[hidden]{ display:none; }
 .objective.t0{ --oc:#5aa2ff; } .objective.t1{ --oc:#ff9a3c; }
@@ -217,7 +217,7 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 @keyframes fvup{ 0%{ opacity:0; transform:scale(1.8); } 40%{ opacity:1; } }
 .fv-want{ display:flex; align-items:center; gap:8px; margin-top:4px; font-weight:700; font-size:13px; color:var(--marble); white-space:nowrap; }
 .fv-want[hidden]{ display:none; }
-.fv-want b{ color:var(--gold); }
+.fv-want b{ color:var(--gold); } .fv-want .fw-short{ display:none; }
 .fv-wbar{ position:relative; flex:1; min-width:40px; height:4px; background:rgba(0,0,0,.55); overflow:hidden; }
 .fv-wbar i{ position:absolute; inset:0; background:linear-gradient(90deg, #ff9a2a, #ffd66e); transform-origin:left; }
 .radar{ position:absolute; left:calc(16px + var(--sal)); top:calc(14px + var(--sat)); width:168px; height:120px; transform:scale(var(--hs)); transform-origin:0 0; pointer-events:none; }
@@ -240,11 +240,34 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 @keyframes accin{ from{ opacity:0; transform:translateX(40px) scale(.9); } }
 .combo{ position:absolute; left:calc(22px + var(--sal)); top:44%; display:flex; align-items:baseline; gap:6px; transform:scale(var(--hs)); transform-origin:0 50%; pointer-events:none; transition:opacity .35s, transform .35s; }
 .combo[hidden]{ display:none; }
-.announce{ position:absolute; left:0; right:0; top:26%; text-align:center; pointer-events:none; }
-.ann{ display:inline-block; font-family:var(--display); font-weight:900; font-size:clamp(44px, 8vw, 96px); letter-spacing:.06em; line-height:1; color:#fff; text-shadow:0 4px 0 rgba(0,0,0,.45), 0 0 30px rgba(0,0,0,.5); animation:annin .5s cubic-bezier(.2,.9,.3,1.35) both; }
-.ann.gold{ color:#ffd66e; } .ann.b0{ color:#8fc3ff; } .ann.b1{ color:#ffb46e; } .ann.red{ color:#ff6a5c; }
-.ann-sub{ display:block; margin-top:8px; font-family:var(--ui); font-weight:800; font-style:italic; font-size:24px; letter-spacing:.02em; color:var(--marble); text-shadow:0 2px 3px #000; }
-@keyframes annin{ from{ opacity:0; transform:scale(1.6); } }
+.announce{ position:absolute; left:0; right:0; top:26%; height:0; text-align:center; pointer-events:none; }
+.ann{ position:absolute; left:50%; top:0; width:max-content; max-width:94vw; display:flex; flex-direction:column; align-items:center; transform:translateX(-50%); font-family:var(--display); font-weight:900; font-size:clamp(30px, min(9vw, 16vh), 92px); letter-spacing:.05em; line-height:1.05; --g1:#fff7d6; --g2:#ffd66e; --g3:#c98a1a; --g4:#ffe7a0; --g5:#a8661a; --gl:rgba(255,176,50,.55); }
+.ann .aw{ position:relative; display:block; animation:annin .5s cubic-bezier(.2,.9,.3,1.35) both; }
+.ann .at{ position:relative; display:block; padding:0 .08em; color:transparent; background:linear-gradient(180deg, var(--g1) 0%, var(--g2) 36%, var(--g3) 54%, var(--g4) 72%, var(--g5) 100%); -webkit-background-clip:text; background-clip:text; }
+.ann .as{ position:absolute; inset:0; display:block; padding:0 .08em; color:#1c0d04; -webkit-text-stroke:.12em #1c0d04; text-shadow:0 .06em 0 #0e0602, 0 0 .4em var(--gl), 0 0 .9em var(--gl); }
+.ann .at::after{ content:attr(data-t); position:absolute; inset:0; padding:0 .08em; color:transparent; background:linear-gradient(105deg, transparent 38%, rgba(255,255,255,.95) 48%, transparent 58%) no-repeat; background-size:250% 100%; background-position:120% 0; -webkit-background-clip:text; background-clip:text; animation:annshine .75s .18s ease-out both; }
+.ann.long{ font-size:clamp(24px, min(6.4vw, 11vh), 66px); letter-spacing:.03em; }
+.ann.long .at,.ann.long .as{ white-space:normal; text-wrap:balance; }
+.ann.fire{ --g1:#fff6cf; --g2:#ffc04a; --g3:#ff6a1a; --g4:#ffb347; --g5:#a8240c; --gl:rgba(255,90,20,.65); }
+.ann.red{ --g1:#ffe1da; --g2:#ff8a7a; --g3:#d2332a; --g4:#ff6a5c; --g5:#6e0e08; --gl:rgba(220,40,30,.55); }
+.ann.b0{ --g1:#eef6ff; --g2:#9cc9ff; --g3:#2a64d6; --g4:#8fc3ff; --g5:#143a8a; --gl:rgba(47,141,255,.55); }
+.ann.b1{ --g1:#fff1e0; --g2:#ffc08a; --g3:#e0671a; --g4:#ffb46e; --g5:#7a320a; --gl:rgba(255,139,38,.55); }
+.ann.count{ font-size:clamp(76px, min(22vw, 30vh), 170px); letter-spacing:0; --g1:#ffffff; --g2:#fff0c4; --g3:#e0b050; --g4:#fff3d0; --g5:#b07a20; }
+.ann.count .aw{ animation:anncount .7s cubic-bezier(.15,.9,.25,1.2) both; }
+.ann.round{ font-size:clamp(28px, min(7vw, 12vh), 64px); letter-spacing:.18em; }
+.ann.round .aw{ animation:annround .55s cubic-bezier(.2,.9,.3,1.2) both; }
+.ann.round::before,.ann.round::after{ content:""; display:block; width:min(60vw, 420px); height:2px; margin:.12em 0; background:linear-gradient(90deg, transparent, #ffd66e, transparent); animation:annline .6s ease-out both; }
+.ann-sub{ display:block; margin-top:8px; font-family:var(--ui); font-weight:800; font-style:italic; font-size:clamp(16px, 2.4vw, 26px); letter-spacing:.02em; color:var(--marble); text-shadow:0 2px 3px #000, 0 0 10px rgba(0,0,0,.6); animation:annsub .4s .15s ease-out both; max-width:90vw; }
+.ann.out{ animation:annout .26s ease-in both; }
+.ann.count.out{ animation:anncountout .22s ease-in both; }
+@keyframes annin{ 0%{ opacity:0; transform:scale(1.9); } 55%{ opacity:1; transform:scale(.96); } 100%{ transform:scale(1); } }
+@keyframes annshine{ from{ background-position:120% 0; } to{ background-position:-30% 0; } }
+@keyframes anncount{ 0%{ opacity:0; transform:scale(2.4); } 40%{ opacity:1; transform:scale(.92); } 100%{ transform:scale(1); } }
+@keyframes anncountout{ to{ opacity:0; transform:translateX(-50%) scale(.6); } }
+@keyframes annround{ from{ opacity:0; letter-spacing:.6em; } }
+@keyframes annline{ from{ opacity:0; transform:scaleX(.2); } }
+@keyframes annsub{ from{ opacity:0; transform:translateY(8px); } }
+@keyframes annout{ to{ opacity:0; transform:translateX(-50%) translateY(-18px) scale(.94); } }
 .tip{ position:absolute; left:50%; bottom:calc(120px + var(--sab)); transform:translateX(-50%); width:max-content; max-width:min(640px, 90vw); text-align:center; font-size:19px; font-weight:600; color:var(--marble); text-shadow:0 1px 3px #000; opacity:0; transition:opacity .4s; }
 .tip.on{ opacity:1; }
 .hints{ position:absolute; left:50%; bottom:calc(78px + var(--sab)); transform:translateX(-50%); width:max-content; display:flex; gap:14px; flex-wrap:wrap; justify-content:center; max-width:min(720px, 80vw); font-weight:700; font-size:15px; color:var(--marble); opacity:0; transition:opacity .6s; pointer-events:none; }
@@ -468,7 +491,7 @@ body.touch #hud .scoreboard{ max-height:calc(100% - 20px); overflow:hidden; padd
   body.touch #hud .furymini{ position:absolute; display:grid; grid-template-columns:auto 1fr; grid-template-rows:auto auto; column-gap:6px; right:calc(10px + var(--sar)); top:calc(66px + var(--sat)); width:calc(44% - 20px); transform:scale(var(--hs)); transform-origin:100% 0; }
   body.touch #hud .favor{ left:calc(10px + var(--sal)); top:calc(108px + var(--sat)); bottom:auto; min-width:0; max-width:calc(56% - 16px); padding:3px 7px 4px; transform-origin:0 0; }
   body.touch #hud .fv-pips{ gap:3px; } body.touch #hud .fv-pips i{ width:12px; height:7px; } body.touch #hud #fvName{ font-size:12px; } body.touch #hud .fv-row{ gap:5px; } body.touch #hud .fv-row::before{ display:none; }
-  body.touch #hud .fv-want{ font-size:11px; margin-top:2px; gap:5px; }
+  body.touch #hud .fv-want{ font-size:11px; margin-top:2px; gap:5px; } body.touch #hud .fv-want .fw-long{ display:none; } body.touch #hud .fv-want .fw-short{ display:inline; }
   body.touch #hud .objective{ left:auto; right:calc(10px + var(--sar)); top:calc(108px + var(--sat)); width:calc(44% - 20px); margin:0; padding:3px 7px 4px; transform-origin:100% 0; }
   body.touch #hud .ob-t b{ font-size:11px; letter-spacing:.04em; } body.touch #hud .ob-t small{ font-size:11px; }
   body.touch #hud .radar{ left:calc(10px + var(--sal)); top:calc(152px + var(--sat)); width:88px; height:62px; }
@@ -4287,7 +4310,16 @@ const HUD = (() => {
   }
   function chat(g, text) { const d = el('div', 'c' + g.team, `<b>${esc(g.name)}:</b> ${esc(text)}`); E.chat.appendChild(d); while (E.chat.children.length > 5) E.chat.firstChild.remove(); setTimeout(() => d.remove(), 5000); Sound.S.chat(); }
   function acc(text, pts) { const d = el('div', 'acc', `${esc(text)} <em>+${pts}</em>`); E.acc.appendChild(d); while (E.acc.children.length > 4) E.acc.firstChild.remove(); setTimeout(() => d.remove(), 2600); }
-  function ann(text, cls = '', subT = '', dur = 1.4) { E.ann.innerHTML = `<div class="ann ${cls}">${text}${subT ? `<span class="ann-sub">${subT}</span>` : ''}</div>`; annT = dur; }
+  // announcer banner: metallic lettering (gradient fill over a dark stroke + glow layer), stamp-in + shine; a new banner replaces the old one with a quick fade-out
+  let annEl = null;
+  function annOut(fast) { const o = annEl; annEl = null; if (!o) return; o.classList.add('out'); setTimeout(() => o.remove(), fast ? 200 : 300); }
+  function ann(text, cls = '', subT = '', dur = 1.4) {
+    text = String(text); if (cls === 'gold' && /DEMOLI|SPLAT/.test(text)) cls = 'fire';
+    annOut(true);
+    const d = el('div', 'ann ' + cls, `<span class="aw"><span class="as" aria-hidden="true">${text}</span><span class="at">${text}</span></span>${subT ? `<span class="ann-sub">${subT}</span>` : ''}`), at = d.firstChild.lastChild;
+    at.dataset.t = at.textContent; if (cls !== 'count' && at.textContent.length > 12) d.classList.add('long');
+    E.ann.appendChild(d); annEl = d; annT = dur;
+  }
   function tip(text, dur = 4) { E.tip.textContent = text; E.tip.classList.add('on'); tipT = dur; }
   function intro(teams) {
     E.intro.innerHTML = teams.map((t, ti) => `<div class="introteam t${ti}">${t.map((g, i) => `<div class="icard" style="animation-delay:${0.1 + i * 0.12 + ti * 0.05}s"><div><b>${esc(g.name)}</b><small>${esc(g.titleName || '')}${g.bot ? ' · ' + (g.bandName ? g.bandName + ' ' : '') + 'Lv ' + g.lvl : ''}</small></div></div>`).join('')}</div>`).join('');
@@ -4307,7 +4339,7 @@ const HUD = (() => {
   function project(p) { _v.copy(p).project(camRef); return _v.z < 1 && _v.z > -1 ? [(_v.x * 0.5 + 0.5) * W, (-_v.y * 0.5 + 0.5) * H, true] : [(_v.x * 0.5 + 0.5) * W, (-_v.y * 0.5 + 0.5) * H, false]; }
   function update(dt, glads, me, lockT, lockOn) {
     W = innerWidth; H = innerHeight; V.dt = dt;
-    if (annT > 0) { annT -= dt; if (annT <= 0) E.ann.innerHTML = ''; }
+    if (annT > 0) { annT -= dt; if (annT <= 0) annOut(false); }
     if (tipT > 0) { tipT -= dt; if (tipT <= 0) E.tip.classList.remove('on'); }
     // nameplates
     const seen = new Set();
@@ -4386,8 +4418,44 @@ const HUD = (() => {
   }
   function hudReset(on) {
     V.hp = -1; V.ghost = 1; V.ghostHold = 0; V.f = -1; V.buffs = ''; V.fury = -1; V.rs = -1;
-    if (!on) { respawn2(null); }
+    if (!on) { respawn2(null); favor(null); objective(null); rounds(null); finale(false); }
   }
+  const popEl = (e, from = 1.8, ms = 380, rot = '') => { if (e && e.animate && !REDUCED_MOTION) e.animate([{ transform: `${rot}scale(${from})`, opacity: 0.2 }, { transform: `${rot}scale(1)`, opacity: 1 }], { duration: ms, easing: 'cubic-bezier(.2,.9,.3,1.35)' }); };
+  // crowd favour: five pips, a fill inside the current one, draining look while idle, rank-up flourish, "the crowd wants" call with its timer
+  const FV = { on: false, k: '', name: '', want: null, wf: -1 };
+  function favor(st) {
+    if (!st) { if (FV.on) { FV.on = false; hid(E.favor, true); FV.k = ''; FV.want = null; } return; }
+    if (!FV.on) { FV.on = true; hid(E.favor, false); }
+    const t = clamp(st.tier | 0, 0, 5), fq = t >= 5 ? 1 : Math.round(clamp(st.frac || 0, 0, 1) * 20) / 20, k = t + '|' + fq;
+    if (k !== FV.k) { FV.k = k; const ps = E.fvPips.children; for (let i = 0; i < 5; i++) { const p = ps[i], v = i < t ? 1 : i === t ? fq : 0; cls(p, 'on', i < t); cls(p, 'cur', i === t); if (p._f !== v) { p._f = v; p.style.setProperty('--f', v); } } cls(E.favor, 't5', t >= 5); }
+    tx(E.fvName, st.name || ''); cls(E.favor, 'decay', !!st.decay && !st.up);
+    if (st.up) { pulse(E.favor, 'up', 900); popEl(E.fvPips.children[Math.max(0, t - 1)], 2.4, 500, 'skewX(-20deg) '); }
+    const w = st.want || '';
+    if (w !== FV.want) { FV.want = w; hid(E.fvWant, !w); if (w) E.fvWantT.innerHTML = `<span class="fw-long">The crowd wants</span><span class="fw-short">Wants</span> <b>${esc(w)}</b>`; }
+    if (w) { const wf = Math.round(clamp(st.wantFrac || 0, 0, 1) * 100) / 100; if (wf !== FV.wf) { FV.wf = wf; sty(E.fvWantF, 'transform', `scaleX(${wf})`); } }
+  }
+  // objective banner (Emperor's Decree): title, sub line, progress bar in the holder's colour (gold when neutral); remembered for the radar ring
+  const OB = { on: false, x: 0, z: 0, r: 0, team: -1 };
+  function objective(st) {
+    if (!st) { if (OB.on) { OB.on = false; hid(E.objective, true); } return; }
+    if (!OB.on) { OB.on = true; hid(E.objective, false); if (E.objective.animate && !REDUCED_MOTION) E.objective.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300 }); }
+    tx(E.objT, st.text || ''); tx(E.objS, st.sub || '');
+    const tm = st.team === 0 ? 't0' : st.team === 1 ? 't1' : 'tn'; if (E.objective._tm !== tm) { if (E.objective._tm) E.objective.classList.remove(E.objective._tm); E.objective._tm = tm; E.objective.classList.add(tm); }
+    cls(E.objective, 'contest', /contest/i.test(st.sub || ''));
+    sty(E.objF, 'transform', `scaleX(${clamp(st.frac || 0, 0, 1).toFixed(3)})`);
+    OB.x = st.x || 0; OB.z = st.z || 0; OB.r = st.r || 0; OB.team = st.team == null ? -1 : st.team;
+  }
+  // duel round pips under the scorebug (filled from the clock outward); the newest pip pops, match point glows
+  const RD = { n: 0, a: 0, b: 0 };
+  function rounds(a, b, target) {
+    if (a == null) { if (RD.n) { RD.n = 0; hid(E.rounds, true); } return; }
+    target = clamp(target | 0 || 7, 1, 12); a = a | 0; b = b | 0;
+    if (RD.n !== target) { RD.n = target; RD.a = RD.b = 0; E.rounds.innerHTML = `<div class="rp t0">${'<i></i>'.repeat(target)}</div><div class="rs"></div><div class="rp t1">${'<i></i>'.repeat(target)}</div>`; }
+    hid(E.rounds, false);
+    const grp = E.rounds.children, fill = (g, n, prev) => { const ps = g.children; for (let i = 0; i < ps.length; i++) { cls(ps[i], 'on', i < n); cls(ps[i], 'mp', i === ps.length - 1 && n === ps.length - 1); } if (n > prev && n <= ps.length) popEl(ps[n - 1], 2.6, 450, 'rotate(45deg) '); };
+    fill(grp[0], a, RD.a); fill(grp[2], b, RD.b); RD.a = a; RD.b = b;
+  }
+  function finale(on) { cls(E.scorebug, 'finale', !!on); }
   function vitals2(g, lockOn) {
     tx(E.vName, g.name); tx(E.vTitle, g.titleName || '');
     const hp = Math.max(0, g.hp), f = hp / TUNE.HP;
@@ -4422,7 +4490,7 @@ const HUD = (() => {
     if (lineHtml == null) { if (slainOn) { slainOn = false; s.hidden = true; E.hud.classList.remove('slainon'); } return; }
     slainOn = true; s.hidden = false; E.hud.classList.add('slainon'); s.innerHTML = `<b>${lineHtml}</b>${tipText ? `<small>${esc(tipText)}</small>` : ''}`;
   }
-  return { init, show, score, clock, sub, feed, chat, acc, ann, tip, intro, vitals, respawn, scoreboard, num, update, hurtDir, slain, edgeArrow, furyPad, get board() { return board; }, E };
+  return { init, show, score, clock, sub, feed, chat, acc, ann, tip, intro, vitals, respawn, scoreboard, num, update, hurtDir, slain, edgeArrow, furyPad, favor, objective, rounds, finale, get board() { return board; }, E };
 })();
 
 // ---------------------------------------------------------------- progression: items, ranks, XP, challenges, drops, save
