@@ -6254,13 +6254,12 @@ const Match = (() => {
 // ---------------------------------------------------------------- post-processing: HDR target → bloom → tone map + grade (hand-written passes, no addons)
 const Post = (() => {
   // Looks are keyed by Arena.preset; unknown presets fall back to 'dusk'. sh/hi are split-tone tints for shadows/highlights (display space).
+  // Sunlit marble and sand sit around 1.0–1.4 linear, so thresholds stay above that: only fire, pads, blades, the sun and impacts glow.
   const LOOKS = {
-    noon: { ev: 0.84, bloom: 0.55, thresh: 0.95, haze: 0.03, sat: 1.16, con: 1.12, sh: [0.97, 1.0, 1.05], hi: [1.04, 1.01, 0.96], vig: 0.22, grain: 0.02 },
-    dusk: { bloom: 0.62, thresh: 0.92, haze: 0.045, sat: 1.14, con: 1.07, sh: [0.94, 0.99, 1.08], hi: [1.07, 1.01, 0.93], vig: 0.3, grain: 0.024 },
-    night: { ev: 0.95, bloom: 0.8, thresh: 0.85, haze: 0.06, sat: 1.05, con: 1.09, sh: [0.92, 0.98, 1.12], hi: [1.06, 1.0, 0.94], vig: 0.38, grain: 0.03 },
-    storm: { bloom: 0.8, thresh: 0.85, haze: 0.06, sat: 0.92, con: 1.1, sh: [0.93, 1.0, 1.07], hi: [1.0, 1.02, 1.02], vig: 0.36, grain: 0.032 },
-    dawn: { bloom: 0.7, thresh: 0.95, haze: 0.07, sat: 1.08, con: 1.03, sh: [0.97, 0.98, 1.08], hi: [1.07, 0.99, 0.98], vig: 0.26, grain: 0.022 },
-    saturnalia: { bloom: 1.0, thresh: 0.78, haze: 0.06, sat: 1.06, con: 1.08, sh: [0.93, 0.98, 1.12], hi: [1.08, 1.0, 0.92], vig: 0.36, grain: 0.03 },
+    noon: { ev: 0.7, bloom: 0.36, thresh: 1.8, haze: 0.002, sat: 1.25, con: 1.15, sh: [0.96, 1.0, 1.06], hi: [1.04, 1.01, 0.96], vig: 0.22, grain: 0.016 },
+    dusk: { ev: 0.97, bloom: 0.46, thresh: 1.35, haze: 0.006, sat: 1.14, con: 1.1, sh: [0.94, 0.99, 1.08], hi: [1.06, 1.01, 0.94], vig: 0.28, grain: 0.02 },
+    night: { ev: 1.08, bloom: 0.65, thresh: 1.2, haze: 0.006, sat: 1.1, con: 1.12, sh: [0.92, 0.98, 1.12], hi: [1.06, 1.0, 0.94], vig: 0.36, grain: 0.026 },
+    storm: { ev: 1.0, bloom: 0.6, thresh: 1.2, haze: 0.01, sat: 0.94, con: 1.1, sh: [0.93, 1.0, 1.07], hi: [1.0, 1.02, 1.02], vig: 0.36, grain: 0.03 },
   };
   const P = { on: false, wanted: false, scale: 1, height: 0, target: null, LOOKS };
   let R, scene, camera, Q = 2, hdr = null, mips = [], soft = [], fsScene, fsCam, tri, mPre, mDown, mUp, mOut, type, t = 0, checked = false, lookName = null, L = LOOKS.dusk;
@@ -6288,10 +6287,13 @@ vec3 srgb(vec3 c){ return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055
 float hash(vec2 p){ vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
 void main(){ vec2 uv = vUv;
  if (uShockAmp > 0.001) { vec2 sd = uv - uShock.xy; sd.x *= uAspect; float dd = length(sd) + 0.0001; float ring = dd - uShock.z * 0.85; uv += (sd / dd) * exp(-ring * ring * 260.0) * (1.0 - uShock.z) * uShockAmp * vec2(1.0 / uAspect, 1.0); }
- vec2 c = uv - 0.5; float r2 = dot(c, c); vec3 col;
- if (uBlur > 0.004) { float k = uBlur * smoothstep(0.015, 0.3, r2); vec3 acc = vec3(0.0); for (int i = 0; i < 6; i++) acc += texture2D(tScene, 0.5 + c * (1.0 - k * 0.013 * float(i))).rgb; col = acc / 6.0; }
+ vec2 c = uv - 0.5; float r2 = dot(c, c); vec3 col; vec2 d = c * uAberr * (0.3 + r2 * 1.6);
+ if (uBlur > 0.004) { // radial blur at speed; when an impact adds aberration the taps split per channel, so the two effects stay aligned
+  float k = uBlur * smoothstep(0.02, 0.32, r2) * 0.011; vec3 acc = vec3(0.0);
+  if (uAberr > 0.0009) { for (int i = 0; i < 4; i++) { vec2 p = 0.5 + c * (1.0 - k * 1.5 * float(i)); acc += vec3(texture2D(tScene, p + d).r, texture2D(tScene, p).g, texture2D(tScene, p - d).b); } col = acc * 0.25; }
+  else { for (int i = 0; i < 6; i++) acc += texture2D(tScene, 0.5 + c * (1.0 - k * float(i))).rgb; col = acc / 6.0; }
+ } else if (uAberr > 0.0004) col = vec3(texture2D(tScene, uv + d).r, texture2D(tScene, uv).g, texture2D(tScene, uv - d).b);
  else col = texture2D(tScene, uv).rgb;
- if (uAberr > 0.0004) { vec2 d = c * uAberr * (0.3 + r2 * 1.6); col.r = texture2D(tScene, uv + d).r; col.b = texture2D(tScene, uv - d).b; }
  if (uFocusA > 0.004) { vec2 fd = uv - uFocus.xy; fd.x *= uAspect; float m = smoothstep(uFocus.z, uFocus.z * 2.6, length(fd * vec2(1.0, 0.72))) * uFocusA; col = mix(col, texture2D(tSoft, uv).rgb, m); }
  col += texture2D(tBloom, uv).rgb * uBloom;
  col = srgb(aces(col));
@@ -6348,13 +6350,13 @@ void main(){ vec2 uv = vUv;
     for (let i = mips.length - 2; i >= 0; i--) { mUp.uniforms.uGain.value = i === 0 ? 0.55 : 1; pass(mUp, mips[i + 1], mips[i]); }
     // gameplay-driven lens: radial blur at speed, aberration from trauma/impacts, portrait focus behind the menu gladiator
     const me = Match.active ? Match.me : null, U = mOut.uniforms, menu = !Match.active && UI.display && UI.display.root.visible && (UI.cur === 'title' || UI.cur === 'armory' || UI.cur === 'reveal');
-    const wantBlur = me && me.alive && !REDUCED_MOTION ? (me.ss ? 0.7 : me.boosting ? 0.22 : me.st === 'dodge' ? 0.3 : 0) : 0; blurA = damp(blurA, wantBlur, wantBlur > blurA ? 7 : 3, dt);
+    const wantBlur = me && me.alive && !REDUCED_MOTION ? (me.ss ? 0.6 : me.st === 'dodge' ? 0.22 : me.boosting ? 0.1 : 0) : 0; blurA = damp(blurA, wantBlur, wantBlur > blurA ? 7 : 3, dt);
     lowA = damp(lowA, me && me.alive && me.hp < TUNE.HP * 0.3 ? 1 : 0, 3, dt); pulse = Math.max(0, pulse - dt * 2.4); focusA = damp(focusA, menu ? 1 : 0, 4, dt);
     if (focusA > 0.01) { pass(mDown, hdr, soft[0]); pass(mDown, soft[0], soft[1]); pass(mDown, soft[1], soft[2]); _pv.copy(UI.display.root.position); _pv.y += 1.05; _pv.project(camera); U.uFocus.value.set(_pv.x * 0.5 + 0.5, _pv.y * 0.5 + 0.5, 0.2); U.tSoft.value = soft[2].texture; }
     if (shock.t < 1) shock.t = Math.min(1, shock.t + dt / 0.55);
     const tr = FX.trauma, rm = REDUCED_MOTION ? 0 : 1;
     U.tScene.value = hdr.texture; U.tBloom.value = mips[0].texture; U.uExposure.value = R.toneMappingExposure * (L.ev || 1); U.uBloom.value = L.bloom * (1 + pulse * 0.5);
-    U.uAberr.value = 0.0006 + rm * (tr * tr * 0.0035 + pulse * 0.002 + blurA * 0.001); U.uBlur.value = blurA; U.uVig.value = L.vig + lowA * 0.16 + (menu ? 0.08 : 0); U.uGrain.value = L.grain; U.uTime.value = t;
+    U.uAberr.value = rm * (tr * tr * 0.003 + pulse * 0.0018); U.uBlur.value = blurA; U.uVig.value = L.vig + lowA * 0.16 + (menu ? 0.08 : 0); U.uGrain.value = L.grain; U.uTime.value = t;
     U.uSat.value = L.sat * (1 - lowA * 0.22); U.uCon.value = L.con; U.uSh.value.fromArray(L.sh); U.uHi.value.fromArray(L.hi); U.uAspect.value = hdr.width / hdr.height;
     U.uShock.value.set(shock.x, shock.y, shock.t); U.uShockAmp.value = shock.t < 1 ? shock.amp * 0.05 : 0; U.uFocusA.value = focusA * 0.85;
     tri.material = mOut; R.setRenderTarget(null); R.render(fsScene, fsCam); R.autoClear = ac;
