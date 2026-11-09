@@ -2020,6 +2020,7 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       this.role = null; this.ringA = 0; this.rimC0 = new THREE.Color(); // role styling (rim + ground ring): see setRole(); null = decided on the first animate()
       this.ring = new THREE.Mesh(RING_GEO, ringMat()); this.ring.renderOrder = 2; this.ring.visible = false;
       this.cur = new Float32Array(NB * 3); this.tgt = new Float32Array(NB * 3); this.bodyY = 0.95; this.bodyZ = 0; this.bodyX = 0;
+      this.yaw0 = null; this.sp0 = 0; this.turn = 0; this.acc = 0; this.bank = 0; this.skid = 0; this.skidA = 0; this.lookY = 0; this.lookX = 0; // life: turn / acceleration lean, skid, look-at
       this.poseN = null; this.poseT = 0; this.emoteBeat = 0; this.beatI = 0; // pose clock (restarts when the pose name changes) + emote impact counter (see EMOTES)
       this.phase = 0; this.t = rand(0, 10); this.flash = 0; this.tumbleA = 0;
       this.shudderT = 0; this.shudderW = 0; this.bladeFlash = 0; this.squash = 0; // feel: victim shudder (wall-clock), attacker blade flash, landing squash
@@ -2108,9 +2109,11 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       const sp = Math.hypot(vel.x, vel.z), yaw = this.root.rotation.y, sy = Math.sin(yaw), cy = Math.cos(yaw);
       const fwd = vel.x * sy + vel.z * cy, lat = vel.x * cy - vel.z * sy, ground = g.ground !== false;
       this.phase += dt * (ground && sp > 0.5 ? 2.4 + sp * 0.74 : 0) * (fwd < -1 ? -1 : 1);
+      // turn rate and acceleration for the lean / skid layers (dt is ~0 during hitstop: hold the last values)
+      if (dt > 1e-4) { this.turn = damp(this.turn, this.yaw0 == null ? 0 : clamp(angDiff(this.yaw0, yaw) / dt, -10, 10), 9, dt); this.acc = damp(this.acc, clamp((sp - this.sp0) / dt, -50, 50), 9, dt); this.yaw0 = yaw; this.sp0 = sp; }
       const a = ground ? smooth(0.3, 3.5, sp) : 0, amp = clamp(sp / 8, 0.25, 1.15), fN = sp > 0.1 ? fwd / sp : 1, lN = sp > 0.1 ? lat / sp : 0;
       const br = Math.sin(t * 2.1) * 0.012; let k = 16;
-      let bodyY = 0.9 + br, bodyZ = 0, bodyX = 0, crouch = 0, hop = 0, plant = ground;
+      let bodyY = 0.9 + br, bodyZ = 0, bodyX = 0, crouch = 0, hop = 0, plant = ground, bank = 0, twist = 0;
       let spine = [0.12, -0.3, 0], chest = [0.02 + br, -0.08, 0], head = [-0.08, 0.35, 0];
       let thR = [0.28, 0, -0.05], knR = [0.5, 0, 0], ftR = [-0.22, 0, 0], thL = [-0.38, 0, 0.06], knL = [0.42, 0, 0], ftL = [-0.04, 0, 0];
       if (a > 0) {
@@ -2121,11 +2124,17 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
         thL = L3(thL, [L_[0], 0, L_[1]], a); knL = L3(knL, [L_[2], 0, 0], a); ftL = L3(ftL, [-L_[0] * 0.2 - L_[2] * 0.3, 0, 0], a);
         bodyY = lerp(bodyY, 0.97 - 0.05 * amp + Math.abs(Math.cos(p)) * 0.06 * amp, a);
         spine = L3(spine, [0.14 + 0.22 * amp * Math.max(0, fN) + (g.boosting ? 0.25 : 0), -0.12, -lN * 0.12], a);
+        bank = clamp(-this.turn * sp * 0.011, -0.3, 0.3) * a; spine[2] += bank * 0.4; // lean into the turn (the whole body banks about the feet, see root.rotation.z)
       }
+      if (ground) spine[0] += clamp(this.acc * 0.011, -0.2, 0.26); // lean into the acceleration, sit back when braking
       if (!ground) { thR = [-0.55, 0, -0.1]; knR = [1.1, 0, 0]; thL = [-0.2, 0, 0.1]; knL = [0.6, 0, 0]; ftR = [0.3, 0, 0]; ftL = [0.2, 0, 0]; bodyY = 0.95; }
       // upper body (guard)
       let shR = [-0.3, -0.25, -0.1], elR = [-1.25, 0, 0], hR = [1.35, 0, 0], shL = [-0.62, -0.18, 0.12], elL = [-0.95, 0, 0], hL = [0.05, 0, 0];
-      if (a > 0) { shR[0] += Math.sin(this.phase) * 0.35 * a * amp; shL[0] -= Math.sin(this.phase) * 0.1 * a; }
+      if (a > 0) { // the arms pump against the legs, the chest counter-rotates the hips, the head stays level
+        const sn = Math.sin(this.phase), ar = a * amp;
+        shR[0] += sn * 0.4 * ar; elR[0] += sn * 0.22 * ar; shL[0] -= sn * 0.16 * ar; shL[2] += 0.06 * ar; elL[0] += sn * 0.08 * ar;
+        chest[1] -= sn * 0.15 * ar; head[1] += sn * 0.1 * ar; twist = sn * 0.07 * ar;
+      }
       if (g.boosting && ground && st === 'idle') { shR = [0.55, -0.3, -0.25]; elR = [-0.5, 0, 0]; }
       const pose = !alive ? (this.koT >= 0 ? 'ko' : 'none') : (g.pose || st);
       if (pose !== this.poseN) { this.poseN = pose; this.poseT = 0; this.beatI = 0; }
@@ -2244,21 +2253,42 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
           break;
         }
       }
+      // ---- life layers on top of the idle / block pose
+      // look at the target: head and chest turn toward it (clamped to +-0.6 rad, smoothed)
+      let wantY = 0, wantX = 0; const tg = g.target, loco = pose === 'idle' || pose === 'block';
+      if (loco && tg && tg.alive !== false && tg.pos && g.pos) {
+        const dx = tg.pos.x - g.pos.x, dz = tg.pos.z - g.pos.z, d = angDiff(yaw, Math.atan2(dx, dz));
+        if (Math.abs(d) < 2.2) { wantY = clamp(d, -0.6, 0.6); wantX = clamp(-Math.atan2(tg.pos.y - g.pos.y, Math.hypot(dx, dz) + 1), -0.35, 0.35); }
+      }
+      this.lookY = damp(this.lookY, wantY, 9, dt); this.lookX = damp(this.lookX, wantX, 9, dt);
+      if (loco) { head[1] += this.lookY * 0.62; chest[1] += this.lookY * 0.38; head[0] += this.lookX * 0.7; chest[0] += this.lookX * 0.2; }
+      // skid: braking hard from speed plants the front leg, folds the rear one and throws the arms out for balance
+      this.skid = damp(this.skid, pose === 'idle' && ground ? smooth(9, 19, -this.acc) * smooth(1.5, 4.5, sp) * Math.max(0, fN) : 0, 14, dt);
+      if (this.skid > 0.02) {
+        const sk = this.skid;
+        thL = L3(thL, [-0.8, 0, 0.06], sk); knL = L3(knL, [0.2, 0, 0], sk); ftL = L3(ftL, [0.25, 0, 0], sk); thR = L3(thR, [0.05, 0, -0.1], sk); knR = L3(knR, [1.15, 0, 0], sk); ftR = L3(ftR, [-0.6, 0, 0], sk);
+        spine[0] -= 0.4 * sk; head[0] += 0.14 * sk; shR = L3(shR, [0.2, -0.3, -0.9], sk); elR = L3(elR, [-0.5, 0, 0], sk); shL = L3(shL, [-0.7, 0.35, 0.5], sk); bodyZ -= 0.08 * sk;
+        if (sk > 0.3 && g.pos && FX.ready) { this.skidA += dt * 16 * sk; while (this.skidA >= 1) { this.skidA -= 1; FX.dust(_v2.set(g.pos.x + sy * 0.5, 0, g.pos.z + cy * 0.5), 2, 0.55); } }
+      }
+      // idle weight shift: the hips sway over planted feet, the shoulders answer
+      if (pose === 'idle' && a < 1) { const ws = Math.sin(t * 0.7) * 0.02 * (1 - a); bodyX += ws; thR[2] -= ws / 0.88; thL[2] -= ws / 0.88; spine[2] += ws * 1.6; shR[0] += Math.sin(t * 1.3) * 0.03 * (1 - a); shL[0] += Math.sin(t * 1.1 + 1) * 0.02 * (1 - a); }
       // landing squash (feel-9): set by the 'land' handler, decays at k=9
       this.squash = this.squash > 0.005 ? damp(this.squash, 0, 9, dt) : 0;
       if (this.squash > 0 && ground) { const sq = this.squash; bodyY -= 0.16 * sq; spine[0] += 0.35 * sq; thR[0] -= 0.4 * sq; knR[0] += 0.8 * sq; thL[0] -= 0.4 * sq; knL[0] += 0.8 * sq; }
       // a crouch (block, charge, heavy) bends the knees; then the hips are set so that the lower sole meets the sand instead of sinking into it.
       // The correction fades out with the run cycle, which has a flight phase.
       if (crouch > 0) { thR[0] -= 4 * crouch; knR[0] += 8 * crouch; thL[0] -= 4 * crouch; knL[0] += 8 * crouch; }
-      if (plant && a < 1) bodyY += clamp(0.05 - bodyY - Math.min(soleY(thR, knR, ftR), soleY(thL, knL, ftL)), -0.06, 0.16) * (1 - a);
+      const plantW = 1 - a * (1 - this.skid);
+      if (plant && plantW > 0) bodyY += clamp(0.05 - bodyY - Math.min(soleY(thR, knR, ftR), soleY(thL, knL, ftL)), -0.2, 0.16) * plantW;
       bodyY += hop;
-      Sa(J.body, [0, 0, 0]); Sa(J.spine, spine); Sa(J.chest, chest); Sa(J.head, head); Sa(J.shR, shR); Sa(J.elR, elR); Sa(J.hR, hR); Sa(J.shL, shL); Sa(J.elL, elL); Sa(J.hL, hL);
+      S(J.body, 0, twist, 0); Sa(J.spine, spine); Sa(J.chest, chest); Sa(J.head, head); Sa(J.shR, shR); Sa(J.elR, elR); Sa(J.hR, hR); Sa(J.shL, shL); Sa(J.elL, elL); Sa(J.hL, hL);
       Sa(J.thR, thR); Sa(J.knR, knR); Sa(J.ftR, ftR); Sa(J.thL, thL); Sa(J.knL, knL); Sa(J.ftL, ftL);
       const kk = 1 - Math.exp(-k * dt), C = this.cur;
       for (let i = 0; i < NB * 3; i++) C[i] += (T[i] - C[i]) * kk;
       for (let i = 0; i < NB; i++) this.bones[i].rotation.set(C[i * 3], C[i * 3 + 1], C[i * 3 + 2]);
       this.bodyY = damp(this.bodyY, bodyY, k, dt); this.bodyZ = damp(this.bodyZ, bodyZ, k, dt); this.bodyX = damp(this.bodyX, bodyX, k, dt);
       this.bones[0].position.set(this.bodyX, this.bodyY - 1, this.bodyZ);
+      this.bank = damp(this.bank, pose === 'idle' || pose === 'block' ? bank : 0, 10, dt); this.root.rotation.z = Math.abs(this.bank) > 0.002 ? this.bank : 0;
       // whole-body rotation (flips, tumbles, spins)
       const q = this.spin.quaternion;
       if (pose === 'ko') { const d = this.koDir, a = this.koT * (15 - 9 * this.koT); _ax.set(d.x * sy + d.z * cy, 0, -(d.x * cy - d.z * sy)); q.setFromAxisAngle(_ax, a).multiply(_q1.setFromAxisAngle(_v2.set(0, 1, 0), this.koTw * a * 0.6)); }
@@ -2316,7 +2346,7 @@ void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
       if (st === 'slam' || st === 'dodge') tOn = true;
       this.trail.update(dt, tOn && this.root.visible, this.baseW, this.tipW);
     }
-    reset() { this.trail.init = false; this.spin.quaternion.identity(); this.tumbleA = 0; this.shudderT = 0; this.spin.position.x = 0; this.squash = 0; this.bladeFlash = 0; this.koEnd(false); this.wasAlive = null; }
+    reset() { this.trail.init = false; this.spin.quaternion.identity(); this.tumbleA = 0; this.shudderT = 0; this.spin.position.x = 0; this.squash = 0; this.bladeFlash = 0; this.koEnd(false); this.wasAlive = null; this.yaw0 = null; this.sp0 = 0; this.turn = 0; this.acc = 0; this.bank = 0; this.skid = 0; this.root.rotation.z = 0; }
   }
   const _q1 = new THREE.Quaternion();
   Bus.on('ko', (e) => { const r = e && e.v && e.v.rig; if (r && r.koHint) r.koHint(e); });
