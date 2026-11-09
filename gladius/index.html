@@ -5783,6 +5783,52 @@ const Favor = (() => {
 })();
 __G.Favor = Favor;
 
+// ---------------------------------------------------------------- match grade: one letter for the whole performance (S A B C D)
+// Points: the win, your share of the lobby's score, KOs against deaths, the crowd's favour, MVP, a flawless game. The letter is stamped on the
+// results screen, pays a little XP, and the best per playlist is remembered (S.grades, created lazily).
+const Grade = (() => {
+  const LET = ['D', 'C', 'B', 'A', 'S'], CUT = [20, 40, 62, 85], XP = [0, 0, 10, 25, 60];
+  const NOTE = ['The sand was unkind', 'Room to grow', 'A solid showing', 'The crowd chants your name', 'The Emperor rises'];
+  const COL = ['#b8a58a', '#d9c7a0', '#8fd0ff', '#ffd24a', '#ff8a3a'];
+  let last = null;
+  function rate(M) {
+    const me = M.me, st = me.stats, all = M.glads, avg = all.reduce((a, g) => a + (g.stats.score || 0), 0) / Math.max(1, all.length) || 1;
+    const win = M.winner === me.team, mvp = M.mvpId === me.id, share = (st.score || 0) / avg, flawless = win && st.de === 0;
+    const parts = [win ? 35 : 0, 30 * clamp((share - 0.5) / 1.5, 0, 1), clamp((st.ko - st.de) * 3 + (st.as || 0), -15, 20), Math.min(5, st.favorPeak || 0) * 3, mvp ? 10 : 0, flawless ? 10 : 0];
+    const pts = Math.round(parts.reduce((a, b) => a + b, 0)); let idx = 0; while (idx < 4 && pts >= CUT[idx]) idx++;
+    return { pts, idx, letter: LET[idx], note: NOTE[idx], parts };
+  }
+  Bus.on('matchEnd', ({ M, res }) => {
+    last = null; if (!M || !M.me || M.attract || M.mode === 'training' || M.forfeited || !res) return;
+    const g = rate(M), S = Prog.S, G = S.grades && typeof S.grades === 'object' ? S.grades : (S.grades = { best: {}, s: 0 });
+    if (!G.best || typeof G.best !== 'object') G.best = {};
+    const prev = G.best[M.mode]; g.isBest = !(prev >= g.idx); if (g.isBest) G.best[M.mode] = g.idx; if (g.idx === 4) G.s = (G.s | 0) + 1;
+    if (XP[g.idx]) Prog.addXp(XP[g.idx], res, 'Grade ' + g.letter); else Prog.save();
+    res.grade = g; last = g;
+  });
+  Bus.on('results', () => {
+    const old = document.getElementById('gradeStamp'); if (old) old.remove();
+    const host = document.querySelector('#scr-results .res-top') || document.querySelector('#scr-results .res'); if (!host || !last) return;
+    const g = last, e = el('div', 'grade-stamp g' + g.idx, `<b>${g.letter}</b><span><em>Grade</em>${esc(g.note)}${g.isBest && g.idx >= 2 ? '<i>Personal best</i>' : ''}</span>`);
+    e.id = 'gradeStamp'; e.style.setProperty('--gc', COL[g.idx]); host.appendChild(e);
+    if (g.idx >= 3 && Sound.ready) { const k = Sound.kit, t = k.now() + 0.55; k.osc(k.sfx, 'triangle', g.idx === 4 ? 880 : 660, t, 0.5, 0.16, 0.005, g.idx === 4 ? 1320 : 990); k.nz(k.sfx, t, 0.12, 0.2, 'highpass', 2400, 1); }
+  });
+  document.head.appendChild(el('style', '', `
+.grade-stamp{ display:inline-flex; align-items:center; gap:10px; margin-left:auto; padding:4px 12px 4px 6px; color:var(--gc,#ffd24a); animation:grade-in .5s cubic-bezier(.2,1.6,.4,1) .45s both; }
+.grade-stamp b{ display:grid; place-items:center; width:58px; height:58px; font:900 40px/1 var(--display); border:3px solid currentColor; border-radius:50%; transform:rotate(-8deg); text-shadow:0 2px 0 rgba(0,0,0,.55); box-shadow:inset 0 0 0 2px rgba(0,0,0,.35), 0 0 18px -4px currentColor; background:rgba(0,0,0,.28); }
+.grade-stamp span{ display:flex; flex-direction:column; font-size:16px; line-height:1.15; font-weight:700; color:var(--marble); text-align:left; }
+.grade-stamp em{ font-style:normal; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); }
+.grade-stamp i{ font-style:normal; font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--gc,#ffd24a); }
+.grade-stamp.g4 b{ animation:grade-glow 1.6s ease-in-out 1s infinite; }
+@keyframes grade-in{ from{ opacity:0; transform:scale(2.4) rotate(14deg); } to{ opacity:1; transform:none; } }
+@keyframes grade-glow{ 50%{ box-shadow:inset 0 0 0 2px rgba(0,0,0,.35), 0 0 30px 2px currentColor; } }
+@media (prefers-reduced-motion: reduce){ .grade-stamp,.grade-stamp.g4 b{ animation:none; } }
+@media (max-width:560px){ .grade-stamp b{ width:46px; height:46px; font-size:31px; } .grade-stamp span{ font-size:14px; } }
+`));
+  return { rate, LET, CUT, get last() { return last; } };
+})();
+__G.Grade = Grade;
+
 // ---------------------------------------------------------------- match flow + event director
 const Match = (() => {
   const M = { active: false, attract: false, mode: 'duel', phase: 'none', t: 0, clock: 180, ot: false, score: [0, 0], glads: [], me: null, lockOn: true, lockT: null, freeze: 0, slowT: 0, winner: -1, mvpId: -1, forfeited: false, count: 0, firstBlood: false, time: 0, paused: false, roster: null, isRematch: false, skipReq: false };
@@ -6172,8 +6218,7 @@ const Match = (() => {
     const parts = log.map((h) => kn(h.kind) + ' ' + h.dmg).join(' + '), span = log.length > 1 ? ' in ' + (log[log.length - 1].t - log[0].t).toFixed(1) + ' s' : '';
     const sub = e.kind === 'demo' ? (by ? 'by ' + esc(by.name) + ' · supersonic' : '') : by ? esc(by.name) + (parts ? ' · ' + esc(parts) + span : '') : '';
     HUD.ann(e.kind === 'demo' ? 'DEMOLISHED' : "KO'D", 'red', sub, 2.2);
-    if (e.kind === 'demo') HUD.tip('Block head-on to stop a supersonic foe', 3);
-    if (!Sim.respawns) return;
+    if (!Sim.respawns) { if (e.kind === 'demo') HUD.tip('Block head-on to stop a supersonic foe', 3); return; } // with respawns the slain card carries the advice
     let tip = SLAIN_TIPS[kind] || '';
     if (by && Math.abs(angDiff(v.yaw, Math.atan2(by.pos.x - v.pos.x, by.pos.z - v.pos.z))) > 2.2) tip = SLAIN_TIPS.behind;
     if (e.kind === 'demo') tip = SLAIN_TIPS.demo;
@@ -6487,6 +6532,15 @@ __G.Post = Post;
     requestAnimationFrame(frame);
   }
   addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); Post.resize(); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+  // phones drop the WebGL context when the page sleeps under memory pressure: say so and offer the way back instead of a frozen frame
+  $('#c').addEventListener('webglcontextlost', (e) => {
+    e.preventDefault(); if (document.getElementById('ctxLost')) return;
+    try { if (Match.active && !Match.paused && Match.phase !== 'done') Match.pause(); } catch (err) { /* nothing to pause */ }
+    const o = el('div', '', '<div style="max-width:30ch;text-align:center;padding:24px"><h2 style="font-family:var(--display);font-weight:900;font-size:30px;letter-spacing:.06em;color:#e9b44c;margin:0 0 10px">The arena fell silent</h2><p style="margin:0 0 18px;color:rgba(243,233,214,.75);font-size:18px;line-height:1.35">Your device put the game to sleep. Your progress is saved.</p><button class="btn primary" style="min-height:48px;padding:0 26px"><span>Return to the arena</span></button></div>');
+    o.id = 'ctxLost'; o.style.cssText = 'position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:rgba(20,12,7,.94);pointer-events:auto;touch-action:manipulation';
+    o.querySelector('button').addEventListener('click', () => { try { Prog.save(); } catch (err) { /* storage refused */ } location.reload(); });
+    document.body.appendChild(o);
+  });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { if (Match.active && !Match.paused && Match.phase !== 'done') Match.pause(); Sound.suspend(); } else Sound.resume(); });
   Object.assign(__G, { Sim, Match, UI, Prog, Arena, Cam, FX, HUD, Input, Sound, Rig, Tex, Game, TUNE, Bus, renderer, scene, camera }); Object.defineProperty(__G, 'display', { get() { return display; }, configurable: true });
   next();
