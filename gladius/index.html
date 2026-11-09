@@ -4421,6 +4421,7 @@ const HUD = (() => {
       }
     } else { E.reticle.style.display = 'none'; E.arrow.style.display = 'none'; }
     threats(dt, glads, me, lockT);
+    radar(dt, glads, me);
   }
   // ---- feel (S3): one enemy-threat scan feeding off-screen arrows + nameplate chevrons (ux-2/feel-8), the hurt-direction arc (feel-7) and the slain card (feel-6)
   let threatEls = null, hurtEl = null, hurtA = 0, retThreat = false, slainOn = false;
@@ -4468,6 +4469,7 @@ const HUD = (() => {
   }
   function hudReset(on) {
     V.hp = -1; V.ghost = 1; V.ghostHold = 0; V.f = -1; V.buffs = ''; V.fury = -1; V.rs = -1;
+    hid(E.radar, true); RA.acc = 1;
     if (!on) { respawn2(null); favor(null); objective(null); rounds(null); finale(false); CB.n = 0; CB.on = false; hid(E.combo, true); ACC.el = null; }
   }
   const popEl = (e, from = 1.8, ms = 380, rot = '') => { if (e && e.animate && !REDUCED_MOTION) e.animate([{ transform: `${rot}scale(${from})`, opacity: 0.2 }, { transform: `${rot}scale(1)`, opacity: 1 }], { duration: ms, easing: 'cubic-bezier(.2,.9,.3,1.35)' }); };
@@ -4506,6 +4508,32 @@ const HUD = (() => {
     fill(grp[0], a, RD.a); fill(grp[2], b, RD.b); RD.a = a; RD.b = b;
   }
   function finale(on) { cls(E.scorebug, 'finale', !!on); }
+  // radar: the elliptical arena (own side at the bottom), pads, the Blessing, the objective ring, team dots and the human's arrow + camera wedge; ≤ 15 Hz
+  const RA = { acc: 1, ctx: null, w: 0, h: 0, dpr: 1, chk: 0 };
+  function radar(dt, glads, me) {
+    const want = Game.settings.radar !== false && !!me; hid(E.radar, !want); if (!want) return;
+    RA.acc += dt; if (RA.acc < 1 / 15) return; RA.acc = 0;
+    if (!RA.ctx || (RA.chk -= 1) <= 0) { RA.chk = 15; const w = E.radar.clientWidth, h = E.radar.clientHeight, r = Math.min(2, devicePixelRatio || 1); if (w && (w !== RA.w || h !== RA.h || r !== RA.dpr)) { RA.w = w; RA.h = h; RA.dpr = r; E.radar.width = Math.round(w * r); E.radar.height = Math.round(h * r); } RA.ctx = RA.ctx || E.radar.getContext('2d'); }
+    const c = RA.ctx, w = RA.w, h = RA.h; if (!c || !w) return;
+    const fl = me.team === 1 ? -1 : 1, kx = (w / 2 - 3) / ARENA.A, kz = (h / 2 - 3) / ARENA.B, cx = w / 2, cy = h / 2;
+    const X = (x) => cx + x * fl * kx, Y = (z) => cy - z * fl * kz; // own team's half toward the bottom
+    c.setTransform(RA.dpr, 0, 0, RA.dpr, 0, 0); c.clearRect(0, 0, w, h);
+    c.beginPath(); c.ellipse(cx, cy, w / 2 - 2, h / 2 - 2, 0, 0, Math.PI * 2); c.fillStyle = 'rgba(22,14,9,.72)'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = 'rgba(224,165,96,.75)'; c.stroke();
+    c.beginPath(); c.ellipse(cx, cy, (w / 2 - 2) * 0.3, (h / 2 - 2) * 0.3, 0, 0, Math.PI * 2); c.moveTo(cx - w / 2 + 2, cy); c.lineTo(cx + w / 2 - 2, cy); c.lineWidth = 1; c.strokeStyle = 'rgba(243,233,214,.14)'; c.stroke();
+    if (OB.on && OB.r > 0) { c.beginPath(); c.ellipse(X(OB.x), Y(OB.z), OB.r * kx, OB.r * kz, 0, 0, Math.PI * 2); const col = OB.team === 0 ? '#5aa2ff' : OB.team === 1 ? '#ff9a3c' : '#ffd66e'; c.fillStyle = col + '33'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = col; c.stroke(); }
+    for (const p of Sim.pads) { c.beginPath(); c.arc(X(p.x), Y(p.z), p.big ? 2.6 : 1.6, 0, Math.PI * 2); c.fillStyle = p.active ? (p.big ? '#ffd66e' : 'rgba(255,214,110,.85)') : 'rgba(243,233,214,.18)'; c.fill(); }
+    const B = Sim.bless; if (B && B.active) { const bx = X(B.pos.x), by = Y(B.pos.z), r = 4.2; c.beginPath(); c.moveTo(bx, by - r); c.lineTo(bx + r, by); c.lineTo(bx, by + r); c.lineTo(bx - r, by); c.closePath(); c.fillStyle = '#fff2c4'; c.fill(); c.lineWidth = 1; c.strokeStyle = '#c98a1a'; c.stroke(); }
+    for (const g of glads) {
+      if (!g.alive || g === me) continue; let x = g.pos.x, z = g.pos.z; const k = Math.hypot(x / (ARENA.A - 1), z / (ARENA.B - 1)); if (k > 1) { x /= k; z /= k; }
+      c.beginPath(); c.arc(X(x), Y(z), g.team === me.team ? 2.8 : 3.3, 0, Math.PI * 2); c.fillStyle = TEAM[g.team].lite; c.fill(); c.lineWidth = 1.2; c.strokeStyle = g.team === me.team ? 'rgba(255,255,255,.7)' : '#1c0d04'; c.stroke();
+    }
+    if (me.alive) {
+      const mx = X(me.pos.x), my = Y(me.pos.z), ang = (a) => Math.atan2(-Math.cos(a) * fl * kz, Math.sin(a) * fl * kx);
+      const ca = ang(Cam.yaw); c.beginPath(); c.moveTo(mx, my); c.arc(mx, my, 16, ca - 0.55, ca + 0.55); c.closePath(); c.fillStyle = 'rgba(255,240,200,.13)'; c.fill();
+      const a = ang(me.yaw), s = 5.5; c.beginPath(); c.moveTo(mx + Math.cos(a) * s, my + Math.sin(a) * s); c.lineTo(mx + Math.cos(a + 2.5) * s, my + Math.sin(a + 2.5) * s); c.lineTo(mx + Math.cos(a + Math.PI) * s * 0.35, my + Math.sin(a + Math.PI) * s * 0.35); c.lineTo(mx + Math.cos(a - 2.5) * s, my + Math.sin(a - 2.5) * s); c.closePath();
+      c.fillStyle = '#fff6dc'; c.fill(); c.lineWidth = 1.2; c.strokeStyle = '#1c0d04'; c.stroke();
+    }
+  }
   function vitals2(g, lockOn) {
     tx(E.vName, g.name); tx(E.vTitle, g.titleName || '');
     const hp = Math.max(0, g.hp), f = hp / TUNE.HP;
