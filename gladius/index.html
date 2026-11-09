@@ -6374,6 +6374,7 @@ void main(){ vec2 uv = vUv;
       if (!complete(hdr) && samples > 0) { samples = 0; drop(); alloc(); }
       if (!complete(hdr) || !complete(mips[0])) { drop(); console.warn('post-processing: no usable render target; drawing directly'); return; }
       P.on = true;
+      Bus.on('matchStart', () => { dyn.cool = Math.max(dyn.cool, 3); dyn.acc = 0; dyn.n = 0; }); // a new arena preset and fresh rigs hitch once: not a reason to drop resolution
       Bus.on('ko', (e) => kick(e.pos, e.kind === 'demo' ? 1 : 0.75)); Bus.on('slam', (e) => kick(e.g.pos, 0.6)); Bus.on('splat', (e) => kick(e.g.pos, 0.5)); Bus.on('parry', (e) => kick(e.pos, 0.35)); Bus.on('bless', (e) => kick(e.g.pos, 0.4));
     } catch (e) { console.warn('post-processing unavailable', e); P.on = false; }
   }
@@ -6541,7 +6542,7 @@ __G.Post = Post;
     o.querySelector('button').addEventListener('click', () => { try { Prog.save(); } catch (err) { /* storage refused */ } location.reload(); });
     document.body.appendChild(o);
   });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { if (Match.active && !Match.paused && Match.phase !== 'done') Match.pause(); Sound.suspend(); } else Sound.resume(); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { if (Match.active && !Match.paused && Match.phase !== 'done') Match.pause(); Sound.suspend(); } else { Sound.resume(); const d = Post.dyn; d.cool = Math.max(d.cool, 3); d.acc = 0; d.n = 0; } });
   Object.assign(__G, { Sim, Match, UI, Prog, Arena, Cam, FX, HUD, Input, Sound, Rig, Tex, Game, TUNE, Bus, renderer, scene, camera }); Object.defineProperty(__G, 'display', { get() { return display; }, configurable: true });
   next();
 })();
