@@ -4355,7 +4355,7 @@ const HUD = (() => {
   function acc(text, pts) {
     const now = performance.now(); if (!ACC.el) { ACC.el = el('div', 'acc-tot'); E.acc.appendChild(ACC.el); }
     if (now - ACC.t > 2800) { ACC.tot = 0; ACC.n = 0; } ACC.t = now; ACC.tot += pts; ACC.n++;
-    ACC.el.textContent = '+' + ACC.tot; cls(ACC.el, 'on', ACC.n >= 2); if (ACC.n >= 2) popEl(ACC.el, 1.4, 260); clearTimeout(ACC.h); ACC.h = setTimeout(() => cls(ACC.el, 'on', false), 2800);
+    ACC.el.textContent = '+' + ACC.tot; cls(ACC.el, 'on', ACC.n >= 2); if (ACC.n >= 2) popEl(ACC.el, 1.4, 260); clearTimeout(ACC.h); const te = ACC.el; ACC.h = setTimeout(() => cls(te, 'on', false), 2800);
     const last = E.acc.lastElementChild;
     if (last && last !== ACC.el && !last._dead && last._txt === text) { last._n++; last._pts += pts; last.querySelector('.an').textContent = '×' + last._n; last.querySelector('em').textContent = '+' + last._pts; popEl(last, 1.25, 260); clearTimeout(last._h); last._h = setTimeout(() => accGone(last), 2600); return; }
     const d = el('div', 'acc', `<i class="ki ${ACCI(text)}"></i><span>${esc(text)} <span class="an"></span></span><em>+${pts}</em>`); d._txt = text; d._n = 1; d._pts = pts;
