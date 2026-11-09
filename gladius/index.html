@@ -5630,7 +5630,7 @@ body.touch .ld-yard button{ min-height:44px; justify-content:center; }
   function leave() { Match.paused = false; cleanup(); Match.toMenu(); }
   function cleanup() {
     uneaseAll();
-    if (L && L.grad) { Cam.lock = 0; Arena.gesture = 0; }
+    if (L && L.grad) { Cam.lock = 0; Arena.gesture = 0; if (hudEl) hudEl.classList.remove('cel'); }
     for (const g of [me, dum, spare]) if (g) g.pose = null;
     for (const g of [dum, spare]) if (g) { if (g._ai) { g.brain = g._ai; g._ai = null; } if (g.deadT > 1e8) g.deadT = 0.5; const I = g.inp; I.block = false; if (I.atk) { I.atk = false; I.atkR = true; } }
     if (root) { E.wrap.hidden = E.mark.hidden = E.yard.hidden = E.offer.hidden = E.grad.hidden = true; hudEl.classList.remove('ld-on'); } beacon(null);
