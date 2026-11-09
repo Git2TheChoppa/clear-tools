@@ -1334,9 +1334,9 @@ const Tex = (() => {
 
 // ---------------------------------------------------------------- the colosseum
 const PRESETS = {
-  noon: { label: 'Sol Invictus', sun: [-0.45, 0.82, 0.36], sunCol: '#fff0d8', sunI: 3.1, hemiS: '#bfdcff', hemiG: '#cfa46c', hemiI: 1.0, top: '#2a64c8', hor: '#b8d4ee', bot: '#cdb58c', fog: '#c6d6e4', fogN: 90, fogF: 560, exp: 0.95, stars: 0, clouds: 0.55, fire: 0.5, pl: false },
-  dusk: { label: 'Golden Hour', sun: [-0.86, 0.2, 0.48], sunCol: '#ffa45a', sunI: 3.0, hemiS: '#8f9bd0', hemiG: '#9a6440', hemiI: 0.9, top: '#23407e', hor: '#f0935a', bot: '#5a3a2a', fog: '#cf8a62', fogN: 80, fogF: 500, exp: 1.05, stars: 0.06, clouds: 0.75, fire: 0.85, pl: false },
-  night: { label: 'Ludi Nocturni', sun: [0.35, 0.72, -0.4], sunCol: '#8ea8ff', sunI: 0.75, hemiS: '#34466e', hemiG: '#3a2616', hemiI: 0.65, top: '#040816', hor: '#16203c', bot: '#0c0907', fog: '#0e1424', fogN: 60, fogF: 420, exp: 1.2, stars: 1, clouds: 0.22, fire: 1.4, pl: true },
+  noon: { label: 'Sol Invictus', sun: [-0.45, 0.82, 0.36], sunCol: '#fff0d8', sunI: 3.1, hemiS: '#bfdcff', hemiG: '#cfa46c', hemiI: 1.0, top: '#2a64c8', hor: '#b8d4ee', bot: '#cdb58c', fog: '#c6d6e4', fogN: 90, fogF: 560, exp: 0.95, stars: 0, clouds: 0.55, fire: 0.5, pl: false, fill: [0.17, 0.16, 0.14], velGlow: 0.3 },
+  dusk: { label: 'Golden Hour', sun: [-0.86, 0.2, 0.48], sunCol: '#ffa45a', sunI: 3.0, hemiS: '#8f9bd0', hemiG: '#9a6440', hemiI: 0.9, top: '#23407e', hor: '#f0935a', bot: '#5a3a2a', fog: '#cf8a62', fogN: 80, fogF: 500, exp: 1.05, stars: 0.06, clouds: 0.75, fire: 0.85, pl: false, fill: [0.26, 0.19, 0.15], velGlow: 0.22 },
+  night: { label: 'Ludi Nocturni', sun: [0.35, 0.72, -0.4], sunCol: '#8ea8ff', sunI: 0.75, hemiS: '#34466e', hemiG: '#3a2616', hemiI: 0.65, top: '#040816', hor: '#16203c', bot: '#0c0907', fog: '#0e1424', fogN: 60, fogF: 420, exp: 1.2, stars: 1, clouds: 0.22, fire: 1.4, pl: true, fill: [0.1, 0.1, 0.13], velGlow: 0.03 },
 };
 const Arena = (() => {
   const { A, B, WALL } = ARENA;
@@ -1522,6 +1522,7 @@ const Arena = (() => {
     buildCrowd(rows, segs);
     buildDetails();
     buildVelarium(standTop); buildPads(); buildBlessing(); buildSky();
+    Bus.on('ko', (e) => { if (!e || !e.v) return; volley.team = 1 - e.v.team; volley.n = 10; volley.t = 0.1; });
     // lights
     hemi = new THREE.HemisphereLight(0xffffff, 0xffffff, 1); scene.add(hemi);
     sun = new THREE.DirectionalLight(0xffffff, 3);
@@ -1539,11 +1540,13 @@ const Arena = (() => {
   function buildCrowd(rows, segs) {
     const parts = [];
     const add = (g, part, m) => parts.push({ geo: g, part, mat: m });
-    add(new THREE.BoxGeometry(0.38, 0.5, 0.24), 0, trs(0, 0.34, 0));
-    add(new THREE.BoxGeometry(0.34, 0.12, 0.34), 0, trs(0, 0.07, 0.2));
-    add(new THREE.SphereGeometry(0.11, 6, 5), 1, trs(0, 0.72, 0.01));
-    add(new THREE.BoxGeometry(0.09, 0.42, 0.09), 2, trs(-0.225, 0.36, 0.02));
-    add(new THREE.BoxGeometry(0.09, 0.42, 0.09), 2, trs(0.225, 0.36, 0.02));
+    // a spectator is 54 triangles: boxes without the faces nobody sees (0..5 = +x -x +y -y +z -z) and a 20-triangle head
+    const obox = (w, h, d, drop) => { const g = new THREE.BoxGeometry(w, h, d), ix = Array.from(g.index.array), out = []; for (let f = 0; f < 6; f++) if (!drop.includes(f)) out.push(...ix.slice(f * 6, f * 6 + 6)); g.setIndex(out); return g; };
+    add(obox(0.38, 0.5, 0.24, [3]), 0, trs(0, 0.34, 0));
+    add(obox(0.34, 0.12, 0.34, [3, 5]), 0, trs(0, 0.07, 0.2));
+    add(new THREE.SphereGeometry(0.11, 5, 3), 1, trs(0, 0.72, 0.01));
+    add(obox(0.09, 0.42, 0.09, [2, 3]), 2, trs(-0.225, 0.36, 0.02));
+    add(obox(0.09, 0.42, 0.09, [2, 3]), 2, trs(0.225, 0.36, 0.02));
     const geo = mergeGeos(parts, 'aPart');
     // seats
     const seats = [];
@@ -1554,24 +1557,30 @@ const Arena = (() => {
         const t = i / n * TAU, [ex, ez] = eP(t), [nx, nz] = eN(t), px = ex + nx * row.d, pz = ez + nz * row.d;
         if (prev) acc += Math.hypot(px - prev[0], pz - prev[1]);
         prev = [px, pz];
-        if (acc >= 0.62) { acc = 0; if (blocked(px, pz, row.d)) continue; seats.push([px, row.y, pz, t, nx, nz]); }
+        if (acc >= 0.62) { acc = 0; if (blocked(px, pz, row.d)) continue; seats.push([px, row.y, pz, t, nx, nz, row]); }
       }
     }
-    const want = [900, 1800, 3000][Q], p = Math.min(1, want / seats.length), r = rng(91);
-    const chosen = seats.filter(() => r() < p);
+    // people sit in clumps and fill the lower tiers first
+    const want = [1100, 2400, 4500][Q], r = rng(91), pk = (a) => a[(r() * a.length) | 0];
+    let tot = 0; const wts = seats.map((st) => { const t = st[3], row = st[6], w = (0.4 + 0.6 * (0.5 + 0.5 * Math.sin(t * 23 + row.k * 1.3 + row.t * 2.1) * Math.sin(t * 7.1 - row.k * 0.37))) * [1.3, 1, 0.78][row.t]; tot += w; return w; });
+    const chosen = seats.filter((st, i) => r() < wts[i] * want / tot);
     const N = chosen.length;
     const mat = new THREE.MeshLambertMaterial({ color: 0xffffff });
-    R.crowdU = { uTime: { value: 0 }, uExcite: { value: 0.2 }, uWave: { value: -1 }, uCheer: { value: new THREE.Vector2() } };
-    mat.onBeforeCompile = (sh) => {
-      Object.assign(sh.uniforms, R.crowdU);
-      sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
-attribute vec4 aPhase; attribute vec3 aSkin; attribute float aPart;
-uniform float uTime, uExcite, uWave; uniform vec2 uCheer;`).replace('#include <begin_vertex>', `#include <begin_vertex>
-float fan = aPhase.z < -0.5 ? uCheer.x : (aPhase.z > 0.5 ? uCheer.y : 0.0);
+    R.crowdU = { uTime: { value: 0 }, uExcite: { value: 0.2 }, uWave: { value: -1 }, uCheer: { value: new THREE.Vector2() }, uFill: { value: new THREE.Vector3(0.2, 0.16, 0.13) } };
+    // uFill: light bounced up off the sand, so the shaded half of the bowl keeps its colour
+    const fill = (sh) => { sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nuniform vec3 uFill;').replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\ntotalEmissiveRadiance += diffuseColor.rgb * uFill;'); };
+    const CROWD_VS = `attribute vec4 aPhase; attribute float aPart;
+uniform float uTime, uExcite, uWave; uniform vec2 uCheer;`;
+    const CROWD_EX = `float fan = aPhase.z < -0.5 ? uCheer.x : (aPhase.z > 0.5 ? uCheer.y : 0.0);
 float ex = clamp(uExcite * (0.55 + 0.45 * aPhase.y) + fan, 0.0, 1.4);
 float wd = abs(mod(aPhase.w - uWave + 0.5, 1.0) - 0.5);
 float wave = uWave < -0.5 ? 0.0 : smoothstep(0.04, 0.0, wd);
-float stand = clamp(max(ex - 0.5, 0.0) * 1.5 + wave, 0.0, 1.0);
+float stand = clamp(max(ex - 0.5, 0.0) * 1.5 + wave, 0.0, 1.0);`;
+    mat.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, R.crowdU); fill(sh);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
+attribute vec3 aSkin; ${CROWD_VS}`).replace('#include <begin_vertex>', `#include <begin_vertex>
+${CROWD_EX}
 float bob = abs(sin(uTime * (5.0 + aPhase.y * 4.0) + aPhase.x * 6.2831)) * (0.02 + 0.1 * ex);
 float arm = clamp(ex * 1.1 + wave - 0.15, 0.0, 1.0) * (0.75 + 0.25 * sin(uTime * 9.0 + aPhase.x * 20.0));
 if (aPart > 1.5) {
@@ -1579,27 +1588,78 @@ if (aPart > 1.5) {
   transformed = pv + vec3(q.x, q.y * c - q.z * s, q.y * s + q.z * c);
 }
 transformed.y += stand * 0.28 + bob;`).replace('#include <color_vertex>', `#include <color_vertex>
-vColor.xyz = mix(vColor.xyz, aSkin, step(0.5, aPart));`);
+vColor.xyz = mix(vColor.xyz * (0.68 + 0.32 * smoothstep(0.0, 0.55, position.y)), aSkin, step(0.5, aPart));`);
     };
     const im = new THREE.InstancedMesh(geo, mat, N);
     const ph = new Float32Array(N * 4), skn = new Float32Array(N * 3);
-    const neutral = ['#e8dcc0', '#d9c9a3', '#b8a07a', '#8c6d4f', '#a23a2e', '#6d7f4a', '#c9b27c', '#f0ebe0', '#7a5a8c', '#4f6a86', '#b04a2a'];
-    const blue = ['#2f6fd8', '#4a8cff', '#1f4fa8', '#9cc4ff'], orange = ['#e86a1c', '#ff9a3c', '#c4521a', '#ffc27a'];
+    // tunics by class: senators in white on the first rows, dyed wool in the middle, undyed and dark cloaks at the top
+    const white = ['#f2ede2', '#e9e1cf', '#f6f2ea', '#ded3bd', '#efe6d2'], warm = ['#d9c9a3', '#c9b27c', '#b8a07a', '#e8dcc0', '#a8865a', '#cdbb8e'];
+    const dyed = ['#a23a2e', '#b04a2a', '#c88a2a', '#d9a640', '#6d7f4a', '#4f7a5a', '#4f6a86', '#7a5a8c', '#8c3a5a', '#3a6a7a', '#b8642e'], drab = ['#5a4a3a', '#6b5a4a', '#4a4038', '#7a6a58', '#3e3a44', '#8a7a62'];
+    const mix = [[0.7, 0.15, 0.15, 0], [0.34, 0.3, 0.36, 0], [0.2, 0.34, 0.46, 0], [0.1, 0.34, 0.22, 0.34]], pals = [white, warm, dyed, drab];
+    const fanPal = [['#2f6fd8', '#4a8cff', '#1f4fa8', '#7ab0ff', '#3a7ae0', '#e8eef8'], ['#e86a1c', '#ff9a3c', '#c4521a', '#ffb45a', '#f07820', '#fbeede']];
+    const share = [0.85, 0.6, 0.3, 0.3, 0.6, 0.85, 0.85, 0.6, 0.3, 0.3, 0.6, 0.85];   // by 30° wedge: the ends behind each gate belong to that team
     const skins = ['#e8b98f', '#d19a6c', '#b27a50', '#8d5a3a', '#6b4028', '#f2cfa8'];
-    const c = new THREE.Color(), m = M4(), q = new THREE.Quaternion(), up = V3(0, 1, 0);
-    chosen.forEach(([x, y, z, t, nx, nz], i) => {
-      q.setFromAxisAngle(up, Math.atan2(-nx, -nz) + (r() - 0.5) * 0.3);
+    const c = new THREE.Color(), m = M4(), q = new THREE.Quaternion(), up = V3(0, 1, 0), fans = [];
+    chosen.forEach(([x, y, z, t, nx, nz, row], i) => {
+      const yaw = Math.atan2(-nx, -nz) + (r() - 0.5) * 0.3; q.setFromAxisAngle(up, yaw);
       m.compose(V3(x, y, z), q, V3(1, 0.9 + r() * 0.2, 1)); im.setMatrixAt(i, m);
-      const side = Math.cos(t); let team = 0, pal = neutral;
-      if (side < -0.25 && r() < 0.55) { team = -1; pal = blue; } else if (side > 0.25 && r() < 0.55) { team = 1; pal = orange; }
-      c.set(pick(pal)); c.multiplyScalar(0.85 + r() * 0.25); im.setColorAt(i, c);
+      const wedge = Math.min(11, (((t / TAU) % 1 + 1) % 1 * 12) | 0), home = Math.cos(t) < 0 ? 0 : 1, senate = row.t === 0 && row.k < 3, u = r(), sh = share[wedge] * (senate ? 0.4 : 1);
+      let team = 0, pal;
+      if (u < sh) { team = home ? 1 : -1; pal = fanPal[home]; } else if (!senate && u < sh + 0.06) { team = home ? -1 : 1; pal = fanPal[1 - home]; }
+      else { const mx = mix[senate ? 0 : row.t + 1]; let v = r(), k = 0; while (k < 3 && v > mx[k]) v -= mx[k++]; pal = pals[k]; }
+      c.set(pk(pal)); c.multiplyScalar(0.85 + r() * 0.25); im.setColorAt(i, c);
       ph[i * 4] = r(); ph[i * 4 + 1] = r(); ph[i * 4 + 2] = team; ph[i * 4 + 3] = ((t / TAU) % 1 + 1) % 1;
       c.set(skins[(r() * skins.length) | 0]); skn[i * 3] = c.r; skn[i * 3 + 1] = c.g; skn[i * 3 + 2] = c.b;
+      if (team && !senate) fans.push({ x, y, z, yaw, i, home: team > 0 ? 1 : 0 });
     });
     geo.setAttribute('aPhase', new THREE.InstancedBufferAttribute(ph, 4));
     geo.setAttribute('aSkin', new THREE.InstancedBufferAttribute(skn, 3));
     im.instanceMatrix.needsUpdate = true; im.frustumCulled = false; group.add(im);
     R.crowdN = N;
+    // Scarves and standards: one instanced mesh that shares the crowd uniforms. A scarf only comes out when its owner is on
+    // their feet (uCheer / uExcite / the wave) and is whipped overhead; pole flags fly all the time and swing wider with the noise.
+    const nS = Math.min(fans.length, [60, 170, 340][Q]), nF = Math.min(fans.length, [10, 26, 46][Q]), NC = nS + nF;
+    if (!NC) return;
+    const cg = mergeGeos([{ geo: new THREE.PlaneGeometry(1, 1, 6, 1).translate(0.5, 0.5, 0), part: 0 }, { geo: new THREE.CylinderGeometry(0.022, 0.022, 1, 3, 1, true).translate(0, 0.5, 0), part: 1 }], 'aPart');
+    const cmat = new THREE.MeshLambertMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+    cmat.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, R.crowdU); fill(sh);
+      sh.vertexShader = sh.vertexShader.replace('#include <common>', `#include <common>
+attribute vec2 aCl; ${CROWD_VS} vec3 cPos;`).replace('#include <color_vertex>', `#include <color_vertex>
+{ ${CROWD_EX}
+  float fk = aCl.x, on = mix(smoothstep(0.42, 0.85, ex + wave), 1.0, fk), exc = min(ex, 1.0);
+  float H = mix(0.62, 2.1, fk) * aCl.y * on, Lc = mix(0.62, 1.15, fk) * aCl.y * on, hc = mix(0.26, 0.72, fk) * aCl.y * on;
+  float w0 = uTime * mix(6.0 + aPhase.y * 3.0 + ex * 4.0, 1.3 + ex * 2.2, fk) + aPhase.x * 6.2831;
+  float th = sin(w0) * mix(0.95, 0.16 + 0.34 * exc, fk);
+  vec3 pd = vec3(sin(th), cos(th), 0.0), pp = vec3(cos(th), -sin(th), 0.0), base = vec3(mix(0.26, 0.3, fk), 0.6 + stand * 0.28, mix(0.1, -0.12, fk));
+  if (aPart > 0.5) { cPos = base + pd * (position.y * H) + vec3(position.x, 0.0, position.z) * fk; vColor.xyz = mix(vColor.xyz, vec3(0.42, 0.3, 0.2), 0.85); }
+  else {
+    float cx = position.x, fly = mix(-cos(w0), 1.0, fk), rip = sin(uTime * mix(11.0, 5.0 + ex * 5.0, fk) - cx * 5.5 + aPhase.x * 40.0) * cx;
+    cPos = base + pd * (H - hc * (1.0 - position.y)) + pp * (cx * Lc * fly) + vec3(0.0, -cx * cx * Lc * 0.22 * (1.0 - 0.5 * exc), rip * 0.14 * (0.5 + ex) * on);
+    vColor.xyz *= 1.0 + rip * 0.3;
+  } }`).replace('#include <begin_vertex>', `#include <begin_vertex>
+transformed = cPos;`);
+    };
+    const cm2 = new THREE.InstancedMesh(cg, cmat, NC), cph = new Float32Array(NC * 4), ccl = new Float32Array(NC * 2), one = V3(1, 1, 1);
+    for (let i = fans.length - 1; i > 0; i--) { const j = (r() * (i + 1)) | 0, tmp = fans[i]; fans[i] = fans[j]; fans[j] = tmp; }
+    for (let i = 0; i < NC; i++) {
+      const f = fans[i], flag = i >= nS, T = TEAM[f.home];
+      q.setFromAxisAngle(up, f.yaw); m.compose(V3(f.x, f.y, f.z), q, one); cm2.setMatrixAt(i, m);
+      c.set(r() < (flag ? 0.2 : 0.3) ? '#f4efe4' : r() < 0.5 ? T.c : T.lite); c.multiplyScalar(flag ? 1.15 : 1.05); cm2.setColorAt(i, c);
+      for (let k = 0; k < 4; k++) cph[i * 4 + k] = ph[f.i * 4 + k];
+      ccl[i * 2] = flag ? 1 : 0; ccl[i * 2 + 1] = 0.85 + r() * 0.35;
+    }
+    cg.setAttribute('aPhase', new THREE.InstancedBufferAttribute(cph, 4)); cg.setAttribute('aCl', new THREE.InstancedBufferAttribute(ccl, 2));
+    cm2.instanceMatrix.needsUpdate = true; cm2.frustumCulled = false; group.add(cm2);
+  }
+  // A KO: the scoring team's end throws petals and strips of cloth towards the sand (a few small bursts spread over half a second).
+  const volley = { n: 0, t: 0, team: 0 };
+  function throwVolley(dt) {
+    if (volley.n <= 0 || typeof FX === 'undefined' || !FX.ready) return;
+    volley.t -= dt; if (volley.t > 0) return;
+    volley.t = 0.06 + Math.random() * 0.07; volley.n--;
+    const T = TEAM[volley.team], t = (volley.team ? 0 : Math.PI) + rand(-1.25, 1.25), d = rand(2.8, 7.5), [ex, ez] = eP(t), [nx, nz] = eN(t), sp = rand(8, 13);
+    FX.burstAt(false, ex + nx * d, 3.45 + (d - 2.6) * 0.59 + 1.3, ez + nz * d, FX.qn(10), { life: [2.2, 3.4], speed: [0.5, 3], vx: -nx * sp, vy: rand(5, 9), vz: -nz * sp, s0: 0.5, s1: 0.4, col: [T.lite, T.lite, T.c, '#fff6e6', '#f2c95a'], f: [4, 4, 10], g: 6, drag: 0.45, spin: 7 });
   }
   // Stair aisles cut the tiers into wedges; a vomitorium (a dark round-headed doorway in a stone block) opens at the foot of each upper flight.
   function buildAisles(tiers) {
@@ -1979,6 +2039,7 @@ void main(){ vec3 d = normalize(vDir); float y = d.y;
     coalMat.color.set('#ff7a2a').multiplyScalar(0.6 + p.fire * 0.8);
     R.fireL = p.fireL != null ? p.fireL : p.pl ? 90 : 0;
     velMat.emissiveIntensity = p.velGlow != null ? p.velGlow : 0.2; clothU.uWind.value = p.wind != null ? p.wind : 1;
+    R.crowdU.uFill.value.fromArray(p.fill || [0.18, 0.15, 0.13]);
     if (envRT) envRT.dispose();
     envRT = makeEnv(p); scene.environment = envRT.texture;
     R.fire = p.fire;
@@ -2016,6 +2077,7 @@ void main(){ vec3 d = normalize(vDir); float y = d.y;
     emperorArm.rotation.x = damp(emperorArm.rotation.x, ea + (R.gesture === 2 ? Math.sin(t * 6) * 0.3 : 0), 5, dt);
     emperorArm.rotation.z = damp(emperorArm.rotation.z, R.gesture === -1 ? Math.PI : 0, 5, dt);
     sky.material.uniforms.uTime.value = t;
+    throwVolley(dt);
     // fires (the brazier lights breathe with the flames; intensity 0 by day, never toggled)
     if (typeof FX !== 'undefined' && FX.ready) for (const br of R.braziers) FX.fire(br, R.fire, dt);
     for (let i = 0; i < nightLights.length; i++) nightLights[i].intensity = R.fireL * (0.86 + 0.08 * Math.sin(t * 11.3 + i * 1.7) + 0.06 * Math.sin(t * 23.7 + i * 2.9) + 0.05 * Math.sin(t * 5.1 + i * 4.1));
