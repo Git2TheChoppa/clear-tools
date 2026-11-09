@@ -1798,11 +1798,11 @@ const Rig = (() => {
   }
   const SH_R = 0.75, SH_T = 0.47, SH_H = 1.05, SH_M = M4().multiplyMatrices(trs(0, -0.1, 0.03), trs(0, 0, 0, Math.PI / 2));
   function shieldParts(P) {
-    const sp = (g, m, c, metal) => P.push({ bone: J.hL, geo: g, m: M4().multiplyMatrices(SH_M, m), c: new THREE.Color(c), metal: !!metal });
-    const back = cyl(SH_R - 0.014, SH_R - 0.014, SH_H, 10, true, -SH_T, 2 * SH_T); back.translate(0, 0, -SH_R); flipGeo(back); sp(back, M4(), '#5c3d22');
+    const sp = (g, m, c, metal, rk = 0.6) => P.push({ bone: J.hL, geo: g, m: M4().multiplyMatrices(SH_M, m), c: new THREE.Color(c), metal: !!metal, rk });
+    const back = cyl(SH_R - 0.014, SH_R - 0.014, SH_H, 10, true, -SH_T, 2 * SH_T); back.translate(0, 0, -SH_R); flipGeo(back); sp(back, M4(), '#5c3d22', 0, 0.85);
     for (const y of [-SH_H / 2, SH_H / 2]) { const g = cyl(SH_R + 0.008, SH_R + 0.008, 0.04, 10, true, -SH_T - 0.01, 2 * SH_T + 0.02); g.translate(0, y, -SH_R); sp(g, M4(), COL.bronze, 1); }
     for (const s of [-1, 1]) sp(box(0.03, SH_H + 0.03, 0.04), trs(s * SH_R * Math.sin(SH_T), 0, SH_R * Math.cos(SH_T) - SH_R, 0, s * SH_T, 0), COL.bronze, 1);
-    const boss = sph(0.11, 12, 8, 0, TAU, 0, Math.PI / 2); boss.rotateX(Math.PI / 2); sp(boss, trs(0, 0, 0.004, 0, 0, 0, 1, 1, 0.55), COL.bronze, 1);
+    const boss = sph(0.11, 12, 8, 0, TAU, 0, Math.PI / 2); boss.rotateX(Math.PI / 2); sp(boss, trs(0, 0, 0.004, 0, 0, 0, 1, 1, 0.55), COL.bronze, 1, 0);
     sp(box(0.045, SH_H * 0.86, 0.02), trs(0, 0, 0.006), COL.bronze, 1);
   }
   function shieldFace() { const g = cyl(SH_R, SH_R, SH_H, 12, true, -SH_T, 2 * SH_T); g.translate(0, 0, -SH_R); const uv = g.attributes.uv; for (let i = 0; i < uv.count; i++) uv.setX(i, 1 - uv.getX(i)); g.applyMatrix4(SH_M); return g; }
@@ -1831,18 +1831,19 @@ const Rig = (() => {
       if (!c.index) { const n = c.attributes.position.count, ix = new Uint32Array(n); for (let i = 0; i < n; i++) ix[i] = i; c.setIndex(new THREE.BufferAttribute(ix, 1)); }
       gs.push(c); nv += c.attributes.position.count; ni += c.index.count;
     }
-    const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), si = new Uint16Array(nv * 4), sw = new Float32Array(nv * 4), ind = new Uint32Array(ni);
+    const pos = new Float32Array(nv * 3), nor = new Float32Array(nv * 3), col = new Float32Array(nv * 3), si = new Uint16Array(nv * 4), sw = new Float32Array(nv * 4), ind = new Uint32Array(ni), rk = new Float32Array(nv);
     let vo = 0, io = 0;
     gs.forEach((g, k) => {
       const p = parts[k], n = g.attributes.position.count;
       pos.set(g.attributes.position.array, vo * 3); nor.set(g.attributes.normal.array, vo * 3);
       for (let i = 0; i < n; i++) { const o = vo + i; col[o * 3] = p.c.r; col[o * 3 + 1] = p.c.g; col[o * 3 + 2] = p.c.b; si[o * 4] = p.bone; sw[o * 4] = 1; }
+      if (p.rk) rk.fill(p.rk, vo, vo + n);
       const ia = g.index.array; for (let i = 0; i < ia.length; i++) ind[io + i] = ia[i] + vo;
       vo += n; io += ia.length; g.dispose();
     });
     const out = new THREE.BufferGeometry();
     out.setAttribute('position', new THREE.BufferAttribute(pos, 3)); out.setAttribute('normal', new THREE.BufferAttribute(nor, 3)); out.setAttribute('color', new THREE.BufferAttribute(col, 3));
-    out.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); out.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4));
+    out.setAttribute('skinIndex', new THREE.Uint16BufferAttribute(si, 4)); out.setAttribute('skinWeight', new THREE.Float32BufferAttribute(sw, 4)); out.setAttribute('aRimK', new THREE.BufferAttribute(rk, 1));
     out.setIndex(new THREE.BufferAttribute(ind, 1)); out.computeBoundingSphere();
     return out;
   }
@@ -1877,6 +1878,40 @@ const Rig = (() => {
     air: { w: { shR: [-1.5, -1.55, 0], elR: [-0.2, 0, 0], hR: [1.5, 0, 0], chest: [0, -0.3, 0], spine: [0.1, 0, 0] }, s: { shR: [-1.5, -1.4, 0], elR: [-0.1, 0, 0], hR: [1.5, 0, 0], chest: [0, 0.3, 0], spine: [0.1, 0, 0] } },
   };
   const SH_GEO = new THREE.PlaneGeometry(1.5, 1.5); SH_GEO.rotateX(-Math.PI / 2);
+  // rim light + hit flash + KO heat: one fresnel term patched into every rig material (r158: `normal` and `vViewPosition` are in scope after
+  // <emissivemap_fragment>). The uniforms object is shared by all materials of one rig; the patch text is identical everywhere, so all rigs share programs.
+  // Vertex attribute aRimK (0..1, missing = 0) mutes the rim on big flat parts (shield, cape, blade) that would otherwise light up whole at grazing angles.
+  const RIM_PARS = 'uniform vec3 uRimC; uniform float uRimP; uniform vec3 uFlashC; uniform float uFlash; uniform vec3 uHeatC; uniform float uHeat; varying float vRimK;\n';
+  const RIM_MAIN = `#include <emissivemap_fragment>
+	{ float rF = 1.0 - saturate(dot(normalize(normal), normalize(vViewPosition)));
+	  totalEmissiveRadiance += uRimC * (pow(rF, uRimP) * (0.55 + 0.45 * saturate(normal.y + 0.4)) * vRimK) + uFlashC * (uFlash * (0.07 + 2.6 * rF * rF * (0.35 + 0.65 * vRimK))) + uHeatC * (uHeat * (0.4 + rF)); }`;
+  function rimMat(m, U) {
+    m.onBeforeCompile = (sh) => {
+      Object.assign(sh.uniforms, U);
+      sh.vertexShader = 'attribute float aRimK; varying float vRimK;\n' + sh.vertexShader.replace('#include <begin_vertex>', '#include <begin_vertex>\n	vRimK = 1.0 - aRimK;');
+      sh.fragmentShader = RIM_PARS + sh.fragmentShader.replace('#include <emissivemap_fragment>', RIM_MAIN);
+    };
+    return m;
+  }
+  const rimK = (g, k) => { g.setAttribute('aRimK', new THREE.BufferAttribute(new Float32Array(g.attributes.position.count).fill(k), 1)); return g; };
+  // ground ring: a flat team-coloured decal under every gladiator (procedural, one quad); role 'me' adds a forward chevron
+  const RING_R = 1.44, RING_GEO = new THREE.PlaneGeometry(2, 2); RING_GEO.rotateX(-Math.PI / 2);
+  const RING_VS = 'varying vec2 vP; void main(){ vP = position.xz; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }';
+  const RING_FS = `uniform vec3 uC; uniform float uA, uMe, uSeg; varying vec2 vP;
+void main(){ float r = length(vP), d = abs(r - 0.5), px = fwidth(r), sg = 1.0;
+ if (uSeg > 0.5) { float f = fract(atan(vP.y, vP.x) * uSeg / 6.2831853); sg = smoothstep(0.06, 0.1, min(f, 1.0 - f)); }
+ float hw = clamp(1.3 * px, 0.023, 0.16), e0 = hw + max(0.015, px), e1 = e0 + max(0.032, 1.5 * px); // keeps a minimum on-screen width at distance
+ float line = (1.0 - smoothstep(hw, e0, d)) * sg, edge = (1.0 - smoothstep(e0, e1, d)) * sg;
+ float fill = (0.07 + 0.2 * smoothstep(0.0, 0.5, r)) * step(r, 0.5);
+ float cy = vP.y - 0.64, ax = abs(vP.x), tri = min(min(cy, (0.33 - cy) * 0.62 - ax), ax - (0.15 - cy) * 0.62); // notched arrowhead ahead of the ring
+ float core = max(line, uMe * smoothstep(0.0, 0.02, tri)), under = max(edge, uMe * smoothstep(-0.04, 0.0, tri));
+ float a = max(core * 0.95, max(under * 0.45, fill)) * uA; if (a < 0.004) discard;
+ gl_FragColor = vec4(uC * mix(1.0, 0.14, under * (1.0 - core)) * (1.0 + 0.3 * core), a);
+ #include <tonemapping_fragment>
+ #include <colorspace_fragment>
+}`;
+  const ringMat = () => new THREE.ShaderMaterial({ uniforms: { uC: { value: new THREE.Color() }, uA: { value: 0 }, uMe: { value: 0 }, uSeg: { value: 0 } }, vertexShader: RING_VS, fragmentShader: RING_FS, transparent: true, depthWrite: false, extensions: { derivatives: true } });
+  const WARM = new THREE.Color('#fff0d2'), _c1 = new THREE.Color();
   const IDQ = new THREE.Quaternion(), _ax = V3(), _v1 = V3(), _v2 = V3();
   const L3 = (a, b, f) => [lerp(a[0], b[0], f), lerp(a[1], b[1], f), lerp(a[2], b[2], f)];
   class RigC {
@@ -1887,10 +1922,13 @@ const Rig = (() => {
       for (let i = 0; i < NB; i++) { const b = new THREE.Bone(), d = BONES[i]; b.position.set(d[1], d[2], d[3]); (d[0] < 0 ? this.spin : this.bones[d[0]]).add(b); this.bones.push(b); }
       this.bones[J.shR].rotation.order = 'YXZ'; this.bones[J.shL].rotation.order = 'YXZ';
       this.root.updateMatrixWorld(true); this.skel = new THREE.Skeleton(this.bones);
-      this.matA = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.74 });
-      this.matM = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.32, metalness: 0.9 });
-      this.matS = new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.05 });
+      const U = (this.rimU = { uRimC: { value: new THREE.Color() }, uRimP: { value: 2.6 }, uFlashC: { value: new THREE.Color(1, 0.9, 0.74) }, uFlash: { value: 0 }, uHeatC: { value: new THREE.Color(1, 0.55, 0.2) }, uHeat: { value: 0 } });
+      this.matA = rimMat(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.74 }), U);
+      this.matM = rimMat(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.32, metalness: 0.9 }), U);
+      this.matS = rimMat(new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.05 }), U);
       this.matB = null; this.matC = null; this.parts = [];
+      this.role = null; this.ringA = 0; // role styling (rim + ground ring): see setRole(); null = decided on the first animate()
+      this.ring = new THREE.Mesh(RING_GEO, ringMat()); this.ring.renderOrder = 2; this.ring.visible = false;
       this.cur = new Float32Array(NB * 3); this.tgt = new Float32Array(NB * 3); this.bodyY = 0.95; this.bodyZ = 0;
       this.phase = 0; this.t = rand(0, 10); this.flash = 0; this.tumbleA = 0;
       this.shudderT = 0; this.shudderW = 0; this.bladeFlash = 0; this.squash = 0; // feel: victim shudder (wall-clock), attacker blade flash, landing squash
@@ -1908,29 +1946,46 @@ const Rig = (() => {
         this.root.add(sm); sm.bind(this.skel, new THREE.Matrix4()); this.parts.push(sm);
       }
       this.matS.map = Tex.shield(this.team, this.cos.emblem); this.matS.needsUpdate = true;
-      const sf = new THREE.Mesh(shieldFace(), this.matS); sf.castShadow = true; this.bones[J.hL].add(sf); this.parts.push(sf);
+      const sf = new THREE.Mesh(rimK(shieldFace(), 0.7), this.matS); sf.castShadow = true; this.bones[J.hL].add(sf); this.parts.push(sf);
       if (this.matB) this.matB.dispose();
-      const bp = Object.assign({ emissive: '#ff9a30' }, sw.blade); this.matB = new THREE.MeshStandardMaterial(bp); this.bladeEm = bp.emissiveIntensity || 0; this.bladeEmC = new THREE.Color(bp.emissive); this.matB.emissiveIntensity = 1;
-      const bl = new THREE.Mesh(bladeGeo(sw), this.matB); bl.castShadow = true; this.bones[J.hR].add(bl); this.parts.push(bl);
+      const bp = Object.assign({ emissive: '#ff9a30' }, sw.blade); this.matB = rimMat(new THREE.MeshStandardMaterial(bp), this.rimU); this.bladeEm = bp.emissiveIntensity || 0; this.bladeEmC = new THREE.Color(bp.emissive); this.matB.emissiveIntensity = 1;
+      const bl = new THREE.Mesh(rimK(bladeGeo(sw), 0.5), this.matB); bl.castShadow = true; this.bones[J.hR].add(bl); this.parts.push(bl);
       this.baseL.set(0, 0.12, 0).applyMatrix4(SW_M); this.tipL.set(0, 0.085 + sw.len, 0).applyMatrix4(SW_M);
       this.trail.mat.uniforms.uC.value.set(sw.trail);
       const cp = CAPES[this.cos.cape];
       this.cape = null;
       if (cp) {
-        const g = new THREE.PlaneGeometry(0.62, 1.0, 4, 8); g.translate(0, -0.5, 0);
+        const g = rimK(new THREE.PlaneGeometry(0.62, 1.0, 4, 8), 0.65); g.translate(0, -0.5, 0);
         if (this.matC) this.matC.dispose();
-        this.matC = new THREE.MeshStandardMaterial({ color: cp.team ? TEAM[this.team].c : cp.c, roughness: cp.metal ? 0.35 : 0.9, metalness: cp.metal ? 0.7 : 0, side: THREE.DoubleSide });
+        this.matC = rimMat(new THREE.MeshStandardMaterial({ color: cp.team ? TEAM[this.team].c : cp.c, roughness: cp.metal ? 0.35 : 0.9, metalness: cp.metal ? 0.7 : 0, side: THREE.DoubleSide }), this.rimU);
         const m = new THREE.Mesh(g, this.matC); m.position.set(0, 0.22, -0.17); m.rotation.x = 0.1; m.castShadow = true; this.bones[J.chest].add(m); this.parts.push(m);
         this.cape = m; this.capeBase = g.attributes.position.array.slice();
       }
+      this.styleRole();
+    }
+    // readability styling. 'me': warmer, brighter rim + solid ring with a forward chevron; 'ally': team-lite rim + solid ring; 'enemy': stronger rim pulled
+    // toward the saturated team colour + a segmented, redder ring (shape-coded, and distinct from the gold fury pads); 'show' (menus): soft warm key rim,
+    // no ring. Never called = 'ally' for a sim gladiator, 'show' for a display stand-in. The rim is additive, so it is subtle in sunlight; it gets a lift at night.
+    setRole(role) { this.role = role; this.styleRole(); return this; }
+    styleRole() {
+      const role = this.role || 'ally', T = TEAM[this.team], U = this.rimU, c = U.uRimC.value.set(T.lite), ru = this.ring.material.uniforms;
+      const pr = (this.preset = Arena.preset), sunI = typeof PRESETS !== 'undefined' && PRESETS[pr] ? PRESETS[pr].sunI : 3, dim = clamp(1 - sunI / 3, 0, 1);
+      let I = 0.8, P = 2.4, rA = 0.85, rI = 1;
+      if (role === 'me') { c.lerp(WARM, 0.3); I = 0.9; rA = 1; rI = 1.15; }
+      else if (role === 'enemy') { c.lerp(_c1.set(T.c), 0.45); I = 1.05; P = 2.2; rA = 0.95; }
+      else if (role === 'show') { c.set('#ffd9a8'); I = 0.55; P = 2.8; rA = 0; }
+      c.multiplyScalar(I * (1 + 0.6 * dim)); U.uRimP.value = P;
+      ru.uC.value.set(T.css); if (role === 'enemy') ru.uC.value.lerp(_c1.set('#ff2a12'), 0.38); ru.uC.value.multiplyScalar(rI);
+      ru.uMe.value = role === 'me' ? 1 : 0; ru.uSeg.value = role === 'enemy' ? 6 : 0; this.ringA = rA;
     }
     setLook(o) { let ch = false; if (o.team != null && o.team !== this.team) { this.team = o.team; ch = true; } if (o.cos) for (const k in o.cos) if (this.cos[k] !== o.cos[k]) { this.cos[k] = o.cos[k]; ch = true; } if (o.skin && o.skin !== this.skin) { this.skin = o.skin; ch = true; } if (ch) this.build(); }
-    addTo(scene) { scene.add(this.root); scene.add(this.shadow); scene.add(this.trail.mesh); }
-    removeFrom(scene) { scene.remove(this.root); scene.remove(this.shadow); scene.remove(this.trail.mesh); }
-    dispose() { for (const m of this.parts) m.geometry.dispose(); [this.matA, this.matM, this.matS, this.matB, this.matC, this.shadow.material, this.trail.mat].forEach((m) => m && m.dispose()); this.trail.g.dispose(); }
+    addTo(scene) { scene.add(this.root); scene.add(this.shadow); scene.add(this.ring); scene.add(this.trail.mesh); }
+    removeFrom(scene) { scene.remove(this.root); scene.remove(this.shadow); scene.remove(this.ring); scene.remove(this.trail.mesh); }
+    dispose() { for (const m of this.parts) m.geometry.dispose(); [this.matA, this.matM, this.matS, this.matB, this.matC, this.shadow.material, this.ring.material, this.trail.mat].forEach((m) => m && m.dispose()); this.trail.g.dispose(); }
     hit(f = 1, shudder = 0) { this.flash = Math.max(this.flash, f); if (shudder > this.shudderT) { this.shudderT = shudder; this.shudderW = performance.now(); } }
     // g: sim gladiator (or a display stand-in with {st, vel, ground, pose})
     animate(dt, g) {
+      if (this.role === null) this.setRole(g.inp ? 'ally' : 'show'); else if (this.preset !== Arena.preset) this.styleRole();
       const T = this.tgt, t = (this.t += dt), st = g.st || 'idle', vel = g.vel || _v1.set(0, 0, 0);
       const S = (j, x, y, z) => { T[j * 3] = x; T[j * 3 + 1] = y; T[j * 3 + 2] = z; };
       const Sa = (j, a) => S(j, a[0], a[1], a[2]);
@@ -2063,6 +2118,10 @@ const Rig = (() => {
       this.shadow.position.set(this.root.position.x, 0.025, this.root.position.z);
       const ss = 1.1 * (1 - clamp(h / 6, 0, 0.6)); this.shadow.scale.set(ss, 1, ss);
       this.shadow.material.opacity = 0.65 * (1 - clamp(h / 5, 0, 0.7)); this.shadow.visible = this.root.visible;
+      // ground ring: stays on the sand, turns with the body, fades and tightens with height; steady through the respawn blink
+      const rg = this.ring, rs = RING_R * (1 - clamp(h / 9, 0, 0.3));
+      rg.visible = this.ringA > 0 && g.alive !== false;
+      if (rg.visible) { rg.position.set(this.root.position.x, 0.034, this.root.position.z); rg.rotation.y = this.root.rotation.y; rg.scale.set(rs, 1, rs); rg.material.uniforms.uA.value = this.ringA * (1 - clamp(h / 5, 0, 0.75)); }
       this.root.updateMatrixWorld(true);
       this.bones[J.hR].localToWorld(this.baseW.copy(this.baseL)); this.bones[J.hR].localToWorld(this.tipW.copy(this.tipL));
       let tOn = false;
@@ -3630,7 +3689,8 @@ const Match = (() => {
   function clearGlads() { for (const g of M.glads) if (g.rig) { g.rig.removeFrom(scene); g.rig.dispose(); } M.glads = []; Sim.glads = []; FX.clear(); }
   function makeGlad(o) {
     const g = new Glad(o); g.rig = new Rig.Rig({ team: g.team, cos: g.cos, skin: g.skin }); g.rig.addTo(scene);
-    g.titleName = Prog.BY[g.cos.title] ? Prog.BY[g.cos.title].name : ''; if (!g.human) { g.brain = new AI.Brain(g); g.lvl = Math.round(3 + g.skill * 60 + rand(-3, 6)); g.bot = true; g.bandName = g.passive ? '' : AI.bandName(g.skill); }
+    g.rig.setRole(g.human ? 'me' : !M.attract && M.me && g.team !== M.me.team ? 'enemy' : 'ally'); // readability styling: rim light + ground ring
+    g.titleName =Prog.BY[g.cos.title] ? Prog.BY[g.cos.title].name : ''; if (!g.human) { g.brain = new AI.Brain(g); g.lvl = Math.round(3 + g.skill * 60 + rand(-3, 6)); g.bot = true; g.bandName = g.passive ? '' : AI.bandName(g.skill); }
     M.glads.push(g); Sim.glads.push(g); return g;
   }
   function kickoff() {
