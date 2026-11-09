@@ -1354,6 +1354,12 @@ const Tex = (() => {
     const t = tex(c, { wrap: false, data: true }); t.rect = (k) => { const q = DECAL[k]; return [q[0] / W, 1 - (q[1] + q[3]) / H, q[2] / W, q[3] / H]; };
     return t;
   }
+  function noiseSheet() {
+    const S = 256, c = cv(S, S), x = c.getContext('2d'), img = x.createImageData(S, S), d = img.data, a = fbm(S, 4, 6, 201), b = fbm(S, 8, 5, 202), e = fbm(S, 4, 5, 203, 0.62);
+    const st = (v, lo, hi) => clamp((v - lo) / (hi - lo), 0, 1) * 255;   // stretch each field to the full range
+    for (let i = 0; i < S * S; i++) { d[i * 4] = st(a[i], 0.22, 0.78); d[i * 4 + 1] = st(b[i], 0.22, 0.78); d[i * 4 + 2] = st(e[i], 0.2, 0.8); d[i * 4 + 3] = 255; }
+    x.putImageData(img, 0, 0); return tex(c, { data: true, aniso: 1 });
+  }
   const T = { fbm, cv, tex, drawEmblem, shield, emblemIcon };
   T.init = (q) => {
     T.q = q;
@@ -1367,6 +1373,7 @@ const Tex = (() => {
     T.banner = [banner(0), banner(1)];
     T.cloth = clothAtlas();
     T.decals = decalAtlas();
+    T.noise = noiseSheet();
     T.atlas = atlas();
     T.blob = blob();
     T.glow = glow('rgba(255,210,120,1)');
@@ -1376,9 +1383,9 @@ const Tex = (() => {
 
 // ---------------------------------------------------------------- the colosseum
 const PRESETS = {
-  noon: { label: 'Sol Invictus', sun: [-0.45, 0.82, 0.36], sunCol: '#fff0d8', sunI: 3.1, hemiS: '#bfdcff', hemiG: '#cfa46c', hemiI: 1.0, top: '#2a64c8', hor: '#b8d4ee', bot: '#cdb58c', fog: '#c6d6e4', fogN: 90, fogF: 560, exp: 0.95, stars: 0, clouds: 0.55, fire: 0.5, pl: false, fill: [0.17, 0.16, 0.14], velGlow: 0.3, shaft: 0.9, shaftCol: '#fff3d6', motes: { a: 0.3, col: '#fff0cc', size: 0.04, tw: 0.6 }, birds: 1 },
-  dusk: { label: 'Golden Hour', sun: [-0.82, 0.34, 0.46], sunCol: '#ffa45a', sunI: 3.0, hemiS: '#8f9bd0', hemiG: '#9a6440', hemiI: 0.9, top: '#23407e', hor: '#f0935a', bot: '#5a3a2a', fog: '#cf8a62', fogN: 80, fogF: 500, exp: 1.05, stars: 0.06, clouds: 0.75, fire: 0.85, pl: false, fill: [0.26, 0.19, 0.15], velGlow: 0.22, shaft: 1.5, shaftCol: '#ffc890', motes: { a: 0.55, col: '#ffc98a', size: 0.05, tw: 0.5 }, birds: 1, birdCol: '#2a1810' },
-  night: { label: 'Ludi Nocturni', sun: [0.62, 0.42, -0.66], sunCol: '#8ea8ff', sunI: 0.75, hemiS: '#34466e', hemiG: '#3a2616', hemiI: 0.65, top: '#040816', hor: '#16203c', bot: '#0c0907', fog: '#0e1424', fogN: 60, fogF: 420, exp: 1.2, stars: 1, clouds: 0.22, fire: 1.4, pl: true, fill: [0.1, 0.1, 0.13], velGlow: 0.03, shaft: 0.7, shaftCol: '#9fb6ff', motes: { a: 0.95, col: '#ffb45a', size: 0.06, tw: 1, vel: [0.06, 0.3, 0.03], box: [30, 8, 30] }, birds: 0 },
+  noon: { label: 'Sol Invictus', sun: [-0.45, 0.82, 0.36], sunCol: '#fff0d8', sunI: 3.1, hemiS: '#bfdcff', hemiG: '#cfa46c', hemiI: 1.0, top: '#2a64c8', hor: '#b8d4ee', bot: '#cdb58c', fog: '#c6d6e4', fogN: 90, fogF: 560, exp: 0.95, stars: 0, clouds: 0.5, cloudA: '#ffffff', cloudB: '#9db0cc', disc: 14, discCol: '#fff7e2', fire: 0.5, pl: false, fill: [0.17, 0.16, 0.14], velGlow: 0.3, shaft: 0.9, shaftCol: '#fff3d6', motes: { a: 0.3, col: '#fff0cc', size: 0.04, tw: 0.6 }, birds: 1 },
+  dusk: { label: 'Golden Hour', sun: [-0.82, 0.34, 0.46], sunCol: '#ffa45a', sunI: 3.0, hemiS: '#8f9bd0', hemiG: '#9a6440', hemiI: 0.9, top: '#23407e', hor: '#f0935a', bot: '#5a3a2a', fog: '#cf8a62', fogN: 80, fogF: 500, exp: 1.05, stars: 0.05, clouds: 0.56, cloudA: '#ffd2a2', cloudB: '#6f5a82', disc: 12, discCol: '#ffd6a0', fire: 0.85, pl: false, fill: [0.26, 0.19, 0.15], velGlow: 0.22, shaft: 1.5, shaftCol: '#ffc890', motes: { a: 0.55, col: '#ffc98a', size: 0.05, tw: 0.5 }, birds: 1, birdCol: '#2a1810' },
+  night: { label: 'Ludi Nocturni', sun: [0.62, 0.42, -0.66], sunCol: '#8ea8ff', sunI: 0.75, hemiS: '#34466e', hemiG: '#3a2616', hemiI: 0.65, top: '#040816', hor: '#16203c', bot: '#0c0907', fog: '#0e1424', fogN: 60, fogF: 420, exp: 1.2, stars: 1, clouds: 0.42, cloudA: '#55668e', cloudB: '#10162a', disc: 2.6, discCol: '#f6f1e0', moon: 1, fire: 1.4, pl: true, fill: [0.1, 0.1, 0.13], velGlow: 0.03, shaft: 0.7, shaftCol: '#9fb6ff', motes: { a: 0.95, col: '#ffb45a', size: 0.06, tw: 1, vel: [0.06, 0.3, 0.03], box: [30, 8, 30] }, birds: 0 },
 };
 const Arena = (() => {
   const { A, B, WALL } = ARENA;
@@ -2027,26 +2034,62 @@ void main(){ vec2 p = vUv - 0.5; float r = length(p) * 2.0; float a = atan(p.y, 
     beam = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.4, 60, 24, 1, true), beamMat); beam.position.y = 30; group.add(beam);
   }
   function buildSky() {
+    // Gradient + horizon haze in the fog colour; a real disc for the sun (HDR, so it blooms) or a cratered moon; stars and a faint
+    // milky way; a high streaky cloud layer and a low cumulus layer whose sunward edges are lit and whose cores are shaded.
+    // Cloud shapes come from the shared noise sheet (five fetches a pixel; the low-quality path drops the lit-edge sample).
     sky = new THREE.Mesh(new THREE.SphereGeometry(900, 32, 16), new THREE.ShaderMaterial({
-      side: THREE.BackSide, depthWrite: false,
-      uniforms: { uTop: { value: new THREE.Color() }, uHor: { value: new THREE.Color() }, uBot: { value: new THREE.Color() }, uSunDir: { value: V3(0, 1, 0) }, uSunCol: { value: new THREE.Color() }, uStars: { value: 0 }, uClouds: { value: 0 }, uTime: { value: 0 } },
+      side: THREE.BackSide, depthWrite: false, defines: { SKYQ: Q },
+      uniforms: { uTop: { value: new THREE.Color() }, uHor: { value: new THREE.Color() }, uBot: { value: new THREE.Color() }, uSunDir: { value: V3(0, 1, 0) }, uSunCol: { value: new THREE.Color() }, uStars: { value: 0 }, uClouds: { value: 0 }, uTime: { value: 0 },
+        uFog: { value: new THREE.Color() }, uCloudA: { value: new THREE.Color() }, uCloudB: { value: new THREE.Color() }, uDiscCol: { value: new THREE.Color() }, uDisc: { value: 0 }, uMoon: { value: 0 }, uHaze: { value: 0.12 },
+        uFlash: { value: 0 }, uFlashDir: { value: V3(0, 1, 0) }, uBolt: { value: V3() }, uNoise: { value: Tex.noise } },
       vertexShader: `varying vec3 vDir; void main(){ vDir = position; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-      fragmentShader: `uniform vec3 uTop, uHor, uBot, uSunDir, uSunCol; uniform float uStars, uClouds, uTime; varying vec3 vDir;
+      fragmentShader: `uniform vec3 uTop, uHor, uBot, uSunDir, uSunCol, uFog, uCloudA, uCloudB, uDiscCol, uFlashDir, uBolt; uniform float uStars, uClouds, uTime, uDisc, uMoon, uHaze, uFlash; uniform sampler2D uNoise; varying vec3 vDir;
 float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-float n(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y); }
-float fbm(vec2 p){ float s = 0.0, a = 0.5; for (int i = 0; i < 5; i++){ s += a * n(p); p *= 2.03; a *= 0.5; } return s; }
-void main(){ vec3 d = normalize(vDir); float y = d.y;
- vec3 col = y > 0.0 ? mix(uHor, uTop, pow(y, 0.55)) : mix(uHor, uBot, pow(-y, 0.4));
- float sd = max(dot(d, normalize(uSunDir)), 0.0);
- col += uSunCol * (pow(sd, 900.0) * 8.0 + pow(sd, 14.0) * 0.4 + pow(sd, 3.0) * 0.12);
+float dens(vec2 p){ return texture2D(uNoise, p * 0.11 + uTime * vec2(0.0011, 0.0003)).r * 0.62 + texture2D(uNoise, p * 0.31 - uTime * vec2(0.0006, 0.0017)).g * 0.38; }
+void main(){ vec3 d = normalize(vDir), sdir = normalize(uSunDir); float y = d.y;
+ vec3 col = y > 0.0 ? mix(uHor, uTop, pow(y, 0.5)) : mix(uHor, uBot, pow(-y, 0.4));
+ float sd = dot(d, sdir), sdp = max(sd, 0.0), cov = 0.0;
+ col += uSunCol * (pow(sdp, 5.0) * 0.16 + pow(sdp, 48.0) * 0.45) * (1.0 - 0.5 * uMoon);
  if (y > 0.0) {
-  vec2 uv = d.xz / (y + 0.12) * 1.4 + vec2(uTime * 0.012, 0.0);
-  float c = smoothstep(0.5, 0.86, fbm(uv));
-  vec3 cc = mix(uHor * 1.05, vec3(1.0), 0.5) + uSunCol * pow(sd, 4.0) * 0.5;
-  col = mix(col, cc, c * uClouds * smoothstep(0.0, 0.2, y));
-  vec2 sp = d.xz / (y + 0.3) * 110.0; float st = step(0.9965, h(floor(sp))) * smoothstep(0.08, 0.4, y);
-  col += vec3(st) * uStars * (0.6 + 0.4 * sin(uTime * 3.0 + h(floor(sp)) * 40.0));
+  if (uStars > 0.005) {
+   vec2 sp = d.xz / (y + 0.35) * 70.0, id = floor(sp), g = fract(sp) - 0.5 - (vec2(h(id), h(id + 7.3)) - 0.5) * 0.7; float hh = h(id + 3.1);
+   float st = (1.0 - smoothstep(0.0, 0.17, length(g))) * smoothstep(0.86, 1.0, hh) * (0.55 + 0.45 * sin(uTime * (1.0 + hh * 3.0) + hh * 60.0));
+   float mw = pow(max(1.0 - abs(dot(d, vec3(0.42, 0.33, -0.84))) * 1.6, 0.0), 2.0) * (0.3 + 0.7 * texture2D(uNoise, d.xz * 1.7).b);
+   col += (st * mix(vec3(1.0, 0.86, 0.7), vec3(0.75, 0.85, 1.0), h(id + 9.0)) * 1.7 + vec3(0.5, 0.56, 0.75) * mw * 0.2) * uStars * smoothstep(0.02, 0.3, y);
+  }
+  vec2 uv = d.xz / (y + 0.1); float hz = smoothstep(0.0, 0.17, y);
+#if SKYQ > 0
+  float c1 = smoothstep(0.45, 0.85, texture2D(uNoise, uv * vec2(0.035, 0.1) + uTime * vec2(0.0005, 0.0001) + 0.37).b) * (0.25 + 0.5 * uClouds) * hz;
+  col = mix(col, mix(uCloudA, uSunCol, 0.2 + 0.5 * pow(sdp, 6.0)), c1 * 0.55);
+#endif
+  if (uDisc > 0.0) {
+   float R = mix(0.036, 0.05, uMoon), ang = acos(clamp(sd, -1.0, 1.0)), disc = 1.0 - smoothstep(R * 0.9, R, ang);
+   if (disc > 0.0) {
+    vec3 ax = normalize(cross(sdir, vec3(0.0, 1.0, 0.0))), ay = cross(ax, sdir); vec2 q = vec2(dot(d, ax), dot(d, ay)) / R; float zz = sqrt(max(1.0 - dot(q, q), 0.0));
+    float m = mix(0.72 + 0.28 * zz, (0.55 + 0.45 * texture2D(uNoise, q * 0.21 + 0.4).r) * clamp(dot(vec3(q, zz), vec3(-0.5, 0.3, 0.81)) * 1.5 + 0.3, 0.05, 1.0), uMoon);
+    col = mix(col, uDiscCol * uDisc * m, disc);
+   }
+  }
+  float thr = mix(0.86, 0.14, uClouds), f = dens(uv), c2 = smoothstep(thr, thr + 0.22, f) * hz;
+  if (c2 > 0.001) {
+   float core = smoothstep(thr + 0.06, thr + 0.55, f);
+#if SKYQ > 0
+   vec2 ts = normalize(sdir.xz / (sdir.y + 0.1) - uv + 1e-4); float lit = clamp(0.5 + (f - dens(uv + ts * 0.55)) * 3.4, 0.0, 1.0);
+#else
+   float lit = 0.6;
+#endif
+   vec3 cc = mix(uCloudB, uCloudA, lit * (1.0 - 0.6 * core)) + uSunCol * pow(sdp, 10.0) * (1.0 - core) * 0.6;
+   col = mix(col, cc, c2); cov = c2;
+  }
+  if (uBolt.z > 0.0) {   // a forked stroke from the cloud base down to the rim
+   float da = atan(d.x, d.z) - uBolt.x; da = atan(sin(da), cos(da));
+   float path = (texture2D(uNoise, vec2(y * 0.9, uBolt.y)).r - 0.5) * 0.5 + (texture2D(uNoise, vec2(y * 4.0, uBolt.y + 0.31)).g - 0.5) * 0.09;
+   float bw = abs(da - path * (1.0 - smoothstep(0.0, 0.75, y)));
+   col += uBolt.z * vec3(0.8, 0.88, 1.0) * ((1.0 - smoothstep(0.0, 0.006, bw)) * 9.0 + exp(-bw * 26.0) * 0.6) * (1.0 - smoothstep(0.45, 0.7, y));
+  }
  }
+ col = mix(col, uFog, (1.0 - smoothstep(0.0, uHaze, abs(y))) * 0.9);
+ col += uFlash * vec3(0.72, 0.82, 1.0) * (0.3 + 1.5 * pow(max(dot(d, uFlashDir), 0.0), 5.0)) * (0.35 + 0.65 * cov);
  gl_FragColor = vec4(col, 1.0);
  #include <tonemapping_fragment>
  #include <colorspace_fragment>
@@ -2076,6 +2119,7 @@ void main(){ vec3 d = normalize(vDir); float y = d.y;
     const p = PRESETS[name] || PRESETS.dusk; R.preset = name;
     const u = sky.material.uniforms;
     u.uTop.value.set(p.top); u.uHor.value.set(p.hor); u.uBot.value.set(p.bot); u.uSunDir.value.set(...p.sun).normalize(); u.uSunCol.value.set(p.sunCol); u.uStars.value = p.stars; u.uClouds.value = p.clouds;
+    u.uFog.value.set(p.fog); u.uCloudA.value.set(p.cloudA || '#ffffff'); u.uCloudB.value.set(p.cloudB || '#8a96b0'); u.uDiscCol.value.set(p.discCol || p.sunCol); u.uDisc.value = p.disc == null ? 10 : p.disc; u.uMoon.value = p.moon ? 1 : 0; u.uHaze.value = p.haze || 0.12; u.uFlash.value = 0; u.uBolt.value.z = 0;
     sun.color.set(p.sunCol); sun.intensity = p.sunI; sun.position.set(...p.sun).normalize().multiplyScalar(90);
     hemi.color.set(p.hemiS); hemi.groundColor.set(p.hemiG); hemi.intensity = p.hemiI;
     scene.fog.color.set(p.fog); scene.fog.near = p.fogN; scene.fog.far = p.fogF;
