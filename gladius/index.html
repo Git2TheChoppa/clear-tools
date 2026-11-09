@@ -937,6 +937,10 @@ const Sound = (() => {
       if (I > 0 && st % 2 === 1) drum(t, 'jingle', 0.03);
       if (I > 1 && st % 4 === 2) drum(t, 'tek', 0.1);
       if (st === 0 && bar % 2 === 0) drone(t, nf(ch[0]), spb * 32, 0.028 + I * 0.008);
+      // as the match heats up: a lyre-bass ostinato on a tresillo, a rising chord figure every other bar, and a distant horn call in the final thirty / overtime
+      if (I > 0 && (st === 0 || st === 6 || st === 12 || (I > 1 && (st === 3 || st === 10)))) pluck(t, nf(ch[0]) * (st === 12 ? 1.5 : 1), 0.085);
+      if (bar % 2 === 1 && (st === 8 || st === 10 || st === 12)) pluck(t, nf(12 + ch[(st - 8) / 2]), 0.04 + I * 0.012);
+      if (I > 1 && st === 0 && bar % 4 === 0) horn([[ch[0], 0.5], [ch[0] + 7, 0.9]], 0.045, 164.8);
     }
   }
   function schedule() {
