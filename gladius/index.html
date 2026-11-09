@@ -3641,6 +3641,542 @@ const UI = (() => {
   return { init, show, update, results, reveal, refreshDisplay, syncVol, get cur() { return cur; } };
 })();
 
+// ---------------------------------------------------------------- the Ludus: a guided lesson in the arena, the training-yard panel, the first-match offer
+const Tutorial = (() => {
+  const T = { active: false, yard: false, i: -1 };
+  const NUM = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV'];
+  const PRAISE = ['Bene!', 'Optime!', 'Euge!', 'Macte!', 'Recte!'];
+  const YMODES = [['stand', 'Stand', 'Dummies stand their ground. Practise combos, dodge-strikes and demolitions.'], ['block', 'Block', 'Dummies keep their shields up. Break the guard with a heavy blow.'], ['heavy', 'Strike', 'Dummies wind up heavy blows on three beats. Parry on the fourth.'], ['chase', 'Chase', 'Dummies hunt you with quick combos. Block, dodge and answer.']];
+  const YSPOT = [[-9.5, -7], [-6.5, -1]];
+  const KEYS = { kb: { move: 'WASD', jump: 'Space', boost: 'Shift', atk: 'LMB', block: 'RMB', lock: 'Q', taunt: 'T', pause: 'Esc' }, pad: { move: 'L-stick', jump: 'A', boost: 'B', atk: 'X', block: 'LB', lock: 'Y', taunt: 'R3', pause: 'Start' }, touch: { move: 'Stick', jump: 'Jump', boost: 'Boost', atk: 'Strike', block: 'Block', lock: 'Lock', taunt: 'Salute', pause: 'II' } };
+  const Y = { mode: 'stand', fury: false, intro: null }, E = {}, eased = {}, _p = V3(), _m = V3();
+  let root = null, hudEl = null, me = null, dum = null, spare = null, L = null, offer = null, starting = false, pz = null, dev = '';
+  // save: S.tut = { done, step, asked } (created lazily; never touched before Prog.load())
+  const tut = () => { const S = Prog.S; return S.tut && typeof S.tut === 'object' ? S.tut : (S.tut = { done: false, step: 0 }); };
+  const later = (fn) => setTimeout(fn, 0); // start / leave replace the match: never from inside Match.update
+  const live = () => !!me && Match.active && Match.me === me;
+  const fit = (x, z, m) => { const k = Math.hypot(x / (ARENA.A - m), z / (ARENA.B - m)); return k > 1 ? [x / k, z / k] : [x, z]; };
+  // an input chip for the device in the player's hands (Input.glyph when the shell provides it)
+  function G(a) { if (Input.glyph) { try { const h = Input.glyph(a); if (h) return h; } catch (e) { /* fall back to plain chips */ } } return `<span class="kbd">${(KEYS[Input.device] || KEYS.kb)[a] || a}</span>`; }
+
+  const CSS = `
+#ludus{ position:absolute; inset:0; pointer-events:none; --ld-top:calc(64px + var(--sat)); }
+#ludus [hidden]{ display:none !important; }
+#ludus button{ pointer-events:auto; cursor:pointer; margin:0; font-family:inherit; -webkit-tap-highlight-color:transparent; }
+#hud.ld-on .announce{ top:37%; } body.touch #hud.ld-on .announce{ top:46%; }
+.ld-wrap{ position:absolute; left:0; right:0; top:var(--ld-top); margin:0 auto; width:min(560px, calc(100vw - 32px)); filter:drop-shadow(0 10px 16px rgba(0,0,0,.45)); }
+.ld-card{ position:relative; padding:9px 18px 12px; text-align:center; background:linear-gradient(180deg, rgba(46,31,20,.95), rgba(22,14,9,.92)); border:1px solid rgba(185,119,59,.6); clip-path:polygon(12px 0,100% 0,100% calc(100% - 12px),calc(100% - 12px) 100%,0 100%,0 12px); transition:border-color .2s; }
+.ld-card::before{ content:""; position:absolute; left:0; right:0; top:0; height:2px; background:linear-gradient(90deg, rgba(245,192,69,0), #f5c045 18%, #fff2c4 50%, #f5c045 82%, rgba(245,192,69,0)); }
+.ld-card.in{ animation:ldin .34s cubic-bezier(.2,.9,.3,1.25) both; }
+@keyframes ldin{ from{ opacity:0; transform:translateY(-16px); } }
+.ld-top{ display:flex; align-items:center; gap:12px; min-height:24px; }
+.ld-kick{ font-weight:800; font-size:13px; letter-spacing:.16em; color:var(--gold); white-space:nowrap; }
+.ld-kick b{ color:#fff2c4; }
+.ld-prog{ flex:1; display:flex; gap:3px; justify-content:center; }
+.ld-prog i{ flex:0 1 20px; height:4px; background:rgba(255,255,255,.14); }
+.ld-prog i.ok{ background:linear-gradient(90deg,#c98a1a,#ffd66e); } .ld-prog i.sk{ background:rgba(185,119,59,.5); }
+.ld-prog i.cur{ background:var(--marble); animation:ldblink .7s ease-in-out infinite alternate; }
+@keyframes ldblink{ from{ opacity:.4; } }
+.ld-skip{ position:relative; overflow:hidden; display:inline-flex; align-items:center; min-height:24px; padding:1px 9px; border:1px solid rgba(243,233,214,.28); background:rgba(0,0,0,.32); color:var(--dim); font-weight:700; font-size:13px; letter-spacing:.05em; white-space:nowrap; }
+.ld-skip:hover{ color:var(--marble); border-color:var(--gold); }
+.ld-skip i{ position:absolute; inset:0; background:rgba(245,192,69,.45); transform-origin:left; transform:scaleX(0); }
+.ld-skip span{ position:relative; } .ld-skip .kbd{ font-size:11px; }
+.ld-name{ margin:5px 0 3px; font-family:var(--display); font-weight:700; font-size:25px; line-height:1.1; letter-spacing:.05em; text-transform:uppercase; color:var(--marble); text-shadow:0 2px 0 rgba(0,0,0,.4); }
+.ld-name small{ margin-left:10px; padding:1px 7px; font-family:var(--ui); font-weight:800; font-size:12px; letter-spacing:.14em; vertical-align:5px; color:#2a1606; background:var(--sand); text-shadow:none; }
+.ld-text{ font-size:19px; font-weight:600; line-height:1.3; color:var(--marble); text-wrap:balance; }
+.ld-text .kbd,.ld-hint .kbd{ font-weight:700; color:#fff2c4; border-color:rgba(245,192,69,.6); background:rgba(245,192,69,.13); }
+.ld-goal{ display:flex; align-items:center; justify-content:center; gap:12px; margin-top:9px; min-height:20px; }
+.ld-pips{ display:flex; gap:9px; padding:0 3px; }
+.ld-pips i{ width:12px; height:12px; transform:rotate(45deg); border:1.5px solid rgba(224,165,96,.85); background:rgba(0,0,0,.4); }
+.ld-pips i.on{ border-color:#ffe29a; background:linear-gradient(135deg,#fff2c4,#f5c045 55%,#c98a1a); box-shadow:0 0 10px rgba(245,192,69,.75); }
+.ld-pips i.pop{ animation:ldpop .4s cubic-bezier(.2,.9,.3,1.5); }
+@keyframes ldpop{ from{ transform:rotate(45deg) scale(2.4); filter:brightness(2); } }
+.ld-lab{ font-weight:800; font-size:14px; letter-spacing:.1em; text-transform:uppercase; color:var(--sand); }
+.ld-hint{ margin-top:8px; padding-top:7px; border-top:1px solid rgba(185,119,59,.4); font-size:16px; font-weight:600; line-height:1.25; color:#ffd9a0; animation:ldin .25s both; }
+.ld-hint:empty{ display:none; }
+.ld-hint b{ margin-right:8px; font-weight:800; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--bronze-hi); }
+.ld-stamp{ position:absolute; inset:0; display:none; place-items:center; pointer-events:none; }
+.ld-stamp span{ padding:0 20px 2px; border:3px double rgba(245,192,69,.95); background:rgba(22,14,9,.6); font-family:var(--display); font-weight:900; font-size:34px; letter-spacing:.08em; color:#ffd66e; text-shadow:0 2px 0 #3a2208, 0 0 18px rgba(255,190,60,.45); transform:rotate(-5deg); }
+.ld-card.done{ border-color:rgba(245,192,69,.95); }
+.ld-card.done .ld-stamp{ display:grid; } .ld-card.done .ld-stamp span{ animation:ldstamp .42s cubic-bezier(.2,.9,.3,1.2) both; }
+.ld-card.done .ld-name,.ld-card.done .ld-text,.ld-card.done .ld-skip{ opacity:.16; transition:opacity .15s; }
+@keyframes ldstamp{ 0%{ opacity:0; transform:scale(2.3) rotate(-11deg); } 60%{ opacity:1; transform:scale(.94) rotate(-5deg); } 100%{ transform:scale(1) rotate(-5deg); } }
+.ld-b{ display:inline-flex; align-items:center; gap:9px; min-height:44px; padding:0 22px; border:1px solid rgba(224,165,96,.55); background:linear-gradient(180deg, rgba(60,40,26,.95), rgba(34,23,15,.95)); color:var(--marble); font-weight:700; font-size:20px; letter-spacing:.03em; white-space:nowrap; transition:border-color .12s, filter .12s; }
+.ld-b:hover{ border-color:var(--gold); filter:brightness(1.15); }
+.ld-b.pri{ background:linear-gradient(180deg, #ffd66e, #e6a92c 55%, #c98a1a); color:#2a1606; border-color:#ffe29a; text-shadow:0 1px 0 rgba(255,240,200,.5); box-shadow:0 6px 22px rgba(245,170,40,.25); }
+.ld-b .kbd{ font-size:12px; } .ld-b.pri .kbd{ color:#2a1606; border-color:rgba(42,22,6,.5); background:rgba(255,255,255,.28); }
+.ld-act{ min-height:32px; padding:0 14px; font-size:16px; }
+.ld-btns{ display:flex; justify-content:center; gap:14px; flex-wrap:wrap; }
+.ld-mark{ position:absolute; left:0; top:0; width:0; height:0; will-change:transform; }
+.ld-pin{ position:absolute; left:0; bottom:0; display:flex; flex-direction:column; align-items:center; gap:2px; transform:translateX(-50%); animation:ldbob .8s ease-in-out infinite alternate; }
+@keyframes ldbob{ to{ transform:translate(-50%,-9px); } }
+.ld-pin b,.ld-edge b{ padding:1px 9px; font-weight:800; font-size:13px; letter-spacing:.14em; text-transform:uppercase; white-space:nowrap; color:#2a1606; background:linear-gradient(180deg,#ffe08a,#e6a92c); box-shadow:0 2px 8px rgba(0,0,0,.5); }
+.ld-pin em{ font-style:normal; font-weight:800; font-size:13px; color:#fff2c4; text-shadow:0 1px 2px #000, 0 0 6px rgba(0,0,0,.7); }
+.ld-pin i{ width:0; height:0; border-left:10px solid transparent; border-right:10px solid transparent; border-top:14px solid #f5c045; filter:drop-shadow(0 2px 2px rgba(0,0,0,.6)); }
+.ld-edge{ position:absolute; left:0; top:0; display:none; }
+.ld-edge i{ position:absolute; left:-13px; top:-13px; width:26px; height:26px; background:linear-gradient(180deg,#fff2c4,#f5c045 60%,#c98a1a); clip-path:polygon(50% 0,100% 100%,50% 74%,0 100%); transform:rotate(var(--a,0deg)); }
+.ld-edge b{ position:absolute; left:0; top:20px; transform:translateX(-50%); }
+.ld-mark.off .ld-pin{ display:none; } .ld-mark.off .ld-edge{ display:block; }
+.ld-yard{ position:absolute; left:0; right:0; top:var(--ld-top); margin:0 auto; width:max-content; max-width:calc(100vw - 24px); display:flex; align-items:stretch; gap:6px; padding:5px 8px; background:rgba(22,14,9,.8); border:1px solid rgba(185,119,59,.5); border-top:2px solid var(--gold); animation:ldin .3s both; }
+.ld-yard > span{ align-self:center; padding:0 8px 0 4px; font-family:var(--display); font-weight:700; font-size:13px; letter-spacing:.1em; color:var(--sand); white-space:nowrap; }
+.ld-yard button{ display:flex; align-items:center; gap:7px; min-height:30px; padding:2px 10px; border:1px solid rgba(224,165,96,.45); background:linear-gradient(180deg, rgba(60,40,26,.92), rgba(34,23,15,.92)); color:var(--marble); font-weight:700; font-size:15px; white-space:nowrap; }
+.ld-yard button:hover{ border-color:var(--gold); }
+.ld-yard small{ font-size:12px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); }
+.ld-yard b{ color:#fff2c4; } .ld-yard button.on{ border-color:var(--gold); } .ld-yard button.on b{ color:var(--gold); }
+.ld-yard .kbd{ font-size:11px; }
+.ld-yard button.new{ border-color:#ffe29a; background:linear-gradient(180deg, #ffd66e, #e6a92c 55%, #c98a1a); } .ld-yard button.new b{ color:#2a1606; }
+.ld-offer{ position:absolute; left:0; right:0; bottom:calc(13% + var(--sab)); margin:0 auto; width:min(580px, calc(100vw - 32px)); padding:16px 22px 20px; text-align:center; pointer-events:auto; animation:ldup .4s cubic-bezier(.2,.9,.3,1.2) both; }
+@keyframes ldup{ from{ opacity:0; transform:translateY(24px); } }
+.ld-offer h3{ margin:0 0 4px; font-family:var(--display); font-weight:900; font-size:24px; letter-spacing:.06em; color:var(--gold); }
+.ld-offer p{ margin:0 0 13px; font-size:18px; font-weight:600; line-height:1.3; color:var(--marble); }
+.ld-bar{ position:absolute; left:0; right:0; bottom:0; height:3px; background:rgba(255,255,255,.1); } .ld-bar i{ display:block; height:100%; background:var(--gold); transform-origin:left; }
+.ld-grad{ position:absolute; inset:0; display:flex; flex-direction:column; justify-content:space-between; align-items:center; padding:calc(64px + var(--sat)) 16px calc(26px + var(--sab)); }
+.ld-ghead{ text-align:center; animation:ldin .5s cubic-bezier(.2,.9,.3,1.25) both; }
+.ld-laurel{ display:block; width:86px; height:76px; margin:0 auto -6px; filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)); }
+.ld-ghead h2{ margin:0; font-family:var(--display); font-weight:900; font-size:clamp(34px, 6vw, 68px); line-height:1; letter-spacing:.07em; text-transform:uppercase; color:#f7cf6a; background:linear-gradient(180deg,#fff2c4 0%,#f6cc62 38%,#c98d23 62%,#8e5a14 100%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; filter:drop-shadow(0 3px 0 #3a2208) drop-shadow(0 8px 18px rgba(0,0,0,.6)); }
+.ld-ghead p{ margin:8px 0 0; font-weight:800; font-style:italic; font-size:22px; color:var(--marble); text-shadow:0 2px 3px #000; }
+.ld-gfoot{ width:min(640px, calc(100vw - 32px)); padding:14px 20px 16px; text-align:center; pointer-events:auto; animation:ldup .5s .25s cubic-bezier(.2,.9,.3,1.2) both; }
+.ld-rew{ display:flex; justify-content:center; gap:10px 26px; flex-wrap:wrap; margin-bottom:10px; }
+.ld-rew > div{ display:flex; align-items:center; gap:10px; text-align:left; }
+.ld-rew svg{ width:40px; height:40px; flex:none; }
+.ld-rew b{ display:block; font-size:19px; font-weight:800; line-height:1.1; color:#fff2c4; } .ld-rew span{ font-size:15px; color:var(--dim); }
+.ld-stat{ margin-bottom:12px; font-weight:800; font-size:14px; letter-spacing:.12em; text-transform:uppercase; color:var(--sand); }
+.menu-list .btn.ld-menu{ gap:14px; }
+.ld-badge{ padding:1px 8px; font-style:normal; font-weight:800; font-size:13px; letter-spacing:.1em; text-transform:uppercase; color:#2a1606; background:linear-gradient(180deg,#ffe08a,#e6a92c); transform:skewX(10deg); animation:ldblink .8s ease-in-out infinite alternate; }
+.ld-pz{ display:contents; }
+.ld-res{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+.ld-res > div{ flex:1 1 260px; } .ld-res b{ display:block; font-family:var(--display); font-size:19px; letter-spacing:.04em; color:var(--gold); } .ld-res span{ font-size:16px; color:var(--dim); }
+body.touch #ludus{ --ld-top:calc(56px + var(--sat)); }
+body.touch .ld-wrap{ width:min(400px, 47vw); filter:none; }
+body.touch .ld-card{ padding:5px 11px 8px; } body.touch .ld-kick{ font-size:10px; letter-spacing:.1em; } body.touch .ld-prog i{ flex-basis:9px; height:3px; }
+body.touch .ld-name{ margin:2px 0 1px; font-size:16px; } body.touch .ld-text{ font-size:14px; line-height:1.22; } body.touch .ld-goal{ margin-top:5px; gap:9px; } body.touch .ld-pips i{ width:9px; height:9px; } body.touch .ld-lab{ font-size:11px; }
+body.touch .ld-hint{ margin-top:5px; padding-top:4px; font-size:13px; } body.touch .ld-skip{ min-height:28px; padding:1px 12px; } body.touch .ld-stamp span{ font-size:24px; }
+body.touch .ld-yard{ gap:5px; padding:4px 6px; } body.touch .ld-yard > span{ display:none; } body.touch .ld-yard button{ min-height:36px; font-size:14px; }
+body.touch .ld-offer{ bottom:calc(7% + var(--sab)); padding:10px 16px 14px; } body.touch .ld-offer h3{ font-size:19px; } body.touch .ld-offer p{ margin-bottom:9px; font-size:15px; }
+body.touch .ld-grad{ padding-top:calc(48px + var(--sat)); padding-bottom:calc(10px + var(--sab)); } body.touch .ld-laurel{ width:54px; height:48px; } body.touch .ld-ghead p{ margin-top:3px; font-size:16px; }
+body.touch .ld-gfoot{ padding:8px 14px 10px; } body.touch .ld-rew{ margin-bottom:5px; } body.touch .ld-rew svg{ width:30px; height:30px; } body.touch .ld-rew b{ font-size:16px; } body.touch .ld-rew span{ font-size:13px; } body.touch .ld-stat{ margin-bottom:7px; font-size:12px; }
+body.touch .ld-b{ min-height:42px; font-size:18px; }
+@media (prefers-reduced-motion: reduce){ .ld-card.in,.ld-hint,.ld-pips i.pop,.ld-card.done .ld-stamp span,.ld-pin,.ld-yard,.ld-offer,.ld-ghead,.ld-gfoot,.ld-badge,.ld-prog i.cur{ animation:none; } }
+`;
+  const CHEST = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M5 18 Q5 8 14 8 H26 Q35 8 35 18 V20 H5 Z" fill="#b9773b" stroke="#2a1606" stroke-width="1.5"/><rect x="5" y="20" width="30" height="13" fill="#8a5426" stroke="#2a1606" stroke-width="1.5"/><path d="M11 8.6 V33 M29 8.6 V33" stroke="#f5c045" stroke-width="2.2"/><rect x="17" y="16" width="6" height="9" rx="1" fill="#f5c045" stroke="#2a1606" stroke-width="1.2"/></svg>';
+  const LAUREL = (() => { let s = ''; for (let i = 0; i < 7; i++) { const a = (112 + i * 19) * Math.PI / 180, x = 50 + Math.cos(a) * 36, y = 44 + Math.sin(a) * 36; s += `<ellipse cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" rx="9.5" ry="3.9" transform="rotate(${(112 + i * 19 + 62).toFixed(0)} ${x.toFixed(1)} ${y.toFixed(1)})"/>`; } return `<svg class="ld-laurel" viewBox="0 0 100 88" aria-hidden="true"><g fill="#f5c045" stroke="#7a4d10" stroke-width="1">${s}<g transform="translate(100 0) scale(-1 1)">${s}</g></g><path d="M50 27 L54.6 38.6 L67 39.5 L57.4 47.5 L60.5 59.6 L50 53 L39.5 59.6 L42.6 47.5 L33 39.5 L45.4 38.6 Z" fill="#fff2c4" stroke="#7a4d10" stroke-width="1.2"/></svg>`; })();
+
+  function build() {
+    if (root) return;
+    hudEl = document.getElementById('hud'); root = el('div'); root.id = 'ludus';
+    root.innerHTML = '<div class="ld-wrap" hidden><div class="ld-card"><div class="ld-top"><span class="ld-kick"></span><span class="ld-prog"></span><button class="ld-skip" data-ld="skip" tabindex="-1"><i></i><span></span></button></div><div class="ld-name"></div><div class="ld-text"></div><div class="ld-goal"><span class="ld-pips"></span><span class="ld-lab"></span><button class="ld-b ld-act" data-ld="taunt" tabindex="-1" hidden>Salute</button></div><div class="ld-hint"></div><div class="ld-stamp"><span></span></div></div></div>'
+      + '<div class="ld-mark" hidden><div class="ld-pin"><b></b><em></em><i></i></div><div class="ld-edge"><i></i><b></b></div></div><div class="ld-yard" hidden></div><div class="ld-offer plaque" hidden></div><div class="ld-grad" hidden></div>';
+    hudEl.appendChild(root);
+    const q = (s) => root.querySelector(s);
+    Object.assign(E, { wrap: q('.ld-wrap'), card: q('.ld-card'), kick: q('.ld-kick'), prog: q('.ld-prog'), skipFill: q('.ld-skip i'), skipLab: q('.ld-skip span'), name: q('.ld-name'), text: q('.ld-text'), pips: q('.ld-pips'), lab: q('.ld-lab'), act: q('.ld-act'), hint: q('.ld-hint'), stamp: q('.ld-stamp span'), mark: q('.ld-mark'), pinLab: q('.ld-pin b'), pinDist: q('.ld-pin em'), edge: q('.ld-edge i'), edgeLab: q('.ld-edge b'), yard: q('.ld-yard'), offer: q('.ld-offer'), grad: q('.ld-grad') });
+    // HUD buttons act on press and never take focus (a focused button would swallow Space / Enter during play)
+    const press = (e) => { const b = e.target.closest && e.target.closest('[data-ld]'); if (!b) return; e.preventDefault(); e.stopPropagation(); if (e.type === 'pointerdown') hud(b.dataset.ld); };
+    root.addEventListener('pointerdown', press); root.addEventListener('mousedown', press);
+  }
+
+  // ---------- a scripted training partner: writes the same input struct a bot brain does
+  function beat(g, i) {
+    if (FX.ready) FX.ring(_p.set(g.pos.x, 0.08, g.pos.z), i >= 2 ? '#ff5a3c' : '#ffb04a', 0.5, 2.4, 0.3, 0.9, null, 0.16);
+    if (Sound.ready) Sound.kit.osc(Sound.kit.sfx, 'square', [440, 523, 659][i] || 523, Sound.kit.now(), 0.07, 0.06);
+  }
+  class Drill {
+    constructor(g) { this.g = g; this.mode = 'stand'; this.ax = g.pos.x; this.az = g.pos.z; this.q = []; this.next = 0; this.sw = 0; this.period = 3; this.out = false; this.mate = null; }
+    at(d, fn) { this.q.push({ t: Sim.time + d, fn }); }
+    anchor(x, z) { this.ax = x; this.az = z; }
+    press() { const I = this.g.inp; if (!I.atk) { I.atk = true; I.atkP = true; } }
+    release() { const I = this.g.inp; if (I.atk) { I.atk = false; I.atkR = true; } }
+    stop() { this.q.length = 0; this.sw = 0; this.release(); }
+    set(mode, o) { this.stop(); this.mode = mode; this.out = !!(o && o.out); this.period = mode === 'jab' ? 2.1 : mode === 'chase' ? 1.7 : 3; this.next = Sim.time + (o && o.wait != null ? o.wait : 1.2); }
+    update() {
+      const g = this.g, I = g.inp, S = Sim, p = me;
+      if (!g.alive || S.frozen || !p) { I.mx = I.mz = 0; I.boost = I.block = I.jump = false; this.stop(); return; }
+      for (let i = 0; i < this.q.length; i++) if (this.q[i].t <= S.time) this.q.splice(i--, 1)[0].fn();
+      const m = this.mode, st = g.st, dx = p.pos.x - g.pos.x, dz = p.pos.z - g.pos.z, d = Math.hypot(dx, dz) || 1, hunt = m === 'jab' || m === 'heavy' || m === 'chase';
+      g.target = p.alive ? p : null;
+      if (this.sw > S.time && (st === 'stagger' || st === 'tumble' || st === 'getup')) { this.stop(); this.next = S.time + 1.3; } // knocked out of a wind-up
+      const busy = this.sw > S.time || st === 'charge' || st === 'atk';
+      // shield up (never a parry: the press is made to look like a double tap, as the bot brains do)
+      if (m === 'block') { if (!I.block) { I.block = true; I.blockP = true; g.blockPT = S.time; } } else I.block = false;
+      // footwork: hold the anchor, or keep striking distance (out: from the wall side, so a launched pupil flies toward open sand)
+      let tx = this.ax, tz = this.az, slack = 1, pace = 0.6;
+      if (hunt && p.alive) {
+        let ux = -dx / d, uz = -dz / d; const pl = Math.hypot(p.pos.x, p.pos.z);
+        if (this.out && pl > 4) { ux = p.pos.x / pl; uz = p.pos.z / pl; }
+        tx = p.pos.x + ux * 2.2; tz = p.pos.z + uz * 2.2; slack = 0.45; pace = m === 'chase' ? 1 : 0.75;
+      }
+      const ex = tx - g.pos.x, ez = tz - g.pos.z, el = Math.hypot(ex, ez);
+      if (el > slack && !busy) { const k = Math.min(1, el / 2.5 + 0.25) * pace; I.mx = ex / el * k; I.mz = ez / el * k; } else I.mx = I.mz = 0;
+      const o = this.mate; if (o && o.alive && !busy) { const sx = g.pos.x - o.pos.x, sz = g.pos.z - o.pos.z, sl = Math.hypot(sx, sz); if (sl < 2.4 && sl > 0.01) { I.mx += sx / sl * 0.5; I.mz += sz / sl * 0.5; } }
+      I.boost = I.jump = false;
+      if (hunt && !busy && st === 'idle' && g.ground && p.alive && S.play && d < 3.2 && S.time >= this.next && (!this.out || el < 1.3 || S.time > this.next + 4)) this.swing();
+    }
+    swing() {
+      const S = Sim, m = this.mode, g = this.g; this.next = S.time + this.period;
+      if (m === 'heavy') { // a full charge on a fixed clock: three beats, the blade flashes, the blow lands on the fourth (1.33 s after the wind-up starts)
+        this.sw = S.time + 1.45; this.press(); this.at(1.25, () => this.release());
+        for (let i = 0; i < 3; i++) this.at(0.43 + i * 0.3, () => beat(g, i));
+      } else if (m === 'jab') { this.sw = S.time + 0.85; beat(g, 0); this.at(0.365, () => beat(g, 1)); this.at(0.62, () => this.press()); this.at(0.68, () => this.release()); }
+      else { const n = 2 + ((Math.random() * 2) | 0); this.sw = S.time + n * 0.3 + 0.2; for (let i = 0; i < n; i++) { this.at(i * 0.3, () => this.press()); this.at(i * 0.3 + 0.06, () => this.release()); } }
+    }
+  }
+  // lesson-only easing of one TUNE value for a moment (a wider parry window on the telegraphed blow, a softer wall after a launch); always put back
+  function ease(key, v, sec) { const e = eased[key] || (eased[key] = { v0: TUNE[key], t: 0, h: 0 }); TUNE[key] = v; e.t = Sim.time + sec; clearTimeout(e.h); e.h = setTimeout(() => unease(key), sec * 1000 + 2000); }
+  function unease(key) { const e = eased[key]; if (!e) return; clearTimeout(e.h); TUNE[key] = e.v0; delete eased[key]; }
+  function uneaseAll() { for (const k in eased) unease(k); }
+
+  // ---------- staging helpers
+  function putDummy(x, z, quiet) {
+    [x, z] = fit(x, z, 2.2);
+    Sim.place(dum, x, z, Math.atan2(me.pos.x - x, me.pos.z - z)); Object.assign(dum, { hp: TUNE.HP, alive: true, invT: 0, deadT: 0, lastHitBy: null, pose: null }); dum.dmgBy.clear();
+    dum.brain.anchor(x, z); if (!quiet && FX.ready) { FX.spawn(dum.pos, TEAM[1].lite); Sound.S.whoosh(dum.pos, 0.9); }
+  }
+  // the partner `dist` metres ahead of the camera (toward the centre when a wall is in the way); left alone when it already stands lo..hi metres away
+  function placeDummy(dist, lo, hi) {
+    const d0 = Math.hypot(dum.pos.x - me.pos.x, dum.pos.z - me.pos.z);
+    if (hi && dum.alive && d0 >= lo && d0 <= hi && Math.hypot(dum.pos.x / (ARENA.A - 3), dum.pos.z / (ARENA.B - 3)) < 1) { dum.brain.anchor(dum.pos.x, dum.pos.z); dum.hp = TUNE.HP; return; }
+    const yaw = Match.phase === 'play' ? Cam.yaw : me.yaw; let fx = Math.sin(yaw), fz = Math.cos(yaw), x = me.pos.x + fx * dist, z = me.pos.z + fz * dist;
+    if (Math.hypot(x / (ARENA.A - 4), z / (ARENA.B - 4)) > 1) { const l = Math.hypot(me.pos.x, me.pos.z); if (l > 2) { fx = -me.pos.x / l; fz = -me.pos.z / l; } x = me.pos.x + fx * dist; z = me.pos.z + fz * dist; }
+    putDummy(x, z);
+  }
+  // a pillar of light on the place to go (one additive cylinder, built on first use)
+  let beam = null;
+  function beacon(x, z) {
+    if (x == null) { if (beam) beam.visible = false; return; }
+    if (!beam) {
+      const m = new THREE.ShaderMaterial({ uniforms: { uT: { value: 0 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide,
+        vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: 'uniform float uT; varying vec2 vUv; void main(){ float f = pow(1.0 - vUv.y, 1.7) * (0.46 + 0.1 * sin(uT * 4.0 - vUv.y * 10.0)); gl_FragColor = vec4(vec3(1.0, 0.72, 0.24) * f * 1.3, f); }' });
+      beam = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.15, 16, 20, 1, true), m); beam.frustumCulled = false; beam.renderOrder = 4; __G.scene.add(beam);
+    }
+    beam.position.set(x, 8, z); beam.visible = true;
+  }
+  function mark(o) { L.mark = o || null; beacon(null); if (!o) { E.mark.hidden = true; return; } o.d = -1; o.off = null; E.pinLab.textContent = E.edgeLab.textContent = o.label; }
+  function markTick() {
+    const o = L.mark; if (!o) return;
+    const g = o.g, x = g ? g.pos.x : o.x, z = g ? g.pos.z : o.z, d = Math.hypot(x - me.pos.x, z - me.pos.z), hide = (g && !g.alive) || d < o.near;
+    if (hide !== E.mark.hidden) E.mark.hidden = hide;
+    if (o.beam) { if (hide) beacon(null); else { beacon(x, z); beam.material.uniforms.uT.value = Sim.time; } }
+    if (hide) return;
+    const W = innerWidth, H = innerHeight; _m.set(x, (g ? g.pos.y : 0) + o.h, z).project(__G.camera);
+    let sx = (_m.x * 0.5 + 0.5) * W, sy = (-_m.y * 0.5 + 0.5) * H; const front = _m.z < 1 && _m.z > -1, off = !(front && sx > 50 && sx < W - 50 && sy > 150 && sy < H - 40);
+    if (off) { let ax = sx - W / 2, ay = sy - H / 2; if (!front) { ax = -ax; ay = -ay; } const a = Math.atan2(ay, ax); sx = W / 2 + Math.cos(a) * (W / 2 - 80); sy = H / 2 + Math.sin(a) * (H / 2 - 96); E.edge.style.setProperty('--a', (a * 180 / Math.PI + 90).toFixed(0) + 'deg'); }
+    if (off !== o.off) { o.off = off; E.mark.classList.toggle('off', off); }
+    E.mark.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`;
+    const dr = Math.round(d); if (dr !== o.d) { o.d = dr; E.pinDist.textContent = dr + ' m'; }
+  }
+  function blip(n) { if (!Sound.ready) return; const k = Sound.kit, t = k.now(), f = 587 * Math.pow(1.122, n); k.osc(k.sfx, 'triangle', f, t, 0.1, 0.13); k.osc(k.sfx, 'sine', f * 2, t + 0.03, 0.12, 0.06); }
+  function flourish() {
+    const x = me.pos.x, z = me.pos.z;
+    if (FX.ready) { FX.ring(_p.set(x, 0.1, z), '#ffd24a', 0.4, 3.4, 0.55, 0.9, null, 0.14); FX.burstAt(true, x, 1.1, z, FX.qn(22), { life: [0.5, 1.1], speed: [2, 6], up: 1, upAdd: 0.4, s0: 0.26, s1: 0.02, col: ['#ffd24a', '#fff2b0', '#ffae3a'], f: [1, 8], g: 3, drag: 1.2, r: 0.5 }); }
+    Sound.kit.horn([[0, 0.08], [7, 0.08], [12, 0.24]], 0.12, 392); Sound.cheer(0.55);
+    Arena.excite = Math.min(1, Arena.excite + 0.18); Arena.cheer[0] = Math.max(Arena.cheer[0], 0.8);
+  }
+
+  // ---------- the lesson card
+  function renderProg() { let h = ''; for (let k = 0; k < STEPS.length; k++) h += `<i class="${k < L.i ? (L.ok[k] ? 'ok' : 'sk') : k === L.i ? 'cur' : ''}"></i>`; E.prog.innerHTML = h; }
+  function renderPips(pop) { const s = STEPS[L.i]; let h = ''; for (let k = 0; k < s.n; k++) h += `<i class="${k < L.n ? 'on' : ''}${pop && k === L.n - 1 ? ' pop' : ''}"></i>`; E.pips.innerHTML = h; }
+  function renderText() { const s = STEPS[L.i], k = Math.min(L.n, s.n - 1); E.text.innerHTML = s.text(L.n); E.lab.textContent = s.goals ? s.goals[k] : s.goal + (s.n > 1 ? ' · ' + (k + 1) + '/' + s.n : ''); }
+  function renderSkip() { const d = Input.device; E.skipLab.innerHTML = d === 'touch' ? 'Skip ▸' : d === 'pad' ? `Skip: ${G('pause')} menu` : 'Hold <span class="kbd">Enter</span> to skip'; }
+  function hint(html) { if (!L || L.doneT > 0 || L.grad || (L.hint === html && L.hintT > 1.5)) return; L.hint = html; L.hintT = 5.5; E.hint.innerHTML = '<b>Doctore</b>' + html; }
+  function tick(k) {
+    if (!L || L.doneT > 0 || L.grad) return; const s = STEPS[L.i], n = Math.min(s.n, k == null ? L.n + 1 : k); if (n <= L.n) return;
+    L.n = n; blip(n); renderPips(true); if (n >= s.n) complete(); else renderText();
+  }
+  function setN(k) { const same = L.n === k; L.n = k; renderPips(true); if (!same) { blip(k); renderText(); } }
+  function complete() {
+    L.doneT = 1.2; L.ok[L.i] = 1; L.hint = ''; L.hintT = 0; E.hint.innerHTML = ''; mark(null); uneaseAll(); dum.brain.set('stand');
+    L.praise = (L.praise + 1) % PRAISE.length; E.stamp.textContent = PRAISE[L.praise]; E.lab.textContent = 'Done'; E.card.classList.add('done'); flourish();
+  }
+  function begin(i) {
+    const s = STEPS[i], tu = tut(); L.i = T.i = i; L.n = 0; L.t = 0; L.doneT = 0; L.hint = ''; L.hintT = 0; L.skipT = 0; L.v = {};
+    if (!tu.done && tu.step !== i) { tu.step = i; Prog.save(); }
+    if (me.alive) me.hp = TUNE.HP; if (dum.alive) dum.hp = TUNE.HP; dum.brain.set('stand'); mark(null); E.act.hidden = true; E.hint.innerHTML = '';
+    if (s.enter) s.enter();
+    E.kick.innerHTML = `LUDUS · LESSON <b>${NUM[i + 1]}</b> OF ${NUM[STEPS.length]}`; E.name.innerHTML = esc(s.name) + (s.opt ? '<small>Bonus</small>' : '');
+    renderProg(); renderPips(); renderText(); renderSkip();
+    E.card.classList.remove('done', 'in'); void E.card.offsetWidth; E.card.classList.add('in');
+  }
+  function next() { if (L.i + 1 >= STEPS.length) graduate(); else begin(L.i + 1); }
+  function skip() {
+    if (!T.active || !L || L.grad || !live() || (Match.phase !== 'play' && Match.phase !== 'count')) return false;
+    L.ok[L.i] = L.doneT > 0 ? 1 : 0; L.doneT = 0; uneaseAll(); Sound.S.ui('click'); next(); return true;
+  }
+
+  // ---------- the lessons: every goal is detected from what the simulation did, never from a key press
+  const STEPS = [
+    { id: 'move', name: 'Move & Boost', n: 2, goals: ['Boost', 'Reach the amphora'],
+      text: () => `Run to the marked amphora. Hold ${G('boost')} to boost: it burns fury, and amphorae refill it.`,
+      enter() {
+        const yaw = Match.phase === 'play' ? Cam.yaw : me.yaw, fx = Math.sin(yaw), fz = Math.cos(yaw); let best = null, bs = 1e9;
+        for (const p of Sim.pads) { if (!p.big) continue; const dx = p.x - me.pos.x, dz = p.z - me.pos.z, d = Math.hypot(dx, dz); if (d < 10) continue; const sc = d + ((dx * fx + dz * fz) / d < 0.3 ? 30 : 0); if (sc < bs) { bs = sc; best = p; } }
+        if (!best) return; best.active = true; best.t = 0;
+        const dx = best.x - me.pos.x, dz = best.z - me.pos.z, d = Math.hypot(dx, dz) || 1; putDummy(best.x + dx / d * 2.8, best.z + dz / d * 2.8, true); // beyond the amphora, so a locked camera looks the right way
+        mark({ x: best.x, z: best.z, h: 2.6, near: 0, beam: true, label: 'Amphora' });
+      },
+      tick(dt) { if (me.boosting) { L.v.b = (L.v.b || 0) + dt; if (L.v.b > 0.3) tick(1); } else if (L.t > 7 && L.n < 1 && !L.v.h) { L.v.h = 1; hint(`Hold ${G('boost')} while you run.`); } },
+      on: { pad(e) { if (e.g === me && e.p.big) tick(2); } } },
+    { id: 'demo', name: 'Demolition', n: 2, goals: ['Go supersonic', 'Demolish the dummy'],
+      text: () => `Hold ${G('boost')} in a straight line until the air cracks, then run the dummy down. Supersonic contact demolishes.`,
+      enter() { placeDummy(19); mark({ g: dum, h: 2.9, near: 0, beam: true, label: 'Dummy' }); },
+      tick() { if (me.fury < 45) me.fury = 45; if (me.ss) tick(1); },
+      on: { ko(e) { if (e.v === dum && e.kind === 'demo') tick(2); }, hit(e) { if (e.a === me && e.v === dum) hint(`No blade needed. Hold ${G('boost')} and run straight through it.`); } } },
+    { id: 'jump', name: 'Double Jump', n: 2, goal: 'Double jump',
+      text: () => `${G('jump')} jumps. Press it again in mid-air, with no direction held, for a double jump.`,
+      on: { jump(e) { if (e.g === me && e.double) tick(); }, dodge(e) { if (e.g === me) hint(`That was a dodge. Let go of ${G('move')} before the second jump.`); } } },
+    { id: 'dodge', name: 'Dodge-Strike', n: 2, goal: 'Dodge into the dummy',
+      text: () => `Jump, then press ${G('jump')} again while holding a direction: a dodge. Dodge into the dummy to strike it.`,
+      enter() { placeDummy(4.4, 3.2, 6); },
+      on: { dodgeHit(e) { if (e.a === me) tick(); }, jump(e) { if (e.g === me && e.double) hint(`Hold ${G('move')} toward the dummy as you press ${G('jump')} the second time.`); } } },
+    { id: 'combo', name: 'Three-Hit Combo', n: 3, goals: ['First cut', 'Second cut', 'Finisher'],
+      text: () => `Tap ${G('atk')} three times without a pause: two quick cuts and a finisher.`,
+      enter() { placeDummy(3, 0, 7); },
+      on: {
+        hit(e) { if (e.a !== me || e.v !== dum || !me.atk) return; const k = me.atk.kind; if (k === 'l1') setN(1); else if (k === 'l2') tick(2); else if (k === 'l3') tick(3); },
+        swing(e) { if (e.g !== me) return; if (e.kind === 'heavy') hint('Tap, do not hold. A held strike charges a heavy blow.'); else if (e.kind === 'l1' && L.n > 0) hint('Keep the rhythm: tap again as each cut lands.'); } } },
+    { id: 'heavy', name: 'Heavy Blow', n: 2, goal: 'Break the guard',
+      text: () => `The dummy has its shield up. Hold ${G('atk')} to charge a heavy blow, then release it to smash the guard.`,
+      enter() { placeDummy(3, 0, 7); dum.brain.set('block'); },
+      on: { guardBreak(e) { if (e.a === me) tick(); }, block(e) { if (e.a === me) hint(`Quick cuts glance off a shield. Hold ${G('atk')} until the blade glows.`); } } },
+    { id: 'shield', name: 'Block, Parry, Riposte', n: 3, goals: ['Block a jab', 'Parry the heavy blow', 'Riposte'],
+      text: (k) => (k < 1 ? `Hold ${G('block')} to stop the dummy's jab. It strikes on the third beat.` : k < 2 ? `Now parry. Let go, then tap ${G('block')} on the fourth beat, just as the heavy blow lands.` : `A parried foe is wide open. Strike at once with ${G('atk')}: a riposte cuts through any guard.`),
+      enter() { placeDummy(3, 0, 7); dum.brain.set('jab', { wait: 1.6 }); },
+      tick() { if (L.n === 2 && L.v.rip && Sim.time > L.v.rip) { L.v.rip = 0; hint('The opening has closed. Parry the next blow, then strike at once.'); } },
+      on: {
+        block(e) { if (e.v === me && L.n < 1) { tick(1); dum.brain.set('heavy', { wait: 1.5 }); } },
+        parry(e) { if (e.v !== me) return; me.riposteT = L.v.rip = Sim.time + 2.4; /* a generous opening for the first riposte */ const first = L.n < 2; tick(2); dum.brain.set('heavy', { wait: first ? 3 : 2.8 }); },
+        riposte(e) { if (e.a === me) tick(3); },
+        swing(e) { if (e.g === dum && e.kind === 'heavy') ease('PARRY', 0.3, 0.45); },
+        guardBreak(e) { if (e.v === me) hint(Sim.time - me.blockPT > 0.5 ? 'A held shield breaks under a heavy blow. Let go, then tap on the fourth beat.' : me.blockPT - me.prevBlockPT <= 0.4 ? 'One clean tap. Mashing the shield never parries.' : 'A touch early. Tap as the blade comes down.'); },
+        hit(e) { if (e.v === me && e.a === dum) hint(L.n < 1 ? `Shield first: hold ${G('block')} before the third beat.` : 'Too late. Tap just before the blow lands, on the fourth beat.'); } } },
+    { id: 'slam', name: 'Meteor Slam', n: 2, goal: 'Slam the dummy',
+      text: () => `Jump (twice for height), then hold ${G('atk')} in the air to crash down beside the dummy.`,
+      enter() { placeDummy(4, 0, 8); },
+      on: {
+        slam(e) { if (e.g !== me) return; if (e.n > 0) tick(); else hint('Close. Come down nearer the dummy.'); },
+        swing(e) { if (e.g !== me) return; if (e.kind === 'air') hint(`That was a spin slash. Keep ${G('atk')} held in the air for the slam.`); else if (e.kind === 'heavy') hint(`Jump first, then hold ${G('atk')} in the air.`); } } },
+    { id: 'splat', name: 'Wall Splat', n: 1, goals: ['Launch it into the wall'],
+      text: () => `The dummy waits by the wall. Charge ${G('atk')} until your blade flashes, then launch it into the stone.`,
+      enter() {
+        const zw = (x) => (ARENA.B - TUNE.R) * Math.sqrt(1 - Math.pow(x / (ARENA.A - TUNE.R), 2)), s = me.pos.z < 0 ? -1 : 1;
+        let x = clamp(me.pos.x, -13, 13); if (Math.abs(me.pos.z) > zw(x) - 6) x = clamp(x + (x > 0 ? -5 : 5), -13, 13); // never spawn it between the pupil and the wall
+        putDummy(x, s * (zw(x) - 2.7)); mark({ g: dum, h: 2.9, near: 6, beam: true, label: 'Dummy' });
+      },
+      on: {
+        splat(e) { if (e.g === dum) tick(); },
+        hit(e) { if (e.a === me && e.v === dum) ease('SPLAT', 8.5, 1.2); },
+        wall(e) { if (e.g === dum) hint('Not hard enough. Charge until the blade flashes and strike toward the wall.'); } } },
+    { id: 'tech', name: 'Tech Roll', opt: true, n: 1, goals: ['Roll out of the launch'],
+      text: () => `Lower your shield and take the blow. While you tumble, tap ${G('jump')} to roll back to your feet.`,
+      enter() { placeDummy(3, 0, 7); dum.brain.set('heavy', { out: true, wait: 1.4 }); },
+      tick() { if (me.fury < 40) me.fury = 40; const st = me.st; if (L.v.st === 'tumble' && st === 'getup') hint(`Tap ${G('jump')} sooner, while you are still tumbling.`); L.v.st = st; },
+      on: { tech(e) { if (e.g === me) tick(); }, parry(e) { if (e.v === me) hint('A fine parry, but let this one land.'); }, guardBreak(e) { if (e.v === me) hint('No shield this time. Let the blow launch you.'); } } },
+    { id: 'taunt', name: 'Win the Crowd', n: 1, goals: ['Finish a salute'],
+      text: () => `The mob loves a showman. Press ${G('taunt')} to salute, and let the gesture finish to win their favour.`,
+      enter() { placeDummy(5, 0, 9); Favor.reset(Match); E.act.hidden = Input.device !== 'touch'; },
+      tick() { if (L.v.want) { L.v.want = false; Sim.taunt(me, me.cos.emote || 'e_salute'); } },
+      on: { tauntEnd(e) { if (e.g !== me) return; if (e.done) tick(); else { me.tauntT = -9; hint('Let the gesture finish. Moving or striking cuts it short.'); } } } },
+  ];
+
+  // ---------- lesson flow
+  function start(from) {
+    if (!Prog.S) return false; Sound.init(); build(); cleanup();
+    const tu = tut(), i0 = from != null ? clamp(from | 0, 0, STEPS.length - 1) : !tu.done && tu.step > 0 && tu.step < STEPS.length ? tu.step : 0;
+    starting = true; try { Match.start('training'); } finally { starting = false; }
+    me = Match.me; const ds = Match.glads.filter((g) => g.passive); dum = ds[0] || null; spare = ds[1] || null;
+    if (!me || !dum) { me = dum = spare = null; return false; }
+    dum._ai = dum.brain; dum.brain = new Drill(dum);
+    if (spare) { spare._ai = spare.brain; spare.brain = null; spare.alive = false; spare.hp = 0; spare.deadT = 1e9; Sim.setSt(spare, 'dead'); } // one partner is enough: the second waits outside until the lesson ends
+    Favor.reset(null); // the favour meter arrives with the lesson that teaches it
+    T.active = true; dev = Input.device; hudEl.classList.add('ld-on'); HUD.sub('THE LUDUS'); Match.t = Math.max(Match.t, 2);
+    L = { i: -1, n: 0, t: 0, doneT: 0, hint: '', hintT: 0, skipT: 0, skipLock: false, praise: -1, ok: [], v: {}, mark: null, intro: true, grad: null, t0: 0 };
+    for (let k = 0; k < i0; k++) L.ok[k] = 1;
+    E.wrap.hidden = true; begin(i0); pauseSync();
+    return true;
+  }
+  function graduate() {
+    const tu = tut(), g = L.grad = { t: 0, first: !tu.done, title: false, crate: false };
+    if (g.first) { tu.done = true; if (Prog.BY.ti_tiro && !('ti_tiro' in Prog.S.own)) { Prog.grant('ti_tiro'); g.title = true; } const id = Prog.rollDrop(2); if (id) { Prog.grant(id); g.crate = true; } }
+    tu.step = 0; Prog.save(); T.i = STEPS.length; mark(null); uneaseAll(); E.wrap.hidden = true;
+    // victory pose, the partner kneels, the camera circles, the stands erupt
+    const fx = Math.sin(me.yaw), fz = Math.cos(me.yaw); Sim.place(me, me.pos.x, me.pos.z, me.yaw); putDummy(me.pos.x + fx * 2.6, me.pos.z + fz * 2.6, true);
+    Sim.frozen = true; me.pose = 'victory'; dum.pose = 'kneel'; Input.enable(false); const t = $('#touch'); if (t) t.hidden = true; hudEl.classList.add('cel');
+    Cam.focus.set(me.pos.x, 0, me.pos.z); Cam.lock = 1e6; Cam.set('end'); Cam.orbitR = 6.2;
+    Sound.S.fanfare(true); Sound.cheer(1.5); Arena.excite = 1; Arena.cheer[0] = 1.2; Arena.gesture = 1; Arena.waveT = 5; Arena.wave = 0;
+    renderGrad(); E.grad.hidden = false; pauseSync();
+  }
+  function renderGrad() {
+    const g = L.grad, d = Input.device, n = L.ok.filter(Boolean).length, sec = Math.round((performance.now() - (L.t0 || performance.now())) / 1000);
+    const key = (kb, pad) => (d === 'touch' ? '' : `<span class="kbd">${d === 'pad' ? pad : kb}</span>`);
+    const rew = (g.title ? `<div>${Prog.icon(Prog.BY.ti_tiro)}<div><b>Title · Tiro</b><span>A trained novice of the Ludus</span></div></div>` : '') + (g.crate ? `<div>${CHEST}<div><b>Spoils crate</b><span>Rare or better, waiting to be opened</span></div></div>` : '');
+    E.grad.innerHTML = `<div class="ld-ghead">${LAUREL}<h2>Ludus complete</h2><p>${g.first ? 'You are a recruit no longer. The sand is yours.' : 'Sharp as ever. The sand is yours.'}</p></div>`
+      + `<div class="ld-gfoot plaque">${rew ? `<div class="ld-rew">${rew}</div>` : ''}<div class="ld-stat">${n} of ${STEPS.length} lessons · ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}</div><div class="ld-btns"><button class="ld-b pri" data-ld="go" tabindex="-1">${rew ? 'Claim your spoils' : 'Main menu'}${key('Enter', 'A')}</button><button class="ld-b" data-ld="stay" tabindex="-1">Keep training${key('Backspace', 'B')}</button></div></div>`;
+  }
+  function gradGo() { if (!L || !L.grad || L.grad.busy) return; L.grad.busy = true; Sound.S.ui('click'); later(() => { Match.paused = false; cleanup(); Match.toMenu(); if (Prog.S.pending.length) UI.reveal('title'); }); }
+  function stay() {
+    if (!L || !L.grad || L.grad.busy || !live()) return;
+    Sim.frozen = false; Cam.lock = 0; Arena.gesture = 0; me.pose = dum.pose = null; hudEl.classList.remove('cel', 'ld-on'); E.grad.hidden = true;
+    Input.enable(true); const t = $('#touch'); if (t) t.hidden = !IS_TOUCH; Sound.S.ui('click');
+    T.active = false; T.i = -1; L = null; HUD.sub(Prog.MODES.training.s.toUpperCase()); yardOn(true);
+  }
+  function leave() { Match.paused = false; cleanup(); Match.toMenu(); }
+  function cleanup() {
+    uneaseAll();
+    if (L && L.grad) { Cam.lock = 0; Arena.gesture = 0; }
+    for (const g of [me, dum, spare]) if (g) g.pose = null;
+    for (const g of [dum, spare]) if (g) { if (g._ai) { g.brain = g._ai; g._ai = null; } if (g.deadT > 1e8) g.deadT = 0.5; const I = g.inp; I.block = false; if (I.atk) { I.atk = false; I.atkR = true; } }
+    if (root) { E.wrap.hidden = E.mark.hidden = E.yard.hidden = E.offer.hidden = E.grad.hidden = true; hudEl.classList.remove('ld-on'); } beacon(null);
+    T.active = T.yard = false; T.i = -1; L = null; offer = null; me = dum = spare = null; pauseSync();
+  }
+
+  // ---------- the training yard (plain Training): choose what the dummies do, endless fury, reset
+  function yardOn(keep) {
+    build(); const M = Match, ds = M.glads.filter((g) => g.passive); if (!M.me || !ds.length) return;
+    me = M.me; dum = ds[0]; spare = ds[1] || null; T.yard = true; dev = Input.device; Y.intro = null;
+    ds.forEach((d, i) => { if (!(d.brain instanceof Drill)) { if (!d._ai) d._ai = d.brain; d.brain = new Drill(d); } d.brain.mate = ds[1 - i] || null; d.brain.set(Y.mode, { wait: 1.5 + i * 1.3 }); });
+    if (!keep) yardPlace(false);
+    else if (spare && !spare.alive) { const [x, z] = fit(dum.pos.x + 3, dum.pos.z + 3, 3); Sim.place(spare, x, z, dum.yaw); Object.assign(spare, { hp: TUNE.HP, alive: true, invT: 0, deadT: 0 }); spare.brain.anchor(x, z); if (FX.ready) FX.spawn(spare.pos, TEAM[1].lite); }
+    renderYard(); pauseSync();
+  }
+  function yardPlace(player) {
+    if (player) { Sim.place(me, -20, -7, Math.PI / 2); Object.assign(me, { hp: TUNE.HP, fury: Y.fury ? 100 : TUNE.FURY0, alive: true, invT: 0, deadT: 0 }); me.dmgBy.clear(); Cam.yaw = Math.PI / 2; Cam.pitch = 0.2; }
+    [dum, spare].forEach((d, i) => {
+      if (!d) return; const [x, z] = YSPOT[i]; Sim.place(d, x, z, -Math.PI / 2); Object.assign(d, { hp: TUNE.HP, alive: true, invT: 0, deadT: 0, lastHitBy: null }); d.dmgBy.clear();
+      d.brain.anchor(x, z); d.brain.set(Y.mode, { wait: 1.5 + i * 1.3 }); if (player && FX.ready) FX.spawn(d.pos, TEAM[1].lite);
+    });
+  }
+  function renderYard() {
+    const kb = Input.device === 'kb', k = (c) => (kb ? `<span class="kbd">${c}</span>` : ''), m = YMODES.find((x) => x[0] === Y.mode) || YMODES[0], fresh = Prog.S && !tut().done;
+    E.yard.innerHTML = `<span>Training yard</span><button data-ld="mode" tabindex="-1"><small>Dummies</small><b>${m[1]}</b>${k('B')}</button><button data-ld="fury" tabindex="-1" class="${Y.fury ? 'on' : ''}"><small>Fury</small><b>${Y.fury ? 'Endless' : 'Normal'}</b>${k('I')}</button><button data-ld="reset" tabindex="-1"><b>Reset</b>${k('R')}</button><button data-ld="lesson" tabindex="-1" class="${fresh ? 'new' : ''}"><b>${fresh ? 'Start the lessons ▸' : 'Lessons ▸'}</b></button>`;
+  }
+  // menu-side actions: the title entry, the pause menu rows, the yard chips and hotkeys
+  function act(cmd) {
+    if (cmd === 'start' || cmd === 'lesson') { Sound.init(); Sound.S.ui('click'); later(() => { Match.paused = false; start(); }); }
+    else if (cmd === 'restart') { Sound.S.ui('click'); later(() => { Match.paused = false; start(0); }); }
+    else if (cmd === 'leave') { Sound.S.ui('back'); later(leave); }
+    else if (cmd === 'skip') { if (Match.paused) Match.resume(); skip(); }
+    else if (!T.yard || !live()) return;
+    else if (cmd === 'mode') {
+      const k = (YMODES.findIndex((m) => m[0] === Y.mode) + 1) % YMODES.length; Y.mode = YMODES[k][0];
+      [dum, spare].forEach((d, i) => { if (d && d.brain instanceof Drill) d.brain.set(Y.mode, { wait: 1.2 + i * 1.3 }); });
+      Sound.S.ui('click'); if (!Match.paused) HUD.tip(YMODES[k][2], 3.5); renderYard(); pauseSync();
+    } else if (cmd === 'fury') { Y.fury = !Y.fury; Sound.S.ui('click'); if (!Match.paused) HUD.tip(Y.fury ? 'Endless fury: boost, fly and charge without limit.' : 'Fury drains again. Amphorae refill it.', 3); renderYard(); pauseSync(); }
+    else if (cmd === 'reset') { if (Match.paused) Match.resume(); yardPlace(true); Sound.S.ui('equip'); }
+  }
+  function hud(cmd) {
+    if (cmd === 'skip') skip(); else if (cmd === 'taunt') { if (L) L.v.want = true; }
+    else if (cmd === 'yes') acceptOffer(); else if (cmd === 'no') closeOffer();
+    else if (cmd === 'go') gradGo(); else if (cmd === 'stay') stay(); else act(cmd);
+  }
+  // rows in the pause menu while a lesson or the yard is running (the pad has no spare buttons, and a locked mouse cannot reach the HUD)
+  function pauseSync() {
+    const list = document.querySelector('#scr-pause .menu-list'), ff = document.getElementById('btnForfeit'); if (!list) return;
+    const mode = T.active ? 'lesson' : T.yard ? 'yard' : '';
+    if (ff && (mode === 'lesson') !== !!ff._ld) { ff._ld = mode === 'lesson'; ff.hidden = ff._ld; } // "Leave the Ludus" stands in for Forfeit during a lesson
+    if (!mode) { if (pz) { pz.remove(); pz = null; } return; }
+    if (!pz || !pz.isConnected) { pz = el('div', 'ld-pz'); list.insertBefore(pz, ff && ff.parentNode === list ? ff : null); }
+    const row = (cmd, t) => `<button class="btn" data-ludus="${cmd}"><span>${t}</span></button>`, m = YMODES.find((x) => x[0] === Y.mode) || YMODES[0];
+    pz.innerHTML = mode === 'lesson' ? (L && L.grad ? '' : row('skip', 'Skip this lesson')) + row('restart', 'Restart the lessons') + row('leave', 'Leave the Ludus')
+      : row('mode', 'Dummies: ' + m[1]) + row('fury', 'Fury: ' + (Y.fury ? 'Endless' : 'Normal')) + row('reset', 'Reset positions') + row('lesson', Prog.S && !tut().done ? 'Start the lessons' : 'Play the lessons');
+  }
+
+  // ---------- the first match on a fresh save offers the lesson once (inline, during a held intro)
+  function maybeOffer(M) {
+    const S = Prog.S; if (!S || M.mode === 'training' || M.isRematch) return; const tu = tut();
+    if (tu.done || tu.asked || (S.stats && S.stats.matches > 0)) return;
+    tu.asked = true; Prog.save(); build(); offer = { me: M.me, t: 9, T: 9, bar: null }; dev = Input.device; renderOffer(); E.offer.hidden = false;
+  }
+  function renderOffer() {
+    const d = Input.device, key = (kb, pad) => (d === 'touch' ? '' : `<span class="kbd">${d === 'pad' ? pad : kb}</span>`);
+    E.offer.innerHTML = `<h3>First time on the sand?</h3><p>The Ludus teaches every move in about ninety seconds, and pays out a spoils crate.</p><div class="ld-btns"><button class="ld-b pri" data-ld="yes" tabindex="-1">Start the lessons${key('Enter', 'A')}</button><button class="ld-b" data-ld="no" tabindex="-1">Not now${key('Backspace', 'B')}</button></div><div class="ld-bar"><i></i></div>`;
+    offer.bar = E.offer.querySelector('.ld-bar i');
+  }
+  function closeOffer() { offer = null; if (root) E.offer.hidden = true; }
+  function acceptOffer() { if (!offer) return; closeOffer(); Sound.S.ui('click'); later(() => start(0)); }
+  function offerTick(dt) {
+    const M = Match; if (M.me !== offer.me || M.phase !== 'intro') { closeOffer(); return; }
+    M.t = Math.min(M.t, 0.5); offer.t -= dt; offer.bar.style.transform = `scaleX(${clamp(offer.t / offer.T, 0, 1).toFixed(3)})`; // the intro waits (at most nine seconds) for an answer
+    if (Input.device !== dev) { dev = Input.device; const t = offer.t; renderOffer(); offer.t = t; }
+    if (Input.pressed('confirm')) acceptOffer(); else if (Input.pressed('back') || offer.t <= 0) closeOffer();
+  }
+
+  // ---------- per-frame (one call from Match.update)
+  function lessonTick(dt) {
+    const M = Match;
+    if (L.grad) { const g = L.grad; g.t += dt; if (g.t < 3.6 && FX.ready) FX.confetti(dt, 70); if (g.t > 0.9 && !g.busy) { if (Input.pressed('confirm')) gradGo(); else if (Input.pressed('back')) stay(); } return; }
+    const intro = M.phase === 'intro'; if (intro !== L.intro) { L.intro = intro; E.wrap.hidden = intro; if (!intro) { HUD.tip('', 0.01); E.card.classList.remove('in'); void E.card.offsetWidth; E.card.classList.add('in'); } }
+    if (Input.device !== dev) { dev = Input.device; renderText(); renderSkip(); if (L.hint) { L.hint = ''; E.hint.innerHTML = ''; } }
+    markTick();
+    for (const k in eased) if (Sim.time >= eased[k].t) unease(k);
+    if (M.phase !== 'play') return;
+    if (!L.t0) L.t0 = performance.now();
+    if (me.alive && me.hp < 60) me.hp = TUNE.HP; // nobody dies in school
+    if (L.hintT > 0 && (L.hintT -= dt) <= 0) { L.hint = ''; E.hint.innerHTML = ''; }
+    if (L.doneT > 0) { if ((L.doneT -= dt) <= 0) next(); return; }
+    L.t += dt; const s = STEPS[L.i]; if (s.tick) s.tick(dt);
+    // keyboard: hold Enter to skip (the pad and a locked mouse use the pause menu, touch taps the button)
+    if (Input.device === 'kb' && Input.down('confirm')) { if (!L.skipLock) { L.skipT += dt; E.skipFill.style.transform = `scaleX(${Math.min(1, L.skipT / 0.6).toFixed(2)})`; if (L.skipT >= 0.6) { L.skipLock = true; E.skipFill.style.transform = ''; skip(); } } }
+    else if (L.skipT || L.skipLock) { L.skipT = 0; L.skipLock = false; E.skipFill.style.transform = ''; }
+  }
+  function yardTick() {
+    const intro = Match.phase === 'intro'; if (intro !== Y.intro) { Y.intro = intro; E.yard.hidden = intro; }
+    if (Input.device !== dev) { dev = Input.device; renderYard(); }
+    if (Y.fury && me.alive) me.fury = 100;
+  }
+  function update(dt) {
+    if (offer) offerTick(dt);
+    if (!T.active && !T.yard) return;
+    if (!live()) { cleanup(); return; }
+    if (T.active) lessonTick(dt); else yardTick();
+  }
+
+  // ---------- wiring
+  // lesson goals and coaching
+  for (const type of ['pad', 'jump', 'dodge', 'dodgeHit', 'hit', 'block', 'guardBreak', 'parry', 'riposte', 'slam', 'splat', 'wall', 'tech', 'tauntEnd', 'swing', 'ko'])
+    Bus.on(type, (e) => { if (!T.active || !L || L.i < 0 || L.doneT > 0 || L.grad || !live() || Match.phase !== 'play') return; const h = STEPS[L.i].on; if (h && h[type]) h[type](e); });
+  // partners come back quickly and where the drill left them
+  Bus.on('ko', (e) => { if ((T.active || T.yard) && live() && e.v.brain instanceof Drill) e.v.deadT = T.active ? 1 : 1.6; });
+  Bus.on('respawn', (e) => {
+    if (!(T.active || T.yard) || !live()) return; const g = e.g;
+    if (g === me) { if (T.active && L && !L.grad && L.i >= 0 && STEPS[L.i].enter) STEPS[L.i].enter(); }
+    else if (g.brain instanceof Drill) { const b = g.brain; Sim.place(g, b.ax, b.az, Math.atan2(me.pos.x - b.ax, me.pos.z - b.az)); g.invT = 0; }
+  });
+  Bus.on('matchStart', (e) => { if (starting) return; cleanup(); if (e.M.mode === 'training') yardOn(false); else maybeOffer(e.M); });
+  Bus.on('matchEnd', cleanup);
+  Bus.on('device', () => { dev = ''; });
+  // after a training session on an unfinished save, the results screen points at the lessons
+  Bus.on('results', (e) => {
+    const old = document.getElementById('ludusRes'), host = document.querySelector('#scr-results .res'); if (old) old.remove();
+    if (!host || e.M.mode !== 'training' || !Prog.S || tut().done) return; const st = tut().step;
+    const c = el('div', 'res-card plaque ld-res', `<div><b>The Ludus</b><span>${st > 0 ? `You left at lesson ${NUM[st + 1]} of ${NUM[STEPS.length]}.` : 'Eleven short lessons teach every move in the arena.'} Finish them for a spoils crate.</span></div><button class="btn sm primary" data-ludus="start"><span>${st > 0 ? 'Continue the lessons' : 'Start the lessons'}</span></button>`);
+    c.id = 'ludusRes'; host.insertBefore(c, host.querySelector('.res-actions'));
+  });
+  document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('[data-ludus]'); if (b) act(b.dataset.ludus); });
+  // keys the shell does not know: yard hotkeys, and T as a salute until Input carries the taunt action
+  addEventListener('keydown', (e) => {
+    if (e.repeat || !(T.active || T.yard) || !live() || Match.paused || UI.cur !== 'hud' || (e.target && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName))) return;
+    if (T.active) { if (e.code === 'KeyT' && L && !L.grad && STEPS[L.i].id === 'taunt') L.v.want = true; }
+    else if (e.code === 'KeyB') act('mode'); else if (e.code === 'KeyI') act('fury'); else if (e.code === 'KeyR') act('reset');
+  });
+  // title menu: through the menus hook when it exists; otherwise the entry is added to the list directly
+  const menuSub = () => { if (!Prog.S) return ''; const tu = tut(); return tu.done ? 'Replay the lessons' : tu.step > 0 ? 'Continue at lesson ' + NUM[tu.step + 1] : 'Learn every move in ninety seconds'; };
+  (UI.menuExtra = UI.menuExtra || []).push({ id: 'ludus', label: 'Ludus', get sub() { return menuSub(); }, get badge() { return Prog.S && !tut().done ? 'Start here' : ''; }, onClick: () => act('start') });
+  function titleSync() {
+    const list = document.querySelector('#scr-title .menu-list'); if (!list || !Prog.S) return;
+    let b = list.querySelector('[data-ludus="start"]');
+    if (!b) {
+      if (Array.from(list.querySelectorAll('button')).some((x) => /ludus/i.test(x.textContent))) return; // the menus hook drew it
+      b = el('button', 'btn ld-menu'); b.dataset.ludus = 'start'; b.title = 'The gladiator school'; const play = list.querySelector('[data-go="play"]'); list.insertBefore(b, play ? play.nextSibling : list.firstChild);
+      b.addEventListener('pointerenter', () => Sound.S.ui('hover'));
+    }
+    const h = '<span>Ludus</span>' + (tut().done ? '' : '<em class="ld-badge">Start here</em>'); if (b._h !== h) { b._h = h; b.innerHTML = h; b.title = menuSub(); }
+  }
+  { const st = document.createElement('style'); st.id = 'ludusCss'; st.textContent = CSS; document.head.appendChild(st);
+    const ts = document.getElementById('scr-title'); if (ts && typeof MutationObserver === 'function') new MutationObserver(titleSync).observe(ts, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true }); }
+
+  return Object.assign(T, { start, skip, leave, update, STEPS, goto(i) { if (T.active && L && !L.grad && STEPS[i]) { L.doneT = 0; uneaseAll(); begin(i); } }, state() { return { active: T.active, yard: T.yard, i: L ? L.i : -1, id: L && STEPS[L.i] ? STEPS[L.i].id : '', n: L ? L.n : 0, need: L && STEPS[L.i] ? STEPS[L.i].n : 0, done: !!(L && L.doneT > 0), grad: !!(L && L.grad), offer: !!offer, mode: Y.mode, fury: Y.fury, mark: L && L.mark ? { x: L.mark.g ? L.mark.g.pos.x : L.mark.x, z: L.mark.g ? L.mark.g.pos.z : L.mark.z } : null }; }, dummy() { return dum; } });
+})();
+__G.Tutorial = Tutorial;
+
 // ---------------------------------------------------------------- spectacle: one rule twist per match for the rotating playlist
 const Mutators = (() => {
   let saved = null, cur = null, t = 0; const strikes = [], _p = V3();
@@ -4051,6 +4587,7 @@ const Match = (() => {
       HUD.clock(M.clock, M.ot, M.mode === 'training');
       if (M.mutator) Mutators.update(dt, M.glads);
       Decree.update(dt, M); Favor.update(dt, M);
+      Tutorial.update(dt);
       if (M.phase !== 'done') playerCtl();
       if (Input.down('board') !== HUD.board) HUD.scoreboard(Input.down('board'), M.glads, M.mvpId);
       // music/crowd intensity
