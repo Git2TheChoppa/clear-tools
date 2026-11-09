@@ -297,6 +297,8 @@ body.touch #hud .combo b{ font-size:32px; } body.touch #hud .combo span{ font-si
 .tip.on{ opacity:1; }
 .hints{ position:absolute; left:50%; bottom:calc(78px + var(--sab)); transform:translateX(-50%); width:max-content; display:flex; gap:14px; flex-wrap:wrap; justify-content:center; max-width:min(720px, 80vw); font-weight:700; font-size:15px; color:var(--marble); opacity:0; transition:opacity .6s; pointer-events:none; }
 .hints.on{ opacity:.92; }
+.hn{ padding:3px 10px; background:rgba(15,9,5,.66); border:1px solid rgba(224,165,96,.3); white-space:nowrap; }
+.hn b{ display:inline-block; min-width:1.6em; padding:0 5px; margin-right:2px; text-align:center; color:#2a1606; background:var(--sand); font-weight:800; }
 .hints[hidden]{ display:none; }
 .vitals{ position:absolute; left:calc(22px + var(--sal)); bottom:calc(20px + var(--sab)); width:min(330px, 40vw); transform:scale(var(--hs)); transform-origin:0 100%; }
 .v-name{ display:flex; align-items:baseline; font-size:20px; font-weight:800; margin-bottom:5px; text-shadow:0 1px 2px #000; white-space:nowrap; }
@@ -351,6 +353,11 @@ body.touch #hud .combo b{ font-size:32px; } body.touch #hud .combo span{ font-si
 .board td:first-child{ text-align:left; }
 .board tr.t0 td:first-child{ border-left:4px solid var(--blue); } .board tr.t1 td:first-child{ border-left:4px solid var(--orange); }
 .board tr.t0{ background:rgba(47,141,255,.12); } .board tr.t1{ background:rgba(255,139,38,.12); }
+.board tr.th td{ padding:7px 10px 5px; font-family:var(--display); font-weight:700; font-size:15px; letter-spacing:.12em; color:#fff; border-left:0 !important; }
+.board tr.th.t0 td{ background:linear-gradient(90deg, #2a64d6, rgba(42,100,214,.15)); --tc:#6aa8ff; } .board tr.th.t1 td{ background:linear-gradient(90deg, #e0671a, rgba(224,103,26,.15)); --tc:#ffab55; }
+.board tr.th .sb-em{ display:inline-block; vertical-align:-4px; margin-right:8px; }
+.board tr.th span{ float:right; font-family:var(--ui); font-weight:800; font-size:15px; letter-spacing:.04em; }
+.board td.sc{ color:#ffe2a0; }
 .board tr.me td{ color:#fff2c4; }
 .board .gap td{ height:8px; background:transparent; padding:0; }
 .board .nm small{ display:block; font-size:13px; font-weight:600; color:var(--dim); }
@@ -502,7 +509,7 @@ body.touch #hud .scoreboard{ max-height:calc(100% - 20px); overflow:hidden; padd
 }
 @media (orientation: portrait){
   body.touch #hud{ --cw:76px; }
-  body.touch #hud .scorebug{ top:calc(8px + var(--sat)); }
+  body.touch #hud .scorebug{ top:calc(8px + var(--sat)); transform:translateX(-50%) scale(min(var(--hs), 1.08)); }
   body.touch #hud .sb-team{ min-width:0; width:92px; height:40px; padding:0 10px; gap:7px; }
   body.touch #hud .sb-name{ display:none; } body.touch #hud .sb-score{ font-size:30px; } body.touch #hud .sb-em{ width:15px; height:19px; }
   body.touch #hud .sb-clock{ height:40px; } body.touch #hud #sbClock{ font-size:24px; } body.touch #hud #sbSub{ font-size:10px; min-height:10px; letter-spacing:.04em; }
@@ -536,7 +543,8 @@ body.touch #hud .scoreboard{ max-height:calc(100% - 20px); overflow:hidden; padd
   body.touch #hud.slainon .tip{ opacity:0; }
   body.touch #hud .hints{ bottom:calc(var(--cb) + 54px + var(--sab)); max-width:88vw; font-size:12px; gap:8px; }
   body.touch #hud .scoreboard{ top:calc(66px + var(--sat)); transform:translateX(-50%); width:96vw; }
-  body.touch #hud .board th:nth-child(5),body.touch #hud .board td:nth-child(5),body.touch #hud .board th:nth-child(6),body.touch #hud .board td:nth-child(6){ display:none; }
+  body.touch #hud .board th:nth-child(6),body.touch #hud .board td:nth-child(6),body.touch #hud .board th:nth-child(7),body.touch #hud .board td:nth-child(7){ display:none; }
+  body.touch #hud .hints{ flex-direction:column; align-items:center; gap:4px; } body.touch #hud .hn{ white-space:normal; text-align:center; }
 }
 .fm-l{ font-weight:800; font-size:11px; letter-spacing:.14em; color:var(--sand); align-self:end; line-height:1; text-shadow:0 1px 2px #000; }
 #fmNum{ grid-column:2; grid-row:1; justify-self:end; font-weight:800; font-style:italic; font-size:16px; line-height:1; text-shadow:0 1px 2px #000; font-variant-numeric:tabular-nums; }
@@ -4320,7 +4328,7 @@ const HUD = (() => {
     camRef = camera;
     ['hud', 'sb0', 'sb1', 'sbc', 'sbClock', 'sbSub', 'feed', 'chat', 'acc', 'ann', 'intro', 'tip', 'vName', 'vTitle', 'hpGhost', 'hpFill', 'hpText', 'buffs', 'fury', 'furyArc', 'furyNum', 'camTag', 'respawn', 'scoreboard', 'wui', 'reticle', 'vignette', 'speedlines',
       'scorebug', 'rounds', 'objective', 'objT', 'objS', 'objF', 'favor', 'fvPips', 'fvName', 'fvWant', 'fvWantT', 'fvWantF', 'radar', 'combo', 'comboN', 'comboL', 'comboD', 'hints', 'vitals', 'furyMini', 'fmL', 'fmFill', 'fmNum', 'furyGlow', 'furyLbl', 'rsArc', 'rsNum', 'rsNote', 'pauseBtn'].forEach((id) => (E[id] = document.getElementById(id)));
-    hudInit();
+    hudInit(); applyScale();
     E.arrow = el('div', 'offarrow'); E.wui.appendChild(E.arrow);
     for (let i = 0; i < 24; i++) { const d = el('div', 'dmg'); d.style.display = 'none'; E.wui.appendChild(d); dmgs.push({ el: d, t: 1, pos: V3() }); }
   }
@@ -4380,12 +4388,25 @@ const HUD = (() => {
   }
   function vitals(g, lockOn) { vitals2(g, lockOn); }
   function respawn(t, note) { respawn2(t, note); }
+  let boardKey = '';
   function scoreboard(on, glads, mvpId) {
-    board = on; E.scoreboard.hidden = !on; if (!on) return;
-    const rows = (t) => glads.filter((g) => g.team === t).sort((a, b) => b.stats.score - a.stats.score).map((g) => `<tr class="t${t}${g.human ? ' me' : ''}"><td class="nm">${esc(g.name)}${g.id === mvpId ? '<span class="mvp">MVP</span>' : ''}<small>${esc(g.titleName || '')}</small></td><td>${g.stats.score}</td><td>${g.stats.ko}</td><td>${g.stats.as}</td><td>${g.stats.demo}</td><td>${g.stats.par}</td><td>${g.stats.de}</td></tr>`).join('');
-    E.scoreboard.innerHTML = `<table class="board"><tr><th>Gladiator</th><th>Score</th><th>KOs</th><th>Assists</th><th>Demos</th><th>Parries</th><th>Deaths</th></tr>${rows(0)}<tr class="gap"><td colspan="7"></td></tr>${rows(1)}</table>`;
+    if (board !== !!on) { board = !!on; E.scoreboard.hidden = !on; } if (!on) return;
+    const key = mvpId + '|' + glads.map((g) => g.id + ':' + g.stats.score + ':' + g.stats.ko + ':' + g.stats.as + ':' + Math.round(g.stats.dmg || 0) + ':' + g.stats.demo + ':' + g.stats.par + ':' + g.stats.de).join(','); if (key === boardKey) return; boardKey = key;
+    const tot = (t) => glads.filter((g) => g.team === t).reduce((n, g) => n + g.stats.ko, 0);
+    const rows = (t) => `<tr class="th t${t}"><td colspan="8"><i class="sb-em"></i>${TEAM[t].name.toUpperCase()}<span>${tot(t)} KOs</span></td></tr>` + glads.filter((g) => g.team === t).sort((a, b) => b.stats.score - a.stats.score).map((g) => `<tr class="t${t}${g.human ? ' me' : ''}"><td class="nm">${esc(g.name)}${g.id === mvpId ? '<span class="mvp">★ MVP</span>' : ''}<small>${esc(g.titleName || '')}</small></td><td class="sc">${g.stats.score}</td><td>${g.stats.ko}</td><td>${g.stats.as}</td><td>${Math.round(g.stats.dmg || 0)}</td><td>${g.stats.demo}</td><td>${g.stats.par}</td><td>${g.stats.de}</td></tr>`).join('');
+    E.scoreboard.innerHTML = `<table class="board"><tr><th>Gladiator</th><th>Score</th><th>KOs</th><th>Ast</th><th>Dmg</th><th>Demos</th><th>Parries</th><th>Deaths</th></tr>${rows(0)}<tr class="gap"><td colspan="8"></td></tr>${rows(1)}</table>`;
   }
-  let numN = 0, numT = 0;
+  // first-match hints: a compact strip of controls for the device in hand, the first ~20 s of play while the player has fewer than 3 matches
+  const HN = { t: 0, on: false, dev: '' };
+  function hintChip(a, w) { const K = { kb: { move: 'WASD', jump: 'Space', boost: 'Shift', atk: 'LMB', block: 'RMB', lock: 'Q' }, pad: { move: 'L-stick', jump: 'A', boost: 'B', atk: 'X', block: 'LB', lock: 'Y' } }; let g = ''; if (Input.glyph) { try { g = Input.glyph(a) || ''; } catch (e) { g = ''; } } return `<span class="hn">${g || `<b>${(K[Input.device] || K.kb)[a] || a}</b>`} ${w}</span>`; }
+  function hints(dt) {
+    const S = Prog.S, ok = S && S.stats && (S.stats.matches || 0) < 3 && Match.mode !== 'training' && (Match.phase === 'play' || Match.phase === 'count');
+    if (!ok) { if (HN.on) { HN.on = false; cls(E.hints, 'on', false); } return; }
+    if (Match.phase === 'play') HN.t += dt;
+    const want = HN.t > 0.6 && HN.t < 20;
+    if (want && HN.dev !== Input.device) { HN.dev = Input.device; hid(E.hints, false); E.hints.innerHTML = Input.device === 'touch' ? '<span class="hn">Drag the left side to move · <b>Strike</b> tap, hold for heavy</span><span class="hn"><b>Block</b> as a blow lands to parry · <b>Boost</b> to go supersonic</span>' : hintChip('move', 'move') + hintChip('atk', 'strike · hold heavy') + hintChip('block', 'block · parry') + hintChip('boost', 'boost') + hintChip('jump', 'jump') + hintChip('lock', 'target cam'); }
+    if (want !== HN.on) { HN.on = want; cls(E.hints, 'on', want); }
+  }  let numN = 0, numT = 0;
   function num(pos, text, cls) {
     if (!Game.settings.dmgNums) return;
     const d = dmgs.find((x) => x.t >= 1) || dmgs[0], t = performance.now(); numN = t - numT < 350 ? numN + 1 : 0; numT = t;
@@ -4429,7 +4450,7 @@ const HUD = (() => {
       }
     } else { E.reticle.style.display = 'none'; E.arrow.style.display = 'none'; }
     threats(dt, glads, me, lockT);
-    radar(dt, glads, me);
+    radar(dt, glads, me); hints(dt);
   }
   // ---- feel (S3): one enemy-threat scan feeding off-screen arrows + nameplate chevrons (ux-2/feel-8), the hurt-direction arc (feel-7) and the slain card (feel-6)
   let threatEls = null, hurtEl = null, hurtA = 0, retThreat = false, slainOn = false;
@@ -4477,7 +4498,7 @@ const HUD = (() => {
   }
   function hudReset(on) {
     V.hp = -1; V.ghost = 1; V.ghostHold = 0; V.f = -1; V.buffs = ''; V.fury = -1; V.rs = -1;
-    hid(E.radar, true); RA.acc = 1;
+    hid(E.radar, true); RA.acc = 1; HN.t = 0; HN.dev = ''; HN.on = false; cls(E.hints, 'on', false); boardKey = '';
     if (!on) { respawn2(null); favor(null); objective(null); rounds(null); finale(false); CB.n = 0; CB.on = false; hid(E.combo, true); ACC.el = null; }
   }
   const popEl = (e, from = 1.8, ms = 380, rot = '') => { if (e && e.animate && !REDUCED_MOTION) e.animate([{ transform: `${rot}scale(${from})`, opacity: 0.2 }, { transform: `${rot}scale(1)`, opacity: 1 }], { duration: ms, easing: 'cubic-bezier(.2,.9,.3,1.35)' }); };
@@ -4516,6 +4537,8 @@ const HUD = (() => {
     fill(grp[0], a, RD.a); fill(grp[2], b, RD.b); RD.a = a; RD.b = b;
   }
   function finale(on) { cls(E.scorebug, 'finale', !!on); }
+  // HUD scale (settings.hudScale 0.8–1.3): every cluster scales from its own corner via --hs
+  function applyScale() { const v = clamp(+Game.settings.hudScale || 1, 0.8, 1.3); if (E.hud) E.hud.style.setProperty('--hs', v.toFixed(2)); return v; }
   // radar: the elliptical arena (own side at the bottom), pads, the Blessing, the objective ring, team dots and the human's arrow + camera wedge; ≤ 15 Hz
   const RA = { acc: 1, ctx: null, w: 0, h: 0, dpr: 1, chk: 0 };
   function radar(dt, glads, me) {
@@ -4576,7 +4599,7 @@ const HUD = (() => {
     if (lineHtml == null) { if (slainOn) { slainOn = false; s.hidden = true; E.hud.classList.remove('slainon'); } return; }
     slainOn = true; s.hidden = false; E.hud.classList.add('slainon'); s.innerHTML = `<b>${lineHtml}</b>${tipText ? `<small>${esc(tipText)}</small>` : ''}`;
   }
-  return { init, show, score, clock, sub, feed, chat, acc, ann, tip, intro, vitals, respawn, scoreboard, num, update, hurtDir, slain, edgeArrow, furyPad, favor, objective, rounds, finale, get board() { return board; }, E };
+  return { init, show, score, clock, sub, feed, chat, acc, ann, tip, intro, vitals, respawn, scoreboard, num, update, hurtDir, slain, edgeArrow, furyPad, favor, objective, rounds, finale, applyScale, get board() { return board; }, E };
 })();
 
 // ---------------------------------------------------------------- progression: items, ranks, XP, challenges, drops, save
