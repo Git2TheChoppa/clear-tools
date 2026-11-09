@@ -4430,7 +4430,7 @@ const Prog = (() => {
     res.drops = S.pending.slice(); res.next = nextUp(r.mode); res.pityLeft = pityLeft();
     save(); return res;
   }
-  return { RAR, SLOTS, ITEMS, BY, MODES, NAMES, TIERS, rankOf, rankSVG, icon, xpFor, load, save, fresh, applyMatch, rollDrop, grant, skillFor, botLoadout, winsTo, nextDiv, nextUp, pityLeft, addXp, chalText, exportCode, readCode, importCode, KEY, get S() { return S; }, reset() { const keep = S.settings; S = fresh(); S.settings = keep; refill(); save(); tellMeta('reset'); } };
+  return { RAR, SLOTS, ITEMS, BY, MODES, NAMES, TIERS, rankOf, rankSVG, icon, xpFor, load, save, fresh, applyMatch, rollDrop, grant, skillFor, botLoadout, winsTo, nextDiv, nextUp, pityLeft, addXp, chalText, exportCode, readCode, importCode, KEY, get S() { return S; }, reset() { const keep = S.settings; S = fresh(); S.settings = keep; refill(); save(); try { if (Store.get(KEY_V2)) Store.set(KEY_V2, ''); } catch (e) { /* ignore */ } tellMeta('reset'); } }; // a reset also blanks the old v2 save, so it can never come back as the fallback
 })();
 
 // ---------------------------------------------------------------- meta: reasons to come back (save tools, rivals, daily contracts, records, feats, the bounty)
