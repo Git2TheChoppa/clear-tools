@@ -3235,7 +3235,7 @@ const Prog = (() => {
   ].map(([id, slot, name, r]) => ({ id, slot, name, r }));
   const BY = {}; ITEMS.forEach((i) => (BY[i.id] = i));
   const TIERS = [['Bronze', '#c07a3e'], ['Silver', '#c9ced6'], ['Gold', '#f1c243'], ['Platinum', '#7fe0d8'], ['Diamond', '#6fb6ff'], ['Champion', '#b27cff'], ['Grand Champion', '#ff4d5a']];
-  const MODES = { duel: { n: 'Duel', s: '1v1', size: 1, d: 'Just you, a blade, and one rival. Pure skill.' }, doubles: { n: 'Doubles', s: '2v2', size: 2, d: 'Fight beside a partner. Assists win games.' }, standard: { n: 'Standard', s: '3v3', size: 3, d: 'The full spectacle. Chaos, demos, glory.' }, training: { n: 'Training', s: 'Free play', size: 1, d: 'Practice on passive dummies. No clock, no rank.' } };
+  const MODES = { duel: { n: 'Duel', s: '1v1', size: 1, d: 'Just you, a blade, and one rival. Pure skill.' }, doubles: { n: 'Doubles', s: '2v2', size: 2, d: 'Fight beside a partner. Assists win games.' }, standard: { n: 'Standard', s: '3v3', size: 3, d: 'The full spectacle. Chaos, demos, glory.' }, spectacle: { n: 'Spectacle', s: '3v3', size: 3, d: 'The games of the day: one wild rule each match. Low gravity, endless fury, lightning and worse.', tag: 'Rotating rules', unranked: true }, training: { n: 'Training', s: 'Free play', size: 1, d: 'Practice on passive dummies. No clock, no rank.' } };
   const CH = [['win', 'Win {n} matches', 2, 3], ['ko', 'Score {n} KOs', 6, 10], ['demo', 'Demolish {n} gladiators', 1, 3], ['par', 'Land {n} parries', 3, 5], ['mvp', 'Earn MVP', 1, 1], ['pads', 'Collect {n} fury pads', 15, 25], ['flawless', "Win without being KO'd", 1, 1], ['bless', "Claim {n} Emperor's Blessings", 2, 3], ['dmg', 'Deal {n} damage', 800, 1200], ['splat', 'Wall-splat {n} foes', 1, 3], ['slam', 'Land {n} meteor slams', 2, 4], ['dh', 'Land {n} dodge strikes', 3, 5], ['as', 'Earn {n} assists', 3, 6], ['play', 'Play {n} matches', 3, 3]];
   const NAMES = ['Flamma', 'Priscus', 'Verus', 'Crixus', 'Spiculus', 'Tetraites', 'Carpophorus', 'Celadus', 'Ursus', 'Tigris', 'Ferox', 'Velox', 'Taurus', 'Lupus', 'Corvus', 'Draco', 'Castor', 'Pollux', 'Brutus', 'Maximus', 'Invictus', 'Saltius', 'Calculus', 'Boomerus', 'Hermes', 'Triumphus', 'Aureolus', 'Scylax', 'Marcus', 'Cassius', 'Nero', 'Vulcan'];
   const KEY = 'gladius.save.v2';
@@ -3314,16 +3314,16 @@ const Prog = (() => {
     const pl = pityLeft(); if (S.spoils) out.push({ m: pl, t: pl ? `Import guaranteed in ${pl} spoil${pl > 1 ? 's' : ''}` : 'Import guaranteed in your next spoils', q: pl <= 2 ? 'An Import crate is close' : `Import guaranteed in ${pl} spoils` });
     out.sort((a, b) => a.m - b.m); out.forEach((l) => { l.hot = l.m <= 1 && !l.warn; }); return out.slice(0, 3);
   }
-  function skillFor(mode) { const m = S.mmr[mode] || 250; return clamp(0.1 + (m / 2200) * 0.85, 0.08, 0.95); }
+  function skillFor(mode) { const m = S.mmr[mode] != null ? S.mmr[mode] : (S.mmr.standard + S.mmr.doubles + S.mmr.duel) / 3 || 250; return clamp(0.1 + (m / 2200) * 0.85, 0.08, 0.95); }
   function botLoadout(skill) {
     const pickSlot = (slot) => { const pool = ITEMS.filter((i) => i.slot === slot && i.r <= Math.round(1 + skill * 6 + rand(-1, 1.5))); return pick(pool.length ? pool : ITEMS.filter((i) => i.slot === slot && i.r === 0)).id; };
     const c = {}; for (const s of SLOTS) c[s.id] = pickSlot(s.id); if (chance(0.5)) c.cape = 'c_none'; return c;
   }
   // apply the result of a match; returns a summary for the results screen
   function applyMatch(r) {
-    const st = r.me.stats, training = r.mode === 'training', ranked = !training, res = { xpLines: [], mode: r.mode, mmrNotes: [] };
+    const st = r.me.stats, training = r.mode === 'training', real = !training, ranked = real && S.mmr[r.mode] != null, res = { xpLines: [], mode: r.mode, mmrNotes: [] };
     const add = (n, v) => { if (v > 0) res.xpLines.push([n, v]); };
-    const T = S.stats, welcome = ranked && !r.forfeit && (T.matches || 0) < 3;
+    const T = S.stats, welcome = real && !r.forfeit && (T.matches || 0) < 3;
     // bugs-2: training only pays a time-scaled 'Match played' (no Victory, streak, challenge or win credit)
     add('Match played', r.forfeit ? 50 : training ? clamp(Math.round((r.time || 0) / 180 * 150), 25, 150) : 150); if (r.win && !training) add('Victory', 100);
     add(`KOs ×${st.ko}`, st.ko * 20); add(`Assists ×${st.as}`, st.as * 10); add(`Demolitions ×${st.demo}`, st.demo * 25); add(`Parries ×${st.par}`, st.par * 5); if (r.mvp && !training) add('MVP', 50);
@@ -3344,7 +3344,7 @@ const Prog = (() => {
     res.levelUps = 0; while (S.xp >= xpFor(S.level)) { S.xp -= xpFor(S.level); S.level++; res.levelUps++; grant(rollDrop(1)); }
     res.lvl1 = S.level; res.xp1 = S.xp;
     // loop-3: a spoils crate every win (and half of losses), guaranteed Uncommon+ for the first three matches, 5% Golden Spoils (Import+)
-    if (ranked && !r.forfeit) {
+    if (real && !r.forfeit) {
       const sp = spoils(), gold = chance(0.05);
       if (r.win || welcome || chance(0.5)) { if (gold) sp.gold = (sp.gold || 0) + 1; grant(rollDrop(gold ? 4 : welcome ? 2 : 1), { gold }); res.spoil = gold ? 'gold' : 'crate'; }
     }
@@ -3624,6 +3624,58 @@ const UI = (() => {
   return { init, show, update, results, reveal, refreshDisplay, syncVol, get cur() { return cur; } };
 })();
 
+// ---------------------------------------------------------------- spectacle: one rule twist per match for the rotating playlist
+const Mutators = (() => {
+  let saved = null, cur = null, t = 0; const strikes = [], _p = V3();
+  const LIST = [
+    { id: 'mercury', name: "Mercury's Wings", desc: 'Low gravity. The fight leaves the ground.', apply() { TUNE.G *= 0.55; TUNE.AIR *= 1.6; TUNE.AIRB *= 1.25; TUNE.DWIN = 9; } },
+    { id: 'bacchanal', name: 'Bacchanal', desc: 'Fury never runs dry. Everyone is supersonic.', apply() { TUNE.DRAIN = 0; TUNE.FURY0 = 100; } },
+    { id: 'sudden', name: 'Sudden Death', desc: 'Glass gladiators: 45 health, quick respawns.', apply() { TUNE.HP = 45; TUNE.RESPAWN = 2.2; } },
+    { id: 'anvil', name: "Vulcan's Anvil", desc: 'Every blow launches. Mind the walls.', apply() { for (const k in ATK) { ATK[k].kb *= 1.7; ATK[k].up = Math.max(ATK[k].up, 2.4) * 1.15; } TUNE.SPLAT = 7.5; } },
+    { id: 'jupiter', name: "Jupiter's Wrath", desc: 'Lightning hunts the arena. Watch for the rings.', preset: 'storm', apply() {} },
+    { id: 'giants', name: 'Clash of Giants', desc: 'Everyone is huge. So are the swords.', scale: 1.35, apply() { TUNE.R *= 1.3; for (const k in ATK) ATK[k].reach *= 1.3; } },
+  ];
+  // TUNE/ATK are patched in place (attack states hold references to ATK entries), so restore() copies the saved numbers back
+  function restore() { if (saved) { Object.assign(TUNE, saved.T); for (const k in saved.A) Object.assign(ATK[k], saved.A[k]); saved = null; } cur = null; strikes.length = 0; }
+  function apply(id) { restore(); const m = LIST.find((x) => x.id === id) || pick(LIST); saved = { T: Object.assign({}, TUNE), A: JSON.parse(JSON.stringify(ATK)) }; m.apply(); cur = m; t = 3.5; return m; }
+  function strike(s) {
+    _p.set(s.x, 0.12, s.z);
+    for (let i = 0; i < 2; i++) FX.bolt(V3(s.x + rand(-4, 4), rand(18, 24), s.z + rand(-4, 4)), V3(s.x + rand(-0.6, 0.6), 0.1, s.z + rand(-0.6, 0.6)), i ? '#bfe0ff' : '#f2f8ff');
+    FX.ring(_p, '#e8f4ff', 0.5, 5.2, 0.4, 1, null, 0.25); FX.flash(_p, '#9fd0ff', 170, 0.5); FX.burstAt(true, s.x, 0.6, s.z, FX.qn(36), { life: [0.3, 0.8], speed: [4, 13], s0: 0.24, s1: 0.02, col: ['#bfe0ff', '#ffffff', '#7ab8ff'], f: [1, 15], g: 8, drag: 1.5 });
+    FX.dust(_p, 14, 1.3); Sound.S.boom(_p, 1.15);
+    for (const g of Sim.glads) {
+      if (!g.alive || g.invT > 0 || g.iframeT > 0 || g.pos.y > 4) continue;
+      const dx = g.pos.x - s.x, dz = g.pos.z - s.z, d = Math.hypot(dx, dz); if (d > 3.2) continue;
+      const ux = d > 0.05 ? dx / d : Math.sin(g.yaw), uz = d > 0.05 ? dz / d : Math.cos(g.yaw);
+      g.vel.x += ux * 8; g.vel.z += uz * 8; g.vel.y = 9; g.ground = false;
+      if (Sim.damage(g, null, 45, 'bolt', true) && g.alive) Sim.setSt(g, 'tumble');
+      if (g === Match.me) { FX.screen(0.3, '#dcefff'); FX.shake(0.5); }
+    }
+    if (Match.me && Math.hypot(Match.me.pos.x - s.x, Match.me.pos.z - s.z) < 14) FX.shake(0.2);
+  }
+  function update(dt, glads) {
+    if (!cur || cur.id !== 'jupiter' || Sim.frozen || !Sim.play) return;
+    t -= dt;
+    if (t <= 0) {
+      t = rand(3.8, 6.2); const live = glads.filter((g) => g.alive);
+      if (live.length) {
+        const g = pick(live), k = Math.hypot((g.pos.x + g.vel.x * 0.5) / (ARENA.A - 1.5), (g.pos.z + g.vel.z * 0.5) / (ARENA.B - 1.5)), f = k > 1 ? 1 / k : 1;
+        const s = { x: (g.pos.x + g.vel.x * 0.5) * f, z: (g.pos.z + g.vel.z * 0.5) * f, t: 1.35, warned: false }; strikes.push(s);
+        _p.set(s.x, 0.1, s.z); FX.ring(_p, '#bfe0ff', 3.6, 0.5, 1.35, 1, null, 0.16); FX.ring(_p, '#7ab8ff', 3.3, 3.3, 1.35, 0.7, null, 0.1);
+        if (Sound.ready) { const d = Sound.kit.chain(_p, 0.5, 0.3); if (d) { const n = Sound.kit.now(); Sound.kit.osc(d, 'sawtooth', 220, n, 1.3, 0.12, 0.05, 1500); Sound.kit.nz(d, n, 1.3, 0.2, 'bandpass', 900, 2, 5000, 0.4); } }
+      }
+    }
+    for (let i = strikes.length - 1; i >= 0; i--) {
+      const s = strikes[i]; s.t -= dt;
+      // bots sidestep out of a called strike (uses the Brain's existing sidestep override)
+      if (!s.warned && s.t < 1.05) { s.warned = true; for (const g of glads) { const b = g.brain; if (!b || !g.alive) continue; const dx = g.pos.x - s.x, dz = g.pos.z - s.z, d = Math.hypot(dx, dz); if (d < 4 && chance(0.35 + 0.6 * g.skill)) { const l = d > 0.1 ? d : 1; b.side = d > 0.1 ? [dx / l, dz / l] : [Math.sin(g.yaw + 1.6), Math.cos(g.yaw + 1.6)]; b.sideT = Sim.time + 0.9; } } }
+      if (s.t <= 0) { strikes.splice(i, 1); strike(s); }
+    }
+  }
+  return { LIST, apply, restore, update, get cur() { return cur; } };
+})();
+__G.Mutators = Mutators;
+
 // ---------------------------------------------------------------- match flow + event director
 const Match = (() => {
   const M = { active: false, attract: false, mode: 'duel', phase: 'none', t: 0, clock: 180, ot: false, score: [0, 0], glads: [], me: null, lockOn: true, lockT: null, freeze: 0, slowT: 0, winner: -1, mvpId: -1, forfeited: false, count: 0, firstBlood: false, time: 0, paused: false, roster: null, isRematch: false, skipReq: false };
@@ -3661,9 +3713,11 @@ const Match = (() => {
   function rematch() { if (!M.roster) { queue(M.mode); return; } start(M.roster.mode, M.roster); }
   const GRUDGE = ['You got lucky.', 'Not this time.', 'Again? Fine.', 'The sand remembers.'];
   function start(mode, roster) {
-    stopAttract(); clearGlads(); Sim.reset(); MT.clearAll();
+    stopAttract(); clearGlads(); Sim.reset(); MT.clearAll(); Mutators.restore();
     Object.assign(M, { active: true, attract: false, mode, phase: 'intro', t: roster ? 1.5 : 0, clock: mode === 'training' ? 0 : 180, ot: false, score: [0, 0], freeze: 0, slowT: 0, winner: -1, mvpId: -1, forfeited: false, firstBlood: false, time: 0, paused: false, lockOn: Game.settings.lock, lockT: null, isRematch: !!roster, skipReq: false, round: 1, roundT: 0, target: 7, finale: false, lastStand: false, deciding: null });
-    Arena.setPreset(roster && PRESETS[roster.preset] ? roster.preset : pickPreset());
+    // Spectacle: roll the rule twist before anyone is created (it changes HP/fury/sizes); a rematch keeps the same twist
+    M.mutator = Prog.MODES[mode].unranked && mode !== 'training' ? Mutators.apply(roster && roster.mut) : null;
+    Arena.setPreset(roster && PRESETS[roster.preset] ? roster.preset : M.mutator && PRESETS[M.mutator.preset] ? M.mutator.preset : pickPreset());
     const S = Prog.S, size = Prog.MODES[mode].size, sk = Prog.skillFor(mode), names = NAMESHUF();
     M.me = makeGlad({ id: 0, team: 0, name: S.name, human: true, cos: S.equip, skin: Rig.SKIN[0] });
     let id = 1; if (roster) id = restoreRoster(roster); else
@@ -3672,10 +3726,11 @@ const Match = (() => {
       for (let i = 1; i < size; i++) { const s = clamp(sk + rand(-0.06, 0.08), 0.05, 0.97); makeGlad({ id: id++, team: 0, name: names.pop(), skill: s, cos: Prog.botLoadout(s), skin: pick(Rig.SKIN) }); }
       for (let i = 0; i < size; i++) { const s = clamp(sk + rand(-0.06, 0.08), 0.05, 0.97); makeGlad({ id: id++, team: 1, name: names.pop(), skill: s, cos: Prog.botLoadout(s), skin: pick(Rig.SKIN) }); }
     }
-    M.roster = snapshotRoster(mode);
+    M.roster = snapshotRoster(mode); if (M.mutator) { M.roster.mut = M.mutator.id; if (M.mutator.scale) for (const g of M.glads) g.rig.root.scale.setScalar(M.mutator.scale); }
     kickoff(); Sim.frozen = true; Sim.play = false; Sim.respawns = true; Sim.blessOn = mode !== 'training';
     UI.show('hud'); HUD.show(true); HUD.E.hud.classList.remove('cel'); HUD.score(0, 0); HUD.clock(M.clock, false, mode === 'training'); HUD.sub(Prog.MODES[mode].s.toUpperCase());
     if (HUD.rounds) HUD.rounds(mode === 'duel' ? 0 : null, 0, M.target); if (HUD.finale) HUD.finale(false);
+    if (M.mutator) { HUD.sub(M.mutator.name.toUpperCase()); HUD.ann(esc(M.mutator.name), 'gold', esc(M.mutator.desc), 2.8); }
     HUD.intro([0, 1].map((t) => M.glads.filter((g) => g.team === t)));
     Arena.gatesOpen = 0; Arena.excite = 0.45; Arena.gesture = 2; Cam.set('intro'); Sound.music('match', 0); Sound.cheer(0.8);
     if (UI.display) UI.display.root.visible = false;
@@ -3702,7 +3757,7 @@ const Match = (() => {
   // quick = a between-rounds kickoff (duel): the count starts at 2 and names the round
   function beginCount(ot, quick) {
     M.phase = 'count'; M.t = quick ? 0.8 : 0; M.quick = !!quick; prevCount = -1; HUD.E.intro.innerHTML = ''; Cam.set('play'); Cam.yaw = M.me.team ? -Math.PI / 2 : Math.PI / 2; Cam.pitch = 0.2; Arena.gesture = 0;
-    if (!quick) HUD.tip(M.mode === 'duel' && !ot ? 'First to ' + ROMAN_N(M.target) + ' wins, or the most KOs when the clock runs out. Every KO is a fresh kickoff.' : pick(TIPS), M.mode === 'duel' && !ot ? 4.5 : 3.2);
+    if (!quick) HUD.tip(M.mutator && !ot ? M.mutator.name + ': ' + M.mutator.desc : M.mode === 'duel' && !ot ? 'First to ' + ROMAN_N(M.target) + ' wins, or the most KOs when the clock runs out. Every KO is a fresh kickoff.' : pick(TIPS), M.mode === 'duel' && !ot ? 4.5 : 3.2);
     if (M.mode === 'duel' && !ot) HUD.sub('ROUND ' + M.round);
     if (ot) { HUD.sub(M.lastStand ? 'LAST STAND' : 'SUDDEN DEATH'); HUD.ann(M.lastStand ? 'LAST STAND' : 'OVERTIME', 'red', M.lastStand ? 'No respawns · last team standing' : 'Next KO wins', 1.6); }
   }
@@ -3771,7 +3826,7 @@ const Match = (() => {
     M.skipReq = false; skipBtn(true);
   }
   function finish() {
-    M.phase = 'done'; HUD.show(false); Input.enable(false); skipBtn(false); MT.clearAll();
+    M.phase = 'done'; HUD.show(false); Input.enable(false); skipBtn(false); MT.clearAll(); Mutators.restore();
     for (const g of M.glads) g.pose = null;
     const me = M.me, training = M.mode === 'training';
     if (M.roster) { const bots = M.glads.filter((g) => !g.human); M.roster.bots.forEach((b, i) => { b.grudge = !!(bots[i] && bots[i].lastKiller === me && bots[i].team !== me.team); }); }
@@ -3783,7 +3838,7 @@ const Match = (() => {
   function pause() { if (!M.active || M.phase === 'celebrate' || M.phase === 'done') return; M.paused = true; UI.show('pause'); Sound.boost(false, 0); }
   function resume() { M.paused = false; UI.show('hud'); }
   function forfeit() { if (!M.active) return; M.paused = false; UI.show('hud'); M.forfeited = M.mode !== 'training'; M.winner = M.mode === 'training' ? -1 : 1 - M.me.team; finish(); }
-  function toMenu() { MT.clearAll(); clearGlads(); M.active = false; M.phase = 'none'; startAttract(); UI.show('title'); Sound.music('menu'); }
+  function toMenu() { MT.clearAll(); Mutators.restore(); clearGlads(); M.active = false; M.phase = 'none'; startAttract(); UI.show('title'); Sound.music('menu'); }
   // ---------- attract mode (bots sparring behind the menus)
   function startAttract() {
     if (M.attract) return; clearGlads(); Sim.reset(); M.attract = true; Arena.setPreset(Game.settings.arena !== 'random' && PRESETS[Game.settings.arena] ? Game.settings.arena : 'dusk');
@@ -3841,6 +3896,7 @@ const Match = (() => {
       else if (M.phase === 'end') { if (M.t > 1.2) skipBtn(true); if (M.t > 2.2) celebrate(); else if (M.t > 1.2 && skipWanted()) { celebrate(); finish(); } }
       else if (M.phase === 'celebrate') { FX.confetti(dt, 70); if (M.t > 4.8 || (M.t > 1.0 && skipWanted())) finish(); }
       HUD.clock(M.clock, M.ot, M.mode === 'training');
+      if (M.mutator) Mutators.update(dt, M.glads);
       if (M.phase !== 'done') playerCtl();
       if (Input.down('board') !== HUD.board) HUD.scoreboard(Input.down('board'), M.glads, M.mvpId);
       // music/crowd intensity
