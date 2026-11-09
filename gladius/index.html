@@ -1313,6 +1313,47 @@ const Tex = (() => {
   }
   function blob() { const c = cv(128, 128), x = c.getContext('2d'), g = x.createRadialGradient(64, 64, 0, 64, 64, 64); g.addColorStop(0, 'rgba(0,0,0,0.75)'); g.addColorStop(0.55, 'rgba(0,0,0,0.35)'); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); return tex(c, { wrap: false }); }
   function glow(col) { const c = cv(64, 64), x = c.getContext('2d'), g = x.createRadialGradient(32, 32, 0, 32, 32, 32); g.addColorStop(0, col); g.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = g; x.fillRect(0, 0, 64, 64); return tex(c, { wrap: false }); }
+  // Decal atlas: marks drawn dark on white, multiplied onto whatever is underneath (so they sit correctly in sun and in shadow).
+  // Cells are [x, y, w, h] in pixels of a 1024×512 sheet: four 256² marks on the left, 128² marks on the right.
+  const DECAL = { crater: [0, 0, 256, 256], scorch: [256, 0, 256, 256], crack: [0, 256, 256, 256], ring: [256, 256, 256, 256], prints: [512, 0, 128, 128], scuff: [640, 0, 128, 128], skid: [768, 0, 128, 128], gouge: [896, 0, 128, 128] };
+  function decalAtlas() {
+    const W = 1024, H = 512, c = cv(W, H), x = c.getContext('2d'), r = rng(171);
+    x.fillStyle = '#fff'; x.fillRect(0, 0, W, H); x.globalCompositeOperation = 'multiply'; x.lineCap = 'round'; x.lineJoin = 'round';
+    const cell = (k, f) => { const q = DECAL[k]; x.save(); x.beginPath(); x.rect(q[0] + 2, q[1] + 2, q[2] - 4, q[3] - 4); x.clip(); x.translate(q[0] + q[2] / 2, q[1] + q[3] / 2); f(); x.restore(); };
+    const soft = (px, py, rx, ry, col, rot = 0) => { x.save(); x.translate(px, py); x.rotate(rot); x.scale(1, ry / rx); const g = x.createRadialGradient(0, 0, 0, 0, 0, rx); g.addColorStop(0, col); g.addColorStop(0.55, col); g.addColorStop(1, '#fff'); x.fillStyle = g; x.beginPath(); x.arc(0, 0, rx, 0, TAU); x.fill(); x.restore(); };
+    // a jagged crack from (x0,y0) heading a for len px; thins towards its tip and may fork
+    const crack = (x0, y0, a, len, w, col, fork = 0.3) => { let px = x0, py = y0; const n = Math.max(3, (len / 10) | 0); x.strokeStyle = col; for (let i = 0; i < n; i++) { a += (r() - 0.5) * 0.7; const nx = px + Math.cos(a) * len / n, ny = py + Math.sin(a) * len / n; x.lineWidth = Math.max(0.7, w * (1 - i / n)); x.beginPath(); x.moveTo(px, py); x.lineTo(nx, ny); x.stroke(); px = nx; py = ny; if (fork && r() < fork && i > 0 && i < n - 1) crack(px, py, a + (r() < 0.5 ? 0.7 : -0.7), len * (1 - i / n) * 0.55, w * 0.55, col, 0); } };
+    cell('crater', () => {
+      soft(0, 0, 120, 120, '#d2c5b5'); soft(0, 0, 86, 86, '#b8a591'); soft(0, 0, 48, 48, '#978370'); soft(4, 5, 24, 24, '#796756');
+      x.strokeStyle = '#6a5848'; x.lineWidth = 2.2; x.beginPath(); for (let i = 0; i <= 44; i++) { const a = i / 44 * TAU, rr = 76 + Math.sin(a * 5 + 1) * 4 + (r() - 0.5) * 7; if (i) x.lineTo(Math.cos(a) * rr, Math.sin(a) * rr); else x.moveTo(rr, 0); } x.closePath(); x.stroke();
+      for (let i = 0; i < 17; i++) { const a = i / 17 * TAU + (r() - 0.5) * 0.3; crack(Math.cos(a) * 20, Math.sin(a) * 20, a, 58 + r() * 40, 3.1, '#5a483a', 0.22); }
+      for (let i = 0; i < 46; i++) { const a = r() * TAU, rr = 30 + r() * 88; soft(Math.cos(a) * rr, Math.sin(a) * rr, 2 + r() * 4, 2 + r() * 3, '#7a6858', r() * 3); }
+    });
+    cell('scorch', () => {
+      soft(0, 0, 120, 120, '#c8bcb0'); soft(0, 0, 80, 80, '#8c8078'); soft(0, 0, 44, 44, '#4a423e'); soft(0, 0, 22, 22, '#2a2624');
+      for (let i = 0; i < 22; i++) { const a = i / 22 * TAU + (r() - 0.5) * 0.25, L = 62 + r() * 54, w = 0.07 + r() * 0.08; x.fillStyle = i % 3 ? '#6a605a' : '#4a423e'; x.beginPath(); x.moveTo(Math.cos(a - w) * 26, Math.sin(a - w) * 26); x.lineTo(Math.cos(a) * L, Math.sin(a) * L); x.lineTo(Math.cos(a + w) * 26, Math.sin(a + w) * 26); x.closePath(); x.fill(); }
+      for (let i = 0; i < 60; i++) { const a = r() * TAU, rr = 20 + r() * 95; soft(Math.cos(a) * rr, Math.sin(a) * rr, 1.5 + r() * 4, 1.5 + r() * 4, '#5a524c'); }
+    });
+    cell('crack', () => {   // on the podium wall: a dent, hairline cracks and flaked paint
+      soft(0, 0, 60, 60, '#b4a59c'); soft(0, 0, 26, 26, '#6c5e56');
+      for (let i = 0; i < 11; i++) crack((r() - 0.5) * 10, (r() - 0.5) * 10, i / 11 * TAU + r() * 0.5, 62 + r() * 52, 3, '#2e2420', 0.3);
+      for (let i = 0; i < 26; i++) { const a = r() * TAU, rr = 12 + r() * 70; soft(Math.cos(a) * rr, Math.sin(a) * rr, 2 + r() * 5, 2 + r() * 4, '#5e5048', r() * 3); }
+    });
+    cell('ring', () => {
+      for (let i = 0; i < 56; i++) { const a = i / 56 * TAU + r() * 0.1, rr = 82 + r() * 14; soft(Math.cos(a) * rr, Math.sin(a) * rr, 16 + r() * 10, 10 + r() * 6, '#bba995', a + Math.PI / 2); }
+      for (let i = 0; i < 40; i++) { const a = r() * TAU, r0 = 96 + r() * 8; x.strokeStyle = '#c2b19d'; x.lineWidth = 2 + r() * 3; x.beginPath(); x.moveTo(Math.cos(a) * r0, Math.sin(a) * r0); x.lineTo(Math.cos(a) * (r0 + 8 + r() * 14), Math.sin(a) * (r0 + 8 + r() * 14)); x.stroke(); }
+      soft(0, 0, 62, 62, '#d6cabb');
+    });
+    cell('prints', () => { for (const [fx, fy] of [[-22, -26], [22, 26]]) { soft(fx, fy - 5, 12, 11, '#9c8672'); soft(fx, fy + 9, 9, 9, '#a08a76'); soft(fx + (fx < 0 ? 2 : -2), fy - 4, 7, 7, '#7a6656'); for (let i = -1; i <= 1; i++) soft(fx + i * 6, fy - 17, 3, 3, '#a89480'); } });
+    cell('scuff', () => { for (let i = 0; i < 9; i++) soft((r() - 0.5) * 50, (r() - 0.5) * 70, 12 + r() * 16, 20 + r() * 22, '#c6b5a2', (r() - 0.5) * 0.5); for (let i = 0; i < 5; i++) soft((r() - 0.5) * 40, (r() - 0.5) * 60, 5 + r() * 6, 14 + r() * 14, '#a39080', (r() - 0.5) * 0.4); });
+    cell('skid', () => {   // two heel furrows in a band of disturbed sand
+      for (let j = -5; j <= 5; j++) soft(Math.sin(j) * 3, j * 10, 30, 12, j * j > 12 ? '#e4dace' : '#cdbfae');
+      for (const k of [-1, 1]) for (let j = -11; j <= 11; j++) { const e = 1 - Math.abs(j) / 12; soft(k * 13 + Math.sin(j * 0.5 + k) * 1.8, j * 5, 3 + e * 4, 6, e < 0.3 ? '#c4b4a2' : '#8c7866'); }
+    });
+    cell('gouge', () => { for (let i = 0; i <= 14; i++) { const t = i / 14, a = -0.7 + t * 1.4, px = Math.sin(a) * 24 - 6, py = (t - 0.5) * 96, w = 3 + Math.sin(t * Math.PI) * 9; soft(px, py, w, w * 1.2, '#8a7462'); soft(px + 5, py, w * 0.6, w, '#6a5648'); } });
+    const t = tex(c, { wrap: false, data: true }); t.rect = (k) => { const q = DECAL[k]; return [q[0] / W, 1 - (q[1] + q[3]) / H, q[2] / W, q[3] / H]; };
+    return t;
+  }
   const T = { fbm, cv, tex, drawEmblem, shield, emblemIcon };
   T.init = (q) => {
     T.q = q;
@@ -1325,6 +1366,7 @@ const Tex = (() => {
     T.velarium = velarium(256, 64);
     T.banner = [banner(0), banner(1)];
     T.cloth = clothAtlas();
+    T.decals = decalAtlas();
     T.atlas = atlas();
     T.blob = blob();
     T.glow = glow('rgba(255,210,120,1)');
@@ -1523,7 +1565,7 @@ const Arena = (() => {
     buildDetails();
     buildVelarium(standTop); buildPads(); buildBlessing(); buildSky();
     Bus.on('ko', (e) => { if (!e || !e.v) return; volley.team = 1 - e.v.team; volley.n = 10; volley.t = 0.1; });
-    Ambience.init(scene, Q);
+    Ambience.init(scene, Q); Decals.init(scene, Q);
     // lights
     hemi = new THREE.HemisphereLight(0xffffff, 0xffffff, 1); scene.add(hemi);
     sun = new THREE.DirectionalLight(0xffffff, 3);
@@ -2080,7 +2122,7 @@ void main(){ vec3 d = normalize(vDir); float y = d.y;
     emperorArm.rotation.x = damp(emperorArm.rotation.x, ea + (R.gesture === 2 ? Math.sin(t * 6) * 0.3 : 0), 5, dt);
     emperorArm.rotation.z = damp(emperorArm.rotation.z, R.gesture === -1 ? Math.PI : 0, 5, dt);
     sky.material.uniforms.uTime.value = t;
-    throwVolley(dt); Ambience.update(dt, t);
+    throwVolley(dt); Ambience.update(dt, t); Decals.update(dt, sim);
     // fires (the brazier lights breathe with the flames; intensity 0 by day, never toggled)
     if (typeof FX !== 'undefined' && FX.ready) for (const br of R.braziers) FX.fire(br, R.fire, dt);
     for (let i = 0; i < nightLights.length; i++) nightLights[i].intensity = R.fireL * (0.86 + 0.08 * Math.sin(t * 11.3 + i * 1.7) + 0.06 * Math.sin(t * 23.7 + i * 2.9) + 0.05 * Math.sin(t * 5.1 + i * 4.1));
@@ -2205,6 +2247,83 @@ void main(){ float th = aB.z + uTime * aB.w; vec2 e = uAB + aB.x;
   return { init, setPreset, update };
 })();
 __G.Ambience = Ambience;
+
+// ---------------------------------------------------------------- sand that remembers: pooled decals
+// One instanced, multiply-blended layer of quads on the sand (and the podium wall). Fading runs in the shader from each decal's
+// birth time, so the only CPU work is writing a slot when a mark is made. Big marks (craters, scorches, wall cracks) and
+// small ones (footprints, skids) recycle in separate rings so a sprint never erases a crater.
+const Decals = (() => {
+  let Q = 0, mesh = null, N = 0, NB = 0, big = 0, small = 0, clock = 0, rate = 0, made = 0, rateT = 0, aUV, aT;
+  const U = { uTime: { value: 0 }, uLin: { value: 0 } }, _m = M4(), _q = new THREE.Quaternion(), _p = V3(), _s = V3(), _x = V3(), _y = V3(), _z = V3(), UP = V3(0, 1, 0), st = new WeakMap();
+  function init(scene, q) {
+    Q = q; N = [128, 320, 512][q]; NB = [24, 40, 48][q]; small = NB;
+    const g = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
+    aUV = new THREE.InstancedBufferAttribute(new Float32Array(N * 4), 4); aT = new THREE.InstancedBufferAttribute(new Float32Array(N * 3), 3); aT.array.fill(-1e6);
+    g.setAttribute('aUV', aUV); g.setAttribute('aT', aT);
+    mesh = new THREE.InstancedMesh(g, new THREE.ShaderMaterial({
+      uniforms: { uTime: U.uTime, uMap: { value: Tex.decals }, uLin: U.uLin }, transparent: true, depthWrite: false, blending: THREE.MultiplyBlending, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2, side: THREE.DoubleSide,
+      vertexShader: `attribute vec4 aUV; attribute vec3 aT; uniform float uTime; varying vec2 vUv; varying float vF;
+void main(){ float age = uTime - aT.x; vUv = aUV.xy + uv * aUV.zw;
+ vec4 mv = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+ vF = aT.z * smoothstep(0.0, 0.1, age) * (1.0 - smoothstep(aT.y * 0.55, aT.y, age)) * (1.0 - smoothstep(48.0, 72.0, -mv.z));
+ gl_Position = age > aT.y ? vec4(2.0, 2.0, 2.0, 1.0) : projectionMatrix * mv; }`,
+      fragmentShader: `uniform sampler2D uMap; uniform float uLin; varying vec2 vUv; varying float vF;
+void main(){ vec3 f = mix(vec3(1.0), texture2D(uMap, vUv).rgb, vF); gl_FragColor = vec4(mix(f, f * f * f, uLin * 0.75), 1.0); }`,
+    }), N);
+    // the marks are authored for display space: when the frame is rendered into a linear (HDR) target the factor has to bite harder
+    mesh.onBeforeRender = (rend) => { U.uLin.value = rend.getRenderTarget() ? 1 : 0; };
+    mesh.frustumCulled = false; mesh.renderOrder = -1; mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(mesh);
+    for (let i = 0; i < N; i++) mesh.setMatrixAt(i, _m.identity());
+    Bus.on('matchStart', clear);
+    Bus.on('land', (e) => { if (e.v > 12) add('ring', e.g.pos.x, e.g.pos.z, rand(0, TAU), clamp(1.0 + e.v * 0.1, 2.2, 3.6), 0, 16, 0.55, false); });
+    Bus.on('slam', (e) => add('crater', e.g.pos.x, e.g.pos.z, rand(0, TAU), 7.6, 0, 28, 0.9, true));
+    Bus.on('ko', (e) => { if (e.pos && e.pos.y < 9) add('scorch', e.pos.x, e.pos.z, rand(0, TAU), e.kind === 'demo' ? 7 : 5.6, 0, 30, 0.85, true); });
+    Bus.on('dodge', (e) => { const g = e.g; if (g.pos.y < 0.7 && g.dodge) add('gouge', g.pos.x, g.pos.z, Math.atan2(g.dodge.dx, g.dodge.dz), 0.8, 1.7, 14, 0.6, false); });
+    Bus.on('splat', (e) => {
+      const g = e.g, n = e.n; if (Math.abs(g.pos.z) < 2.9 && Math.abs(g.pos.x) > ARENA.A - 3) return;      // no wall in the gateway
+      const k = Math.hypot(g.pos.x / ARENA.A, g.pos.z / ARENA.B) || 1;                                    // push out to the wall, then a hand's width back in
+      wall(g.pos.x / k - n.x * 0.07, clamp(g.pos.y + 1.1, 1.25, 1.75), g.pos.z / k - n.z * 0.07, n, 2.5 + Math.min(1, e.v / 30), 30, 0.9);
+    });
+  }
+  function slot(isBig) { if (isBig) { const i = big; big = (big + 1) % NB; return i; } const i = small; small = small + 1 >= N ? NB : small + 1; return i; }
+  function write(i, kind, life, k) { const r = Tex.decals.rect(kind); aUV.setXYZW(i, r[0], r[1], r[2], r[3]); aT.setXYZ(i, clock, life, k); aUV.needsUpdate = true; aT.needsUpdate = true; mesh.instanceMatrix.needsUpdate = true; made++; }
+  // a mark on the sand: sx (and sz, if not square) in metres, yaw about +Y; fades out over `life` seconds
+  function add(kind, x, z, yaw, sx, sz, life, k, isBig) {
+    if (!mesh || (x / (ARENA.A + 0.4)) ** 2 + (z / (ARENA.B + 0.4)) ** 2 > 1) return;
+    const i = slot(isBig); _q.setFromAxisAngle(UP, yaw); mesh.setMatrixAt(i, _m.compose(_p.set(x, 0.02, z), _q, _s.set(sx, 1, sz || sx))); write(i, kind, life, k);
+  }
+  // a mark on the podium wall at (x,y,z), facing back into the arena (n is the wall's outward normal)
+  function wall(x, y, z, n, size, life, k) {
+    if (!mesh) return;
+    const i = slot(true); _y.set(-n.x, 0, -n.z).normalize(); _z.copy(UP); _x.crossVectors(_y, _z);
+    mesh.setMatrixAt(i, _m.makeBasis(_x, _y, _z).scale(_s.set(size, 1, size)).setPosition(x, y, z)); write(i, 'crack', life, k);
+  }
+  function clear() { if (!mesh) return; aT.array.fill(-1e6); aT.needsUpdate = true; big = 0; small = NB; }
+  // footprints, boost skids and tumble scuffs behind every gladiator on the ground
+  function trails(glads) {
+    // lifetime adapts to how fast the small ring is being used, so marks fade out before their slot is recycled
+    const life = clamp(0.85 * (N - NB) / Math.max(1, rate), 5, 20);
+    for (let gi = 0; gi < glads.length; gi++) {
+      const g = glads[gi]; let t = st.get(g); if (!t) { t = { x: g.pos.x, z: g.pos.z, d: 0, side: 1 }; st.set(g, t); }
+      const dx = g.pos.x - t.x, dz = g.pos.z - t.z, d = Math.hypot(dx, dz); t.x = g.pos.x; t.z = g.pos.z;
+      if (!g.alive || !g.ground || d > 3 || d < 1e-4) { t.d = 0; continue; }
+      const tumble = g.st === 'tumble', skid = !tumble && (g.boosting || g.ss) && d > 0, step = tumble ? 1.1 : skid ? 1.75 : [2.5, 1.5, 1.25][Q];
+      t.d += d; if (t.d < step) continue; t.d = 0; t.side = -t.side;
+      const yaw = Math.atan2(dx, dz), ux = dx / d, uz = dz / d;
+      if (tumble) add('scuff', g.pos.x, g.pos.z, yaw + rand(-0.5, 0.5), 1.0, 1.5, life, 0.5, false);
+      else if (skid) add('skid', g.pos.x - ux * 0.9, g.pos.z - uz * 0.9, yaw, 0.62, 2.3, life * 0.8, g.ss ? 0.6 : 0.42, false);
+      else add('prints', g.pos.x - ux * 0.5, g.pos.z - uz * 0.5, yaw, 0.72 * t.side, 1.3, life, 0.5, false);
+    }
+  }
+  function update(dt, sim) {
+    if (!mesh) return;
+    clock += dt; U.uTime.value = clock;
+    rateT += dt; if (rateT >= 1) { rate = rate * 0.6 + (made / rateT) * 0.4; made = 0; rateT = 0; }
+    if (sim && sim.glads && sim.glads.length) trails(sim.glads);
+  }
+  return { init, add, wall, clear, update, get count() { return N; } };
+})();
+__G.Decals = Decals;
 
 // ---------------------------------------------------------------- gladiator rig: one skinned mesh (2 materials) + attachments
 const DEFAULT_COS = { helmet: 'h_murmillo', emblem: 'e_plain', sword: 's_iron', trail: 't_dust', explosion: 'x_sand', cape: 'c_none', title: 'ti_recruit' };
