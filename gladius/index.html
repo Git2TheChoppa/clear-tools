@@ -2347,7 +2347,7 @@ const Sim = {
   glads: [], pads: [], bless: { active: false, warn: 0, next: 0, pos: V3(0, 1.45, 0), every: 42 },
   time: 0, play: false, frozen: false, respawns: true, blessOn: true,
   reset() { this.glads = []; this.time = 0; this.bless.active = false; this.bless.warn = 0; this.bless.next = 0; for (const p of this.pads) { p.active = true; p.t = 0; } },
-  setSt(g, s, dur = 0) { if (s === 'stagger' && g.chainN > 1) dur *= clamp(1 - 0.22 * (g.chainN - 1), 0.4, 1); g.st = s; g.stT = 0; g.stunDur = dur; if (s !== 'atk') { g.atk = null; g.queued = false; } if (s !== 'charge') g.charge = 0; if (s !== 'getup') g.slamLand = false; },
+  setSt(g, s, dur = 0) { if (g.st === 'taunt' && s !== 'taunt') g.pose = null; if (s === 'stagger' && g.chainN > 1) dur *= clamp(1 - 0.22 * (g.chainN - 1), 0.4, 1); g.st = s; g.stT = 0; g.stunDur = dur; if (s !== 'atk') { g.atk = null; g.queued = false; } if (s !== 'charge') g.charge = 0; if (s !== 'getup') g.slamLand = false; },
   // taunt: a committed emote. Leaving it (finished, cancelled or knocked out of it) goes through endTaunt().
   taunt(g, id) {
     if (!g.alive || !g.ground || g.st !== 'idle' || this.frozen || this.time - (g.tauntT || -9) < 6) return false;
@@ -3735,6 +3735,7 @@ void main(){ vec2 p = vUv - 0.5; float r = length(p) * 2.0, ang = atan(p.x, p.y)
       vis = damp(vis, D.on ? 1 : 0, 5, dt); grp.visible = vis > 0.01;
       if (grp.visible) { const lead = D.prog[0] >= D.prog[1] ? 0 : 1; _c.copy(D.team >= 0 ? _c.set(TEAM[D.team].lite) : GOLD); ringM.uniforms.uC.value.lerp(_c, 1 - Math.exp(-8 * dt)); ringM.uniforms.uA.value = vis * (D.contested ? 0.75 + 0.25 * Math.sin(t * 16) : 1); ringM.uniforms.uP.value = clamp(D.prog[lead] / HOLD, 0, 1); ringM.uniforms.uT.value = t; }
     }
+    if (D.on && (M.phase === 'end' || M.phase === 'celebrate' || M.phase === 'ot' || M.phase === 'otc')) end(40);
     if (!D.enabled || Sim.frozen || !Sim.play || M.phase !== 'play' || M.roundT > 0) return;
     if (!D.on) { D.next -= dt; if (D.next <= 0 && M.clock > 40) call(); return; }
     let c0 = 0, c1 = 0;
