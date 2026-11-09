@@ -5079,7 +5079,7 @@ const Tutorial = (() => {
   const PRAISE = ['Bene!', 'Optime!', 'Euge!', 'Macte!', 'Recte!'];
   const YMODES = [['stand', 'Stand', 'Dummies stand their ground. Practise combos, dodge-strikes and demolitions.'], ['block', 'Block', 'Dummies keep their shields up. Break the guard with a heavy blow.'], ['heavy', 'Strike', 'Dummies wind up heavy blows on three beats. Parry on the fourth.'], ['chase', 'Chase', 'Dummies hunt you with quick combos. Block, dodge and answer.']];
   const YSPOT = [[-9.5, -7], [-6.5, -1]];
-  const KEYS = { kb: { move: 'WASD', jump: 'Space', boost: 'Shift', atk: 'LMB', block: 'RMB', lock: 'Q', taunt: 'T', pause: 'Esc' }, pad: { move: 'L-stick', jump: 'A', boost: 'B', atk: 'X', block: 'LB', lock: 'Y', taunt: 'R3', pause: 'Start' }, touch: { move: 'Stick', jump: 'Jump', boost: 'Boost', atk: 'Strike', block: 'Block', lock: 'Lock', taunt: 'Salute', pause: 'II' } };
+  const KEYS = { kb: { move: 'WASD', jump: 'Space', boost: 'Shift', atk: 'LMB', block: 'RMB', lock: 'Q', taunt: 'T', pause: 'Esc' }, pad: { move: 'L-stick', jump: 'A', boost: 'B', atk: 'X', block: 'LB', lock: 'Y', taunt: 'R3', pause: 'Start' }, touch: { move: 'Stick', jump: 'Jump', boost: 'Boost', atk: 'Strike', block: 'Block', lock: 'Lock', taunt: 'Taunt', pause: 'II' } };
   const Y = { mode: 'stand', fury: false, intro: null }, E = {}, eased = {}, _p = V3(), _m = V3();
   let root = null, hudEl = null, me = null, dum = null, spare = null, L = null, offer = null, starting = false, pz = null, dev = '';
   // save: S.tut = { done, step, asked } (created lazily; never touched before Prog.load())
@@ -5186,7 +5186,31 @@ body.touch .ld-yard{ gap:5px; padding:4px 6px; } body.touch .ld-yard > span{ dis
 body.touch .ld-offer{ bottom:calc(7% + var(--sab)); padding:10px 16px 14px; } body.touch .ld-offer h3{ font-size:19px; } body.touch .ld-offer p{ margin-bottom:9px; font-size:15px; }
 body.touch .ld-grad{ padding-top:calc(48px + var(--sat)); padding-bottom:calc(10px + var(--sab)); } body.touch .ld-laurel{ width:54px; height:48px; } body.touch .ld-ghead p{ margin-top:3px; font-size:16px; }
 body.touch .ld-gfoot{ padding:8px 14px 10px; } body.touch .ld-rew{ margin-bottom:5px; } body.touch .ld-rew svg{ width:30px; height:30px; } body.touch .ld-rew b{ font-size:16px; } body.touch .ld-rew span{ font-size:13px; } body.touch .ld-stat{ margin-bottom:7px; font-size:12px; }
-body.touch .ld-b{ min-height:42px; font-size:18px; }
+body.touch .ld-b{ min-height:48px; font-size:18px; }
+/* phones: every control a thumb can hit (44 px), the card between the HUD's top band and the controls (COMMON screen-space contract) */
+body.touch .ld-top{ min-height:44px; } body.touch .ld-skip{ min-height:44px; min-width:72px; justify-content:center; padding:0 14px; font-size:14px; }
+body.touch .ld-act{ min-height:44px; padding:0 18px; font-size:16px; } body.touch .ld-goal{ min-height:44px; }
+body.touch .ld-yard button{ min-height:44px; justify-content:center; }
+@media (orientation: landscape){
+  body.touch #ludus{ --ld-top:calc(62px + var(--sat)); }
+  body.touch .ld-wrap,body.touch .ld-yard,body.touch .ld-offer{ left:var(--sal); right:calc(300px + var(--sar)); } /* the action buttons own the right 300 px */
+  body.touch .ld-wrap{ width:min(420px, calc(100vw - 332px - var(--sal) - var(--sar))); }
+  body.touch .ld-yard{ max-width:calc(100vw - 316px - var(--sal) - var(--sar)); flex-wrap:wrap; justify-content:center; }
+  body.touch .ld-offer{ top:var(--ld-top); bottom:auto; width:min(500px, calc(100vw - 332px - var(--sal) - var(--sar))); }
+  body.touch .ld-grad{ padding-top:calc(60px + var(--sat)); }
+}
+@media (orientation: portrait){
+  body.touch #ludus{ --ld-top:calc(150px + var(--sat)); } /* below the scorebug and the HP / fury row */
+  body.touch .ld-wrap{ width:min(440px, calc(100vw - 20px)); }
+  body.touch .ld-name{ font-size:18px; } body.touch .ld-text{ font-size:15px; }
+  body.touch .ld-yard{ width:min(440px, calc(100vw - 20px)); flex-wrap:wrap; justify-content:center; }
+  body.touch .ld-yard button{ flex:1 1 40%; }
+  body.touch .ld-offer{ top:var(--ld-top); bottom:auto; width:min(440px, calc(100vw - 20px)); }
+  body.touch .ld-grad{ justify-content:flex-start; gap:12px; padding-top:calc(150px + var(--sat)); }
+  body.touch .ld-laurel{ width:44px; height:39px; } body.touch .ld-ghead h2{ font-size:30px; } body.touch .ld-ghead p{ font-size:15px; }
+  body.touch .ld-gfoot{ width:min(440px, calc(100vw - 20px)); } body.touch .ld-rew{ gap:8px 18px; } body.touch .ld-rew span{ display:none; }
+  body.touch .ld-btns{ gap:10px; } body.touch .ld-b{ padding:0 14px; font-size:16px; }
+}
 @media (prefers-reduced-motion: reduce){ .ld-card.in,.ld-hint,.ld-pips i.pop,.ld-card.done .ld-stamp span,.ld-pin,.ld-yard,.ld-offer,.ld-ghead,.ld-gfoot,.ld-badge,.ld-prog i.cur{ animation:none; } }
 `;
   const CHEST = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M5 18 Q5 8 14 8 H26 Q35 8 35 18 V20 H5 Z" fill="#b9773b" stroke="#2a1606" stroke-width="1.5"/><rect x="5" y="20" width="30" height="13" fill="#8a5426" stroke="#2a1606" stroke-width="1.5"/><path d="M11 8.6 V33 M29 8.6 V33" stroke="#f5c045" stroke-width="2.2"/><rect x="17" y="16" width="6" height="9" rx="1" fill="#f5c045" stroke="#2a1606" stroke-width="1.2"/></svg>';
@@ -5289,8 +5313,10 @@ body.touch .ld-b{ min-height:42px; font-size:18px; }
     if (o.beam) { if (hide) beacon(null); else { beacon(x, z); beam.material.uniforms.uT.value = Sim.time; } }
     if (hide) return;
     const W = innerWidth, H = innerHeight; _m.set(x, (g ? g.pos.y : 0) + o.h, z).project(__G.camera);
-    let sx = (_m.x * 0.5 + 0.5) * W, sy = (-_m.y * 0.5 + 0.5) * H; const front = _m.z < 1 && _m.z > -1, off = !(front && sx > 50 && sx < W - 50 && sy > 150 && sy < H - 40);
-    if (off) { let ax = sx - W / 2, ay = sy - H / 2; if (!front) { ax = -ax; ay = -ay; } const a = Math.atan2(ay, ax); sx = W / 2 + Math.cos(a) * (W / 2 - 80); sy = H / 2 + Math.sin(a) * (H / 2 - 96); E.edge.style.setProperty('--a', (a * 180 / Math.PI + 90).toFixed(0) + 'deg'); }
+    // the edge arrow keeps out of the HUD's top band and, on a portrait phone, out of the controls band at the bottom
+    const port = IS_TOUCH && H > W, lo = port ? 175 : IS_TOUCH ? 110 : 150, hi = port ? H - Math.min(H * 0.44, 340) - 34 : H - 70;
+    let sx = (_m.x * 0.5 + 0.5) * W, sy = (-_m.y * 0.5 + 0.5) * H; const front = _m.z < 1 && _m.z > -1, off = !(front && sx > 50 && sx < W - 50 && sy > lo && sy < H - 40);
+    if (off) { let ax = sx - W / 2, ay = sy - (lo + hi) / 2; if (!front) { ax = -ax; ay = -ay; } const a = Math.atan2(ay, ax); sx = W / 2 + Math.cos(a) * (W / 2 - 60); sy = (lo + hi) / 2 + Math.sin(a) * Math.max(10, (hi - lo) / 2); E.edge.style.setProperty('--a', (a * 180 / Math.PI + 90).toFixed(0) + 'deg'); }
     if (off !== o.off) { o.off = off; E.mark.classList.toggle('off', off); }
     E.mark.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`;
     const dr = Math.round(d); if (dr !== o.d) { o.d = dr; E.pinDist.textContent = dr + ' m'; }
@@ -5352,7 +5378,7 @@ body.touch .ld-b{ min-height:42px; font-size:18px; }
       tick() { if (me.fury < 45) me.fury = 45; if (me.ss) tick(1); },
       on: { ko(e) { if (e.v === dum && e.kind === 'demo') tick(2); }, hit(e) { if (e.a === me && e.v === dum) hint(`No blade needed. Hold ${G('boost')} and run straight through it.`); } } },
     { id: 'jump', name: 'Double Jump', n: 2, goal: 'Double jump',
-      text: () => `${G('jump')} jumps. Press it again in mid-air, with no direction held, for a double jump.`,
+      text: () => `${G('jump')} jumps. Press it again in mid-air, ${Input.device === 'touch' ? 'with your thumb off the stick' : 'with no direction held'}, for a double jump.`,
       on: { jump(e) { if (e.g === me && e.double) tick(); }, dodge(e) { if (e.g === me) hint(`That was a dodge. Let go of ${G('move')} before the second jump.`); } } },
     { id: 'dodge', name: 'Dodge-Strike', n: 2, goal: 'Dodge into the dummy',
       text: () => `Jump, then press ${G('jump')} again while holding a direction: a dodge. Dodge into the dummy to strike it.`,
@@ -5604,7 +5630,7 @@ body.touch .ld-b{ min-height:42px; font-size:18px; }
   { const st = document.createElement('style'); st.id = 'ludusCss'; st.textContent = CSS; document.head.appendChild(st);
     const ts = document.getElementById('scr-title'); if (ts && typeof MutationObserver === 'function') new MutationObserver(titleSync).observe(ts, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true }); }
 
-  return Object.assign(T, { start, skip, leave, update, STEPS, goto(i) { if (T.active && L && !L.grad && STEPS[i]) { L.doneT = 0; uneaseAll(); begin(i); } }, state() { return { active: T.active, yard: T.yard, i: L ? L.i : -1, id: L && STEPS[L.i] ? STEPS[L.i].id : '', n: L ? L.n : 0, need: L && STEPS[L.i] ? STEPS[L.i].n : 0, done: !!(L && L.doneT > 0), grad: !!(L && L.grad), offer: !!offer, mode: Y.mode, fury: Y.fury, mark: L && L.mark ? { x: L.mark.g ? L.mark.g.pos.x : L.mark.x, z: L.mark.g ? L.mark.g.pos.z : L.mark.z } : null }; }, dummy() { return dum; } });
+  return Object.assign(T, { start, skip, leave, update, STEPS, okList: () => (L ? STEPS.map((x, k) => !!L.ok[k]) : []), goto(i) { if (T.active && L && !L.grad && STEPS[i]) { L.doneT = 0; uneaseAll(); begin(i); } }, state() { return { active: T.active, yard: T.yard, i: L ? L.i : -1, id: L && STEPS[L.i] ? STEPS[L.i].id : '', n: L ? L.n : 0, need: L && STEPS[L.i] ? STEPS[L.i].n : 0, done: !!(L && L.doneT > 0), grad: !!(L && L.grad), offer: !!offer, mode: Y.mode, fury: Y.fury, mark: L && L.mark ? { x: L.mark.g ? L.mark.g.pos.x : L.mark.x, z: L.mark.g ? L.mark.g.pos.z : L.mark.z } : null }; }, dummy() { return dum; } });
 })();
 __G.Tutorial = Tutorial;
 
