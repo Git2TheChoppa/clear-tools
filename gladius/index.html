@@ -351,6 +351,42 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
   #scr-play .scr-head h2{ font-size:26px; }
 }
 .mode .mr .emb{ margin:0; flex:none; }
+/* career / settings shell */
+#scr-career,#scr-settings{ display:none; flex-direction:column; align-items:center; }
+#scr-career.on,#scr-settings.on{ display:flex; }
+#scr-career .scr-head,#scr-settings .scr-head{ width:min(920px, 100%); flex:none; }
+#scr-career .panel,#scr-settings .panel{ width:min(920px, 100%); flex:1 1 auto; min-height:0; max-height:none; margin:0; padding:16px 18px 20px; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:rgba(224,165,96,.45) transparent; background:linear-gradient(180deg, rgba(34,23,15,.94), rgba(22,14,9,.94)); }
+/* settings */
+#setBody{ display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap:14px 18px; align-items:start; }
+.sgrp{ padding:10px 14px 12px; border:1px solid rgba(185,119,59,.35); background:rgba(0,0,0,.2); animation:stagUp .34s cubic-bezier(.2,.8,.25,1) backwards; animation-delay:calc(var(--i,0) * 45ms + 60ms); }
+.sgh{ display:flex; align-items:center; gap:10px; margin:0 0 4px; font-family:var(--display); font-weight:700; font-size:18px; letter-spacing:.05em; color:var(--sand); }
+.sgh .mi{ width:20px; height:20px; color:var(--gold); opacity:1; }
+.srow{ display:flex; align-items:center; justify-content:space-between; gap:14px; min-height:52px; padding:4px 0; border-top:1px solid rgba(255,255,255,.06); font-size:18px; cursor:pointer; }
+.sgh + .srow{ border-top:0; }
+.sl{ display:flex; flex-direction:column; min-width:0; line-height:1.15; } .sl small{ font-size:14px; color:var(--dim); }
+.sc{ display:flex; align-items:center; gap:10px; flex:0 1 56%; justify-content:flex-end; min-width:0; }
+.srow input[type=range]{ flex:1; min-width:0; height:36px; accent-color:var(--gold); touch-action:pan-x; }
+.srow output{ flex:none; min-width:46px; text-align:right; color:var(--sand); font-weight:700; font-variant-numeric:tabular-nums; }
+.srow select,.srow input[type=text]{ width:100%; min-height:44px; font:inherit; font-size:18px; color:var(--marble); background:rgba(0,0,0,.4); border:1px solid rgba(185,119,59,.55); padding:0 10px; }
+.srow input[type=text]{ -webkit-user-select:text; user-select:text; touch-action:auto; }
+.srow.sw .chk{ position:absolute; opacity:0; width:1px; height:1px; pointer-events:none; }
+.swt{ position:relative; flex:none; width:54px; height:30px; border-radius:15px; background:rgba(0,0,0,.5); border:1px solid rgba(243,233,214,.3); transition:background .15s, border-color .15s; }
+.swt::after{ content:""; position:absolute; left:3px; top:3px; width:22px; height:22px; border-radius:50%; background:#cfc3ad; box-shadow:0 1px 3px rgba(0,0,0,.6); transition:transform .15s, background .15s; }
+.chk:checked + .swt{ background:linear-gradient(180deg, #e6a92c, #b9771f); border-color:#ffe29a; }
+.chk:checked + .swt::after{ transform:translateX(24px); background:#fff7de; }
+.chk:focus-visible + .swt{ outline:2px solid var(--gold); outline-offset:2px; }
+.sref{ border-top:1px solid rgba(255,255,255,.06); padding:6px 0 0; }
+.sref summary{ min-height:44px; display:flex; align-items:center; font-weight:700; font-size:17px; color:var(--gold); cursor:pointer; list-style:none; }
+.sref summary::-webkit-details-marker{ display:none; } .sref summary::after{ content:"+"; margin-left:auto; font-size:22px; } .sref[open] summary::after{ content:"–"; }
+.sref .keys{ font-size:15px; gap:6px 12px; margin:0 0 6px; } .sref .keys b{ white-space:nowrap; }
+.snote{ margin:6px 0 10px; color:var(--dim); font-size:15px; }
+#sReset{ min-height:44px; } #sReset.arm{ border-color:var(--blood); background:linear-gradient(180deg, rgba(150,34,26,.95), rgba(90,20,14,.95)); }
+@media (max-height:520px){ #scr-career .panel,#scr-settings .panel{ padding:10px 14px 14px; } .srow{ min-height:46px; font-size:17px; } }
+@media (orientation:portrait) and (max-width:760px){
+  #scr-career,#scr-settings{ padding-left:calc(10px + var(--sal)); padding-right:calc(10px + var(--sar)); }
+  #scr-career .panel,#scr-settings .panel{ padding:10px 10px 16px; clip-path:none; }
+  .sgrp{ padding:8px 10px 10px; } .srow{ font-size:17px; gap:10px; } .sc{ flex-basis:52%; }
+}
 /* armory */
 #scr-armory{ padding:0; }
 .arm-stage{ position:absolute; inset:0; touch-action:none; cursor:grab; }
@@ -448,6 +484,40 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 #scr-results.ceremony{ background:rgba(18,11,7,.35); -webkit-backdrop-filter:none; backdrop-filter:none; overflow:hidden; }
 #scr-results.ceremony .res{ visibility:hidden; }
 @media (prefers-reduced-motion: reduce){ .streak.fire,.next li.hot,#promoScr .pc,.rematch-tag{ animation:none; } }
+/* menus pass: staged headline, MVP row, thumb-reachable action bar */
+#scr-results{ padding-bottom:0; overscroll-behavior:contain; }
+.res{ min-height:100%; }
+.res-top{ position:relative; padding:4px 0 10px; border-bottom:1px solid rgba(224,165,96,.3); }
+.res-mode{ flex:0 0 100%; margin-bottom:-14px; font-weight:800; font-size:15px; letter-spacing:.24em; text-transform:uppercase; color:var(--sand); }
+.res-top h2{ animation:resIn .55s cubic-bezier(.2,.9,.3,1.25) both; }
+.res-top.won h2{ background:linear-gradient(180deg, #fffae6 0%, #ffe590 25%, #f6c252 50%, #bd7b22 53%, #ffd970 85%); -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent; text-shadow:none; }
+.res-top .fs{ animation:resIn .5s .15s cubic-bezier(.2,.9,.3,1.25) both; }
+@keyframes resIn{ from{ opacity:0; transform:scale(1.25); } }
+.res-grid > div > .res-card{ animation:stagUp .4s cubic-bezier(.2,.8,.25,1) backwards; animation-delay:.25s; }
+.res-grid > div + div > .res-card{ animation-delay:.35s; }
+.board tr.mvprow td{ background:linear-gradient(90deg, rgba(245,192,69,.28), rgba(245,192,69,.08)); }
+.board tr.mvprow td:first-child{ box-shadow:inset 0 1px 0 rgba(255,226,154,.6), inset 0 -1px 0 rgba(255,226,154,.6); }
+.board .mvp{ display:inline-block; margin-left:8px; padding:0 6px; font-size:12px; font-weight:800; letter-spacing:.1em; vertical-align:2px; color:#2a1606; background:var(--gold); }
+.res-card{ overflow-x:auto; }
+.res-actions{ margin-top:auto; padding:14px 0 calc(10px + var(--sab)); background:linear-gradient(rgba(18,11,7,0), rgba(18,11,7,.95) 30%); }
+#btnAgain{ box-shadow:0 0 0 0 rgba(245,192,69,.5), 0 8px 26px rgba(245,170,40,.3); animation:againPulse 2.4s ease-in-out 1.6s infinite; }
+@keyframes againPulse{ 50%{ box-shadow:0 0 0 6px rgba(245,192,69,0), 0 8px 30px rgba(245,170,40,.5); } }
+@media (orientation:portrait) and (max-width:760px){
+  #scr-results{ padding-left:calc(12px + var(--sal)); padding-right:calc(12px + var(--sar)); }
+  .res{ width:100%; gap:10px; } .res-top{ gap:4px 14px; } .res-top h2{ font-size:46px; } .res-top .fs{ font-size:28px; }
+  .res-card{ padding:10px 12px; } .board{ font-size:15px; } .board td{ padding:4px 5px; } .board th{ font-size:12px; padding:2px 5px; }
+  .xp-lines{ columns:1; }
+  .res-actions{ margin:auto -12px 0; padding:12px 12px calc(10px + var(--sab)); gap:8px; background:linear-gradient(rgba(18,11,7,0), rgba(18,11,7,.96) 22%); }
+  .res-actions .btn{ flex:1 1 auto; justify-content:center; min-height:46px; font-size:17px; padding:0 12px; }
+  .res-actions #btnAgain{ flex:1 1 100%; min-height:60px; font-size:26px; order:-2; }
+  .res-actions #btnSpoils{ flex:1 1 100%; order:-1; }
+  .res-actions .note{ display:none; }
+}
+@media (max-height:520px){
+  .res-actions{ padding-top:8px; gap:8px; } .res-actions .btn{ min-height:44px; font-size:17px; padding:0 14px; } .res-actions .btn.big{ min-height:50px; font-size:23px; }
+  .res-mode{ font-size:12px; margin-bottom:-8px; }
+}
+@media (prefers-reduced-motion: reduce){ .res-top h2,.res-top .fs,.res-grid > div > .res-card,#btnAgain{ animation:none; } }
 
 /* ---------- reveal */
 #scr-reveal{ display:none; place-items:center; }
@@ -479,6 +549,47 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 .rrow .rcard{ min-width:160px; padding:12px 14px; display:flex; flex-direction:column; align-items:center; gap:2px; }
 .rrow .rcard .ri{ font-size:22px; } .rrow .rcard .rico{ width:44px; height:44px; margin-bottom:4px; } .rrow .rcard .rr{ font-size:15px; } .rrow .rcard .btn{ margin-top:8px; }
 .rfoot{ margin-top:12px; min-height:18px; color:var(--dim); font-size:15px; }
+/* menus pass: a drawn chest, a rarity build-up, and the scrim opening onto the gladiator wearing the prize */
+#scr-reveal{ transition:background-color .5s; }
+#scr-reveal.opened{ background:linear-gradient(90deg, rgba(18,11,7,.05) 0%, rgba(18,11,7,.1) 38%, rgba(18,11,7,.78) 66%, rgba(18,11,7,.86) 100%); -webkit-backdrop-filter:none; backdrop-filter:none; }
+#scr-reveal .reveal{ width:min(460px, 92vw); transition:transform .55s cubic-bezier(.2,.8,.2,1); }
+#scr-reveal.opened .reveal{ transform:translate3d(min(24vw, 380px),0,0); }
+.crate{ width:180px; height:138px; margin-bottom:22px; }
+.crate::before{ content:""; position:absolute; left:-70px; right:-70px; top:-70px; bottom:-60px; background:radial-gradient(circle, var(--rc) 0, transparent 62%); opacity:0; transform:scale(.6); transition:opacity .5s, transform .5s; pointer-events:none; }
+.crate.charge::before{ opacity:.45; transform:scale(.9); }
+.crate.open::before{ opacity:.75; transform:scale(1.25); }
+.crate.charge{ animation-duration:.22s; }
+.crate .box,.crate .lid{ border:3px solid #3a210d; background:linear-gradient(180deg, rgba(255,220,160,.16), rgba(0,0,0,0) 30%, rgba(0,0,0,.28)), repeating-linear-gradient(180deg, #9a6230 0 20px, #7d4c22 20px 22px); }
+.crate .box{ height:94px; border-radius:3px 3px 7px 7px; box-shadow:inset 0 -10px 18px rgba(0,0,0,.35), 0 10px 18px rgba(0,0,0,.5); }
+.crate .box::before,.crate .box::after{ width:18px; background:linear-gradient(90deg, #6b5032, #e8c27a 45%, #8a6436); box-shadow:0 0 0 1px #2a1606; }
+.crate .lid{ top:2px; height:44px; border-radius:46% 46% 3px 3px / 80% 80% 3px 3px; }
+.crate .lid::before,.crate .lid::after{ content:""; position:absolute; top:0; bottom:0; width:18px; background:linear-gradient(90deg, #6b5032, #e8c27a 45%, #8a6436); }
+.crate .lid::before{ left:24px; } .crate .lid::after{ right:24px; }
+.crate .lockp{ position:absolute; left:50%; top:36px; width:26px; height:32px; margin-left:-13px; border-radius:4px 4px 10px 10px; background:linear-gradient(180deg, #ffe7a0, #c9922a); border:2px solid #3a210d; box-shadow:0 2px 6px rgba(0,0,0,.5); transition:opacity .2s; }
+.crate .lockp::after{ content:""; position:absolute; left:50%; top:9px; width:6px; height:10px; margin-left:-3px; border-radius:3px; background:#3a210d; }
+.crate.open .lockp{ opacity:0; }
+.crate.open .lid{ transform:rotate(-34deg) translate(-10px,-30px); }
+.crate .rays{ position:absolute; left:50%; top:42%; width:360px; height:360px; margin:-180px 0 0 -180px; border-radius:50%; background:repeating-conic-gradient(from 0deg, var(--rc) 0deg 5deg, transparent 5deg 20deg); -webkit-mask-image:radial-gradient(circle, #000 0, rgba(0,0,0,.5) 35%, transparent 68%); mask-image:radial-gradient(circle, #000 0, rgba(0,0,0,.5) 35%, transparent 68%); opacity:0; transform:scale(.3) rotate(-20deg); transition:opacity .45s, transform 1.4s cubic-bezier(.2,.8,.2,1); pointer-events:none; }
+.crate.open .rays{ opacity:.55; transform:scale(1) rotate(25deg); }
+.crate.gold .box,.crate.gold .lid{ filter:none; border-color:#6a4a10; background:linear-gradient(180deg, rgba(255,250,220,.35), rgba(0,0,0,0) 35%, rgba(0,0,0,.25)), repeating-linear-gradient(180deg, #e0b048 0 20px, #b8862a 20px 22px); }
+#rcard{ border-top:3px solid var(--rc); }
+#rcard .rico{ width:84px; height:84px; filter:drop-shadow(0 0 14px var(--rc)); }
+#rcard .ri{ font-size:clamp(26px, 4vw, 38px); }
+@media (max-height:520px){
+  #scr-reveal{ padding-top:calc(6px + var(--sat)); padding-bottom:calc(6px + var(--sab)); }
+  .crate{ width:130px; height:100px; margin-bottom:10px; } .crate .box{ height:68px; } .crate .lid{ height:32px; } .crate .box::before,.crate .lid::before{ left:16px; } .crate .box::after,.crate .lid::after{ right:16px; } .crate .lockp{ top:26px; transform:scale(.8); }
+  .crate .rays{ width:260px; height:260px; margin:-130px 0 0 -130px; }
+  #rcard{ padding:10px 18px; } #rcard .rico{ width:52px; height:52px; margin-bottom:2px; } #rcard .ri{ font-size:24px; } .reveal .btns{ margin-top:10px; } .rfoot{ margin-top:6px; font-size:13px; }
+  .rrow{ margin-top:8px; } .rrow .rcard{ min-width:130px; padding:8px 10px; }
+}
+@media (orientation:portrait) and (max-width:760px){
+  #scr-reveal.opened{ align-items:end; background:linear-gradient(180deg, rgba(18,11,7,.04) 0%, rgba(18,11,7,.06) 40%, rgba(18,11,7,.8) 60%, rgba(18,11,7,.9) 100%); }
+  #scr-reveal.opened .reveal{ transform:none; padding-bottom:6px; }
+  #scr-reveal.opened .crate{ display:none; }
+  .reveal .btns{ flex-wrap:wrap; } .reveal .btns .btn{ min-height:50px; }
+  .rrow{ max-height:30vh; overflow-y:auto; touch-action:pan-y; }
+}
+@media (prefers-reduced-motion: reduce){ #scr-reveal .reveal,.crate .rays,.crate::before{ transition:none; } }
 
 /* ---------- feel */
 body.impact canvas#c{ filter:invert(1) brightness(1.15); }
@@ -671,7 +782,7 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
 
   <section id="scr-results" class="screen menu scrim-full">
     <div class="res">
-      <div class="res-top"><h2 id="resTitle">Victory</h2><div class="fs" id="resScore"></div><div class="streak" id="resStreak"></div></div>
+      <div class="res-top"><div class="res-mode" id="resMode"></div><h2 id="resTitle">Victory</h2><div class="fs" id="resScore"></div><div class="streak" id="resStreak"></div></div>
       <div class="res-grid">
         <div style="display:flex;flex-direction:column;gap:14px">
           <div class="res-card plaque" id="resBoard"></div>
@@ -696,7 +807,7 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
 
   <section id="scr-reveal" class="screen menu scrim-full">
     <div class="reveal">
-      <div class="crate" id="crate" title="Open"><div class="glow"></div><div class="box"></div><div class="lid"></div></div>
+      <div class="crate" id="crate" title="Open"><div class="rays"></div><div class="glow"></div><div class="box"></div><div class="lid"></div><i class="lockp"></i></div>
       <div class="rcard plaque" id="rcard"></div>
       <div class="rrow" id="rrow"></div>
       <div class="rfoot" id="rfoot"></div>
@@ -5005,6 +5116,11 @@ const UI = (() => {
     armory: svgI('<path d="M5 15a7 7 0 0 1 14 0v4.5h-4.2v-4H9.2v4H5z"/><path d="M8.5 11h7M12 3.5c2-1.6 4.4-1.6 6 0"/>'),
     career: svgI('<path d="M7 3.5h10v5a5 5 0 0 1-10 0z"/><path d="M7 5.5H3.8a3.4 3.4 0 0 0 3.6 4.4M17 5.5h3.2a3.4 3.4 0 0 1-3.6 4.4M12 13.5v4M8 20.5h8M9.5 17.5h5"/>'),
     settings: svgI('<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>'),
+    audio: svgI('<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/>'),
+    pad: svgI('<path d="M7 8h10a4.5 4.5 0 0 1 4.3 5.8l-1 3.2a2.4 2.4 0 0 1-4.1.9L14.5 16h-5l-1.7 1.9a2.4 2.4 0 0 1-4.1-.9l-1-3.2A4.5 4.5 0 0 1 7 8z"/><path d="M8 11v3M6.5 12.5h3M15.5 12h.01M17.5 13.5h.01"/>'),
+    cam: svgI('<path d="M3.5 8h4l1.6-2.5h5.8L16.5 8h4v11h-17z"/><circle cx="12" cy="13.2" r="3.4"/>'),
+    gfx: svgI('<path d="M12 3.5l2.2 5.3 5.3 2.2-5.3 2.2L12 18.5l-2.2-5.3L4.5 11l5.3-2.2z"/><path d="M19 17v4M17 19h4"/>'),
+    hud: svgI('<rect x="3.5" y="5" width="17" height="14" rx="1.5"/><path d="M6.5 8.5h5M6.5 11h3M14.5 15.5h3"/>'),
     def: svgI('<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>'),
   };
   function show(n) {
@@ -5016,7 +5132,8 @@ const UI = (() => {
     if (n === 'title') renderTitle(); if (n === 'play') renderModes(); if (n === 'armory') renderArmory(); if (n === 'career') renderCareer(); if (n === 'settings') renderSettings();
     if (n === 'title' || n === 'play' || n === 'career' || n === 'settings') Cam.set('menu'); if (n === 'armory') Cam.set('armory');
     if (display) display.root.visible = ['title', 'play', 'armory', 'career', 'settings'].includes(n) && !Match.active;
-    if (prevScr === 'armory' && n !== 'armory') refreshDisplay();
+    if ((prevScr === 'armory' || prevScr === 'reveal') && n !== prevScr) refreshDisplay();
+    if (prevScr === 'reveal' && n !== 'reveal') { $('#scr-reveal').classList.remove('opened'); if (n === 'results') Cam.set('end'); }
     setTimeout(() => { const f = scr(n) && scr(n).querySelector('.btn.primary, .mode, .btn, .item'); if (f && Input.device !== 'touch') f.focus({ preventScroll: true }); }, 30);
     if (display && display.fakeG) { const G = display.fakeG; if (n !== 'armory' && n !== 'reveal') { endPreview(); DSP.drag = 0; DSP.spin = 0; } if (emoteT <= 0) G.basePose = 'present'; }
     requestAnimationFrame(frameMenu); setTimeout(frameMenu, 260);
@@ -5138,27 +5255,38 @@ const UI = (() => {
     $('#careerBody').innerHTML = `<div class="stats">${st.map(([a, b]) => `<div class="stat"><b>${b}</b><span>${a}</span></div>`).join('')}</div><div class="section-t">Best ranks</div><div class="ranks" style="grid-template-columns:repeat(3,1fr)">${['duel', 'doubles', 'standard'].map((k) => `<div>${Prog.rankSVG(S.best[k] || 250, 44, S.games[k] >= 3)}<b>${Prog.MODES[k].n}</b>${S.games[k] >= 3 ? Prog.rankOf(S.best[k]).name : 'Unranked'}</div>`).join('')}</div><div class="section-t">Collection</div><p style="margin:0;color:var(--dim);font-size:17px">${Object.keys(S.own).length} of ${Prog.ITEMS.length} items unlocked.</p>` + extraHTML(UI.careerExtra);
   }
   function renderSettings() {
-    const G = Game.settings, S = Prog.S, V = G.vol;
-    const rng = (id, lab, v, min, max) => `<label class="set"><span>${lab}</span><input type="range" id="${id}" min="${min}" max="${max}" value="${v}"><output id="${id}o">${v}</output></label>`;
-    const chk = (id, lab, v) => `<label class="set"><span>${lab}</span><input class="chk" type="checkbox" id="${id}" ${v ? 'checked' : ''}></label>`;
-    const keys = IS_TOUCH ? '' : `<div class="section-t">Controls</div><div class="keys"><b>WASD / Arrows</b><span>Move</span><b>Space</b><span>Jump · again + direction = dodge · at a wall = wall kick</span><b>Shift</b><span>Boost (uses fury) · hold Jump in air to fly</span><b>LMB / J</b><span>Strike · hold for heavy · in air: spin, hold: meteor slam</span><b>RMB / K</b><span>Block · tap as a hit lands to parry · + Boost = shield charge</span><b>Q / MMB</b><span>Toggle target cam</span><b>Tab</b><span>Scoreboard</span><b>1–4</b><span>Quick chat</span><b>Esc</b><span>Pause</span><b>Gamepad</b><span>A jump · X/RT strike · LB/LT block · B/RB boost · Y target cam</span></div>`;
-    $('#setBody').innerHTML = `<div class="section-t" style="margin-top:0">Audio</div>${rng('sVm', 'Master volume', Math.round(V.master * 100), 0, 100)}${rng('sVmu', 'Music', Math.round(V.music * 100), 0, 100)}${rng('sVs', 'Effects', Math.round(V.sfx * 100), 0, 100)}
-<div class="section-t">Gameplay</div>${rng('sSens', 'Camera sensitivity', Math.round(G.sens * 100), 20, 250)}${chk('sInv', 'Invert camera Y', G.invY)}${chk('sLock', 'Target cam by default', G.lock)}${rng('sShake', 'Screen shake', Math.round(G.shake * 100), 0, 100)}${chk('sDmg', 'Damage numbers', G.dmgNums)}
-<div class="section-t">Arena</div><label class="set"><span>Name</span><input type="text" id="sName" maxlength="14" value="${esc(S.name)}"></label>
-<label class="set"><span>Lighting</span><select id="sArena"><option value="random">Random</option>${Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${p.label}</option>`).join('')}</select></label>
-<label class="set"><span>Graphics</span><select id="sQ"><option value="-1">Auto</option><option value="0">Low</option><option value="1">Medium</option><option value="2">High</option></select></label>${keys}
-<div class="section-t">Progress</div><p style="margin:0 0 10px;color:var(--dim);font-size:16px">${Store.persistent ? 'Progress saves in this browser.' : 'This browser blocks storage, so progress lasts until you close the page.'}</p><button class="btn sm" id="sReset"><span>Reset all progress</span></button>`;
+    const G = Game.settings, S = Prog.S, V = G.vol, num = (k, d) => (typeof G[k] === 'number' ? G[k] : d), on = (k, d) => (G[k] == null ? d : G[k] !== false);
+    const pct = (v) => v + '%';
+    const rng = (id, lab, v, min, max, f) => `<label class="srow"><span class="sl">${lab}</span><span class="sc"><input type="range" id="${id}" min="${min}" max="${max}" value="${v}"><output id="${id}o" data-f="${f ? 1 : 0}">${f ? pct(v) : v}</output></span></label>`;
+    const chk = (id, lab, v, sub) => `<label class="srow sw"><span class="sl">${lab}${sub ? `<small>${sub}</small>` : ''}</span><span class="sc"><input class="chk" type="checkbox" role="switch" id="${id}" ${v ? 'checked' : ''}><i class="swt" aria-hidden="true"></i></span></label>`;
+    const sel = (id, lab, opts) => `<label class="srow"><span class="sl">${lab}</span><span class="sc"><select id="${id}">${opts}</select></span></label>`;
+    let gi = 0; const grp = (t, ic, body) => `<section class="sgrp" style="--i:${gi++}"><h3 class="sgh">${MI[ic] || MI.def}${t}</h3>${body}</section>`;
+    const ctl = IS_TOUCH
+      ? `<div class="keys tkeys"><b>Left half</b><span>Drag anywhere to move</span><b>Right half</b><span>Drag to look around</span><b>Strike</b><span>Tap to strike · hold for a heavy blow · in the air: spin, hold: meteor slam</span><b>Block</b><span>Tap as a hit lands to parry · Block + Boost = shield charge</span><b>Jump</b><span>Jump · again with a direction = dodge · at a wall = wall kick</span><b>Boost</b><span>Burns fury · hold Jump in the air to fly</span><b>Lock</b><span>Toggle the target camera</span><b>II</b><span>Pause</span></div>`
+      : `<div class="keys">${[['move', 'Move'], ['jump', 'Jump · again + direction = dodge · at a wall = wall kick'], ['boost', 'Boost (uses fury) · hold Jump in air to fly'], ['atk', 'Strike · hold for heavy · in air: spin, hold: meteor slam'], ['block', 'Block · tap as a hit lands to parry · + Boost = shield charge'], ['lock', 'Toggle target cam'], ['taunt', 'Taunt the crowd for favour'], ['pause', 'Pause']].map(([a, t]) => `<b>${glyph(a)}</b><span>${t}</span>`).join('')}<b><span class="kbd">Tab</span></b><span>Scoreboard</span><b><span class="kbd">1–4</span></b><span>Quick chat</span><b>Gamepad</b><span>A jump · X/RT strike · LB/LT block · B/RB boost · Y target cam</span></div>`;
+    $('#setBody').innerHTML = grp('Audio', 'audio', rng('sVm', 'Master volume', Math.round(V.master * 100), 0, 100) + rng('sVmu', 'Music', Math.round(V.music * 100), 0, 100) + rng('sVs', 'Effects', Math.round(V.sfx * 100), 0, 100))
+      + grp('Controls', 'pad', rng('sSens', 'Look sensitivity', Math.round(G.sens * 100), 20, 250, 1) + chk('sInv', 'Invert camera Y', G.invY) + chk('sLock', 'Target cam by default', G.lock)
+        + (IS_TOUCH ? rng('sBtn', 'Button size', Math.round(num('btnScale', 1) * 100), 80, 140, 1) + chk('sLefty', 'Left-handed layout', on('lefty', false), 'Buttons on the left, stick on the right') : '')
+        + chk('sRumble', 'Rumble', on('rumble', true), 'Controller vibration') + `<details class="sref"><summary>${IS_TOUCH ? 'Touch controls' : 'Controls reference'}</summary>${ctl}</details>`)
+      + grp('Camera', 'cam', rng('sCam', 'Camera distance', Math.round(num('camDist', 1) * 100), 80, 140, 1) + rng('sShake', 'Screen shake', Math.round(G.shake * 100), 0, 100, 1))
+      + grp('Graphics', 'gfx', sel('sQ', 'Quality', '<option value="-1">Auto</option><option value="0">Low</option><option value="1">Medium</option><option value="2">High</option>') + chk('sPost', 'Bloom &amp; grading', on('post', true), 'Glow and filmic colour') + chk('sDyn', 'Dynamic resolution', on('dynRes', true), 'Keeps the frame rate smooth') + sel('sArena', 'Lighting', `<option value="random">Random</option>${Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${p.label}</option>`).join('')}`))
+      + grp('Interface', 'hud', rng('sHud', 'HUD size', Math.round(num('hudScale', 1) * 100), 80, 130, 1) + chk('sRadar', 'Radar', on('radar', true), 'Mini map of the sand') + chk('sDmg', 'Damage numbers', G.dmgNums))
+      + grp('Profile', 'career', `<label class="srow"><span class="sl">Name</span><span class="sc"><input type="text" id="sName" maxlength="14" value="${esc(S.name)}"></span></label><p class="snote">${Store.persistent ? 'Progress saves in this browser.' : 'This browser blocks storage, so progress lasts until you close the page.'}</p><button class="btn sm" id="sReset"><span>Reset all progress</span></button>`);
     $('#sArena').value = G.arena; $('#sQ').value = String(G.quality);
-    const bind = (id, f) => { const e = $('#' + id); e.oninput = e.onchange = () => { const o = $('#' + id + 'o'); if (o) o.textContent = e.value; f(e); Prog.save(); }; };
+    const bind = (id, f) => { const e = $('#' + id); if (!e) return; e.oninput = e.onchange = () => { const o = $('#' + id + 'o'); if (o) o.textContent = o.dataset.f === '1' ? pct(e.value) : e.value; f(e); Prog.save(); }; };
+    const hud = () => { try { if (HUD.applyScale) HUD.applyScale(); } catch (e) { console.error(e); } }, tl = () => { try { if (Input.applyTouchLayout) Input.applyTouchLayout(); } catch (e) { console.error(e); } };
     bind('sVm', (e) => { V.master = e.value / 100; Sound.applyVolumes(); }); bind('sVmu', (e) => { V.music = e.value / 100; Sound.applyVolumes(); }); bind('sVs', (e) => { V.sfx = e.value / 100; Sound.applyVolumes(); });
     bind('sSens', (e) => (G.sens = e.value / 100)); bind('sInv', (e) => (G.invY = e.checked)); bind('sLock', (e) => (G.lock = e.checked)); bind('sShake', (e) => (G.shake = e.value / 100)); bind('sDmg', (e) => (G.dmgNums = e.checked));
+    bind('sBtn', (e) => { G.btnScale = e.value / 100; tl(); }); bind('sLefty', (e) => { G.lefty = e.checked; tl(); }); bind('sCam', (e) => { G.camDist = e.value / 100; tl(); }); bind('sRumble', (e) => (G.rumble = e.checked));
+    bind('sPost', (e) => { G.post = e.checked; try { const P = __G.Post; if (P && P.setEnabled) P.setEnabled(e.checked); } catch (err) { console.error(err); } }); bind('sDyn', (e) => (G.dynRes = e.checked));
+    bind('sHud', (e) => { G.hudScale = e.value / 100; hud(); }); bind('sRadar', (e) => { G.radar = e.checked; hud(); });
     bind('sName', (e) => (S.name = e.value.trim().slice(0, 14) || 'You')); bind('sArena', (e) => (G.arena = e.value));
     $('#sQ').onchange = (e) => { G.quality = +e.target.value; Prog.save(); location.reload(); };
     // Two-click confirm instead of confirm(): browser dialogs are blocked in sandboxed/embedded pages.
     let resetArm = 0;
     $('#sReset').onclick = () => {
       const b = $('#sReset'), lab = b.querySelector('span');
-      if (performance.now() - resetArm > 4000) { resetArm = performance.now(); lab.textContent = 'Click again to erase level, ranks, items and stats'; Sound.S.ui('back'); setTimeout(() => { if (b.isConnected && performance.now() - resetArm >= 3900) lab.textContent = 'Reset all progress'; }, 4000); return; }
+      if (performance.now() - resetArm > 4000) { resetArm = performance.now(); lab.textContent = (IS_TOUCH ? 'Tap' : 'Click') + ' again to erase level, ranks, items and stats'; b.classList.add('arm'); Sound.S.ui('back'); setTimeout(() => { if (b.isConnected && performance.now() - resetArm >= 3900) { lab.textContent = 'Reset all progress'; b.classList.remove('arm'); } }, 4000); return; }
       resetArm = 0; Prog.reset(); refreshDisplay(); renderSettings(); Sound.S.ui('back');
     };
   }
@@ -5170,13 +5298,13 @@ const UI = (() => {
   function results(res, M) {
     lastRes = res; endCeremony(); show('results');
     const me = M.me, training = M.mode === 'training', win = !training && M.winner === me.team && !M.forfeited;
-    $('#resTitle').textContent = training ? 'Training over' : M.forfeited ? 'Forfeit' : win ? 'Victory' : 'Defeat'; $('#resTitle').className = win ? 'win' : 'loss';
+    $('#resTitle').textContent = training ? 'Training over' : M.forfeited ? 'Forfeit' : win ? 'Victory' : 'Defeat'; $('#resTitle').className = win ? 'win' : 'loss'; $('#scr-results .res-top').classList.toggle('won', win); const mm = Prog.MODES[M.mode]; $('#resMode').textContent = mm ? `${mm.n} · ${mm.s}${M.mutator && M.mutator.name ? ' · ' + M.mutator.name : ''}` : '';
     $('#resScore').innerHTML = training ? '' : `<span class="s0">${M.score[0]}</span> – <span class="s1">${M.score[1]}</span>`;
     const sk = $('#resStreak'); sk.className = 'streak';
     if (res.streakEnded) { sk.textContent = `Streak ended at ${res.streakEnded}`; sk.classList.add('dim'); }
     else if (res.streak >= 3) { sk.textContent = `ON FIRE ×${res.streak}`; sk.classList.add('fire'); }
     else sk.textContent = res.streak >= 2 ? `Win streak ×${res.streak}` : '';
-    const rows = (t) => M.glads.filter((g) => g.team === t).sort((a, b) => b.stats.score - a.stats.score).map((g) => `<tr class="t${t}${g.human ? ' me' : ''}"><td class="nm">${esc(g.name)}${g.id === M.mvpId ? '<span class="mvp">MVP</span>' : ''}<small>${esc(g.titleName || '')}</small></td><td>${g.stats.score}</td><td>${g.stats.ko}</td><td>${g.stats.as}</td><td>${g.stats.demo}</td><td>${g.stats.par}</td></tr>`).join('');
+    const rows = (t) => M.glads.filter((g) => g.team === t).sort((a, b) => b.stats.score - a.stats.score).map((g) => `<tr class="t${t}${g.human ? ' me' : ''}${g.id === M.mvpId ? ' mvprow' : ''}"><td class="nm">${esc(g.name)}${g.id === M.mvpId ? '<span class="mvp">MVP</span>' : ''}<small>${esc(g.titleName || '')}</small></td><td>${g.stats.score}</td><td>${g.stats.ko}</td><td>${g.stats.as}</td><td>${g.stats.demo}</td><td>${g.stats.par}</td></tr>`).join('');
     $('#resBoard').innerHTML = `<table class="board"><tr><th>Gladiator</th><th>Score</th><th>KOs</th><th>Ast</th><th>Demo</th><th>Parry</th></tr>${rows(0)}<tr class="gap"><td colspan="6"></td></tr>${rows(1)}</table>`;
     if (res.m0 != null) {
       const placed = res.placeN >= 3, f0 = res.m0 >= 2100 ? 1 : (res.m0 % 100) / 100, d = res.m1 - res.m0, crossed = res.r1.name !== res.r0.name;
@@ -5186,7 +5314,7 @@ const UI = (() => {
       $('#resRank').innerHTML = `<div class="rank-row">${Prog.rankSVG(res.m1, 52, placed)}<div class="rn">${placed ? esc(res.r1.name) : 'Placement ' + res.placeN + '/3'}<div style="font-family:var(--ui);font-size:16px;color:var(--dim)">${Prog.MODES[res.mode].n} · ${res.m1} MMR${res.mmrNotes && res.mmrNotes.length ? ' · ' + esc(res.mmrNotes.join(' · ')) : ''}</div></div><div class="rd ${d >= 0 ? 'up' : 'down'}">${res.shielded ? 'Shielded' : (d >= 0 ? '+' : '') + d}</div></div><div class="mbar"><i id="rkBar" style="width:${(f0 * 100).toFixed(0)}%"></i></div><div class="mnote">${note}</div>${shield}${res.promo ? `<div class="promo">${esc(res.promo)}</div>` : ''}${res.fast ? '<div class="promo">Fast track! Three dominant wins in a row</div>' : ''}`;
       animRank(res);
       if (res.promo && !res.tierUp) Tm.set('rankSnd', () => { if (cur === 'results') Sound.S.rankUp(); }, 700);
-    } else $('#resRank').innerHTML = `<div class="rank-row"><div class="rn">Unranked</div></div><div class="mnote"><span>Training doesn't affect rank.</span></div>`;
+    } else $('#resRank').innerHTML = `<div class="rank-row"><div class="rn">${training ? 'Training' : 'Unranked'}</div></div><div class="mnote"><span>${training ? "Training doesn't affect rank." : 'Unranked playlist: XP and spoils still count'}</span></div>`;
     const f0 = res.xp0 / Prog.xpFor(res.lvl0);
     $('#resXp').innerHTML = `<div class="rank-row"><div class="rn">Level <span id="xpLvl">${res.lvl0}</span></div><div class="rd up">+${res.xp} XP</div></div><div class="mbar xp"><i id="xpBar" style="width:${(f0 * 100).toFixed(0)}%"></i></div><ul class="xp-lines">${res.xpLines.map(([n, v]) => `<li>${esc(n)} <b>+${v}</b></li>`).join('')}</ul>`;
     animXp(res);
@@ -5262,7 +5390,7 @@ const UI = (() => {
     const rc = Prog.RAR[it.r].c, crate = $('#crate'), card = $('#rcard');
     revealCur = { id, gold, it, open: false };
     crate.style.setProperty('--rc', gold ? '#ffd24a' : rc); card.style.setProperty('--rc', rc);
-    crate.className = 'crate shake' + (gold ? ' gold' : ''); card.classList.remove('on'); $('#btnEquip').hidden = true; $('#btnRevNext').hidden = true; $('#btnOpenAll').hidden = true;
+    crate.className = 'crate shake' + (gold ? ' gold' : ''); $('#scr-reveal').classList.remove('opened'); Tm.set('charge', () => { if (revealCur && !revealCur.open) crate.classList.add('charge'); }, gold ? 900 : 550); card.classList.remove('on'); $('#btnEquip').hidden = true; $('#btnRevNext').hidden = true; $('#btnOpenAll').hidden = true;
     card.innerHTML = `${Prog.icon(it).replace('class="ic"', 'class="rico"')}<div class="rr">${gold ? 'GOLDEN SPOILS · ' : ''}${Prog.RAR[it.r].n.toUpperCase()}</div><div class="ri">${esc(it.name)}</div><div class="rk">${Prog.SLOTS.find((s) => s.id === it.slot).n.replace(/s$/, '')}</div>`;
     const pl = Prog.pityLeft(); $('#rfoot').textContent = pl ? `Next Import guaranteed in ${pl} spoil${pl > 1 ? 's' : ''}` : 'Import guaranteed in your next spoils';
     Sound.S.drumroll(gold ? 2 : 1.2); if (gold) Sound.cheer(1.2);
@@ -5271,9 +5399,20 @@ const UI = (() => {
   }
   function openCrate() {
     Tm.clear('crate'); const r = revealCur; if (!r || r.open || cur !== 'reveal') return; r.open = true;
-    $('#crate').className = 'crate open' + (r.gold ? ' gold' : ''); Sound.S.reveal(r.it.r); $('#rcard').classList.add('on');
+    $('#crate').className = 'crate open' + (r.gold ? ' gold' : ''); Sound.S.reveal(r.it.r); $('#rcard').classList.add('on'); Tm.clear('charge'); prizeOn(r.it, r.gold);
     $('#btnEquip').hidden = Prog.S.equip[r.it.slot] === r.id; $('#btnRevNext').hidden = false; $('#btnOpenAll').hidden = revealQ.length < 2;
     $('#btnRevNext').querySelector('span').textContent = revealQ.length ? `Next (${revealQ.length})` : 'Continue'; if (Input.device !== 'touch') $('#btnRevNext').focus({ preventScroll: true });
+  }
+  // the prize itself: the menu gladiator steps out wearing it on a slow turntable, lit in the rarity colour
+  function prizeOn(it, gold) {
+    $('#scr-reveal').classList.add('opened'); if (!display) return;
+    try {
+      armPreview(it, false); display.root.visible = true; Cam.set('armory'); DSP.drag = 0; DSP.yaw = DSP.yawT = it.slot === 'cape' ? 2.4 : 0.3; DSP.spin = REDUCED_MOTION ? 0 : 0.5;
+      frameMenu(); Tm.set('prizeFrame', () => { if (cur === 'reveal') frameMenu(); }, 560);
+      if (FX.ready) { const M = Cam.MENU, col = gold ? '#ffd24a' : Prog.RAR[it.r].c, n = FX.qn(30 + it.r * 12);
+        FX.flash(V3(M.x, 1.8, M.z), col, 50 + it.r * 18, 0.7); FX.ring(V3(M.x, 0.1, M.z), col, 0.3, 3 + it.r * 0.4, 0.8, 0.9);
+        FX.burstAt(true, M.x, 1.1, M.z, n, { life: [0.7, 1.5], speed: [2, 6 + it.r], up: 1, upAdd: 0.5, s0: 0.2, s1: 0.02, col: [col, '#fff4d0'], f: 1, g: 2.5, drag: 1.2 }); }
+    } catch (e) { console.error(e); }
   }
   // ux-7: open the rest of the queue as a staggered row of cards
   function openAll() {
