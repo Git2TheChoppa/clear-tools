@@ -224,6 +224,9 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 .mvp{ display:inline-block; margin-left:6px; padding:0 5px; font-size:12px; font-weight:800; color:#2a1606; background:var(--gold); vertical-align:2px; }
 .pausebtn{ position:absolute; right:calc(14px + var(--sar)); top:calc(64px + var(--sat)); width:44px; height:44px; display:none; pointer-events:auto; border:1px solid rgba(243,233,214,.35); background:rgba(20,12,7,.6); font-weight:800; font-size:16px; }
 
+/* ---------- menus */
+#tExtra{ display:contents; }
+
 /* ---------- results */
 #scr-results{ overflow-y:auto; touch-action:pan-y; }
 .res{ width:min(1060px, 96vw); margin:0 auto; display:flex; flex-direction:column; gap:14px; }
@@ -404,13 +407,12 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
 
   <section id="scr-title" class="screen menu scrim">
     <div class="col">
-      <h1 class="logo">GLADIUS</h1>
-      <div class="sublogo">Arena League</div>
-      <div class="menu-list">
-        <button class="btn primary big" data-go="play"><span>Play</span></button>
-        <button class="btn" data-go="armory"><span>Armory</span></button>
-        <button class="btn" data-go="career"><span>Career</span></button>
-        <button class="btn" data-go="settings"><span>Settings</span></button>
+      <div class="brand"><h1 class="logo" data-t="GLADIUS">GLADIUS</h1><div class="sublogo"><i></i>Arena League<i></i></div></div>
+      <div class="menu-list stag" id="tMenu">
+        <button class="btn primary big" data-go="play"><span><span class="mi-slot" data-mi="play"></span><span class="mt"><b>Play</b></span></span></button>
+        <button class="btn" data-go="armory"><span><span class="mi-slot" data-mi="armory"></span><span class="mt"><b>Armory</b></span></span></button>
+        <button class="btn" data-go="career"><span><span class="mi-slot" data-mi="career"></span><span class="mt"><b>Career</b></span></span></button>
+        <button class="btn" data-go="settings"><span><span class="mi-slot" data-mi="settings"></span><span class="mt"><b>Settings</b></span></span></button>
       </div>
     </div>
     <aside class="side">
@@ -426,6 +428,7 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
         <h3>Challenges</h3>
         <ul class="chal" id="tChal"></ul>
       </div>
+      <div id="tExtra"></div>
     </aside>
     <div class="hint" id="tHint"></div>
   </section>
@@ -4831,6 +4834,16 @@ const TIPS = ['Tap Block just as a blow lands to PARRY and stagger your foe.', '
 const UI = (() => {
   let cur = 'title', prevScr = 'title', armTab = 'helmet', lastRes = null, revealQ = [], revealAfter = 'results', display = null;
   const scr = (n) => document.getElementById('scr-' + n) || document.getElementById(n);
+  const svgI = (d) => `<svg class="mi" viewBox="0 0 24 24" aria-hidden="true">${d}</svg>`;
+  const MI = {
+    play: svgI('<path d="M4 4l10.5 10.5M20 4L9.5 14.5M6.5 13.5l4 4M17.5 13.5l-4 4M5 19l2.5-2.5M19 19l-2.5-2.5"/>'),
+    ludus: svgI('<path d="M7 4h11v12.5a3.5 3.5 0 0 1-3.5 3.5H6.5A2.5 2.5 0 0 1 4 17.5V16h11"/><path d="M9.5 8h5.5M9.5 11.5h5.5"/>'),
+    rivalDuel: svgI('<circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.6"/><path d="M12 1.5v4M12 18.5v4M1.5 12h4M18.5 12h4"/>'),
+    armory: svgI('<path d="M5 15a7 7 0 0 1 14 0v4.5h-4.2v-4H9.2v4H5z"/><path d="M8.5 11h7M12 3.5c2-1.6 4.4-1.6 6 0"/>'),
+    career: svgI('<path d="M8.5 20.5C4 17.5 3 10.5 6.5 4.5M15.5 20.5C20 17.5 21 10.5 17.5 4.5"/><path d="M5.4 9.2L3 8.4M5 13.4l-2.4.4M6.7 17.2l-2 1.3M18.6 9.2l2.4-.8M19 13.4l2.4.4M17.3 17.2l2 1.3"/>'),
+    settings: svgI('<circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>'),
+    def: svgI('<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>'),
+  };
   function show(n) {
     prevScr = cur; cur = n;
     for (const s of $$('#ui .screen')) s.classList.toggle('on', s.id === 'scr-' + n || (n === 'hud' && s.id === 'hud'));
@@ -4847,7 +4860,24 @@ const UI = (() => {
     const S = Prog.S; $('#tLvl').innerHTML = lvlRing(S); $('#tName').textContent = S.name; $('#tTitle').textContent = Prog.BY[S.equip.title].name;
     $('#tRanks').innerHTML = ['duel', 'doubles', 'standard'].map((m) => { const pl = S.games[m] >= 3; return `<div>${Prog.rankSVG(S.mmr[m], 36, pl)}<b>${Prog.MODES[m].s}</b>${pl ? Prog.rankOf(S.mmr[m]).name : `Placement ${S.games[m]}/3`}</div>`; }).join('');
     $('#tChal').innerHTML = S.chal.map((c) => `<li>${esc(c.t)}<small>${c.p}/${c.n}</small><div class="cbar"><i style="width:${(100 * c.p / c.n).toFixed(0)}%"></i></div></li>`).join('');
+    renderMenuExtra(); $('#tExtra').innerHTML = extraHTML(UI.titleExtra);
     $('#tHint').innerHTML = IS_TOUCH ? 'Left thumb moves · <b>Strike</b> (hold = heavy) · <b>Block</b> (tap as a hit lands = parry) · Jump twice with a direction to dodge' : '<span class="kbd">WASD</span> move · <span class="kbd">Space</span> jump / dodge · <span class="kbd">Shift</span> boost · <span class="kbd">LMB</span> strike (hold = heavy) · <span class="kbd">RMB</span> block (tap on hit = parry) · <span class="kbd">Q</span> target cam';
+  }
+  // extension hooks: other modules push into UI.menuExtra / titleExtra / careerExtra (getters are read at render time; each call is isolated)
+  const extraHTML = (a) => (a || []).map((f) => { try { return f() || ''; } catch (e) { console.error(e); return ''; } }).join('');
+  const val = (v) => { try { return (typeof v === 'function' ? v() : v) || ''; } catch (e) { return ''; } };
+  function renderMenuExtra() {
+    const list = $('#tMenu'), play = list && list.querySelector('[data-go="play"]'); if (!play) return;
+    for (const o of list.querySelectorAll('.mx, .ld-menu')) o.remove();
+    const xs = (UI.menuExtra || []).slice().sort((a, b) => (a.id === 'ludus' ? 0 : 1) - (b.id === 'ludus' ? 0 : 1)); let after = play;
+    for (const e of xs) {
+      try {
+        const badge = val(e.badge), sub = val(e.sub), b = el('button', 'btn mx', `<span>${MI[e.id] || MI.def}<span class="mt"><b>${esc(e.label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span></span>${badge ? `<em class="mbdg${/nemesis/i.test(badge) ? ' red' : ''}">${esc(badge)}</em>` : ''}`);
+        b.dataset.mx = e.id; b.onclick = () => { Sound.init(); Sound.S.ui('click'); try { e.onClick(); } catch (err) { console.error(err); } };
+        b.addEventListener('pointerenter', () => Sound.S.ui('hover')); after.insertAdjacentElement('afterend', b); after = b;
+      } catch (err) { console.error(err); }
+    }
+    let i = 0; for (const b of list.children) b.style.setProperty('--i', i++);
   }
   function renderModes() {
     const S = Prog.S;
@@ -4870,7 +4900,7 @@ const UI = (() => {
   function renderCareer() {
     const S = Prog.S, T = S.stats, h = Math.floor(T.time / 3600), m = Math.floor((T.time % 3600) / 60);
     const st = [['Matches', T.matches], ['Wins', T.wins], ['Win rate', T.matches ? Math.round(100 * T.wins / T.matches) + '%' : '—'], ['KOs', T.ko], ['Deaths', T.de], ['K/D', T.de ? (T.ko / T.de).toFixed(2) : T.ko], ['Assists', T.as], ['Demolitions', T.demo], ['Parries', T.par], ['MVPs', T.mvp], ['Blessings', T.bless], ['Damage', T.dmg], ['Best streak', S.bestStreak], ['Level', S.level], ['Time in arena', h ? `${h}h ${m}m` : `${m}m`]];
-    $('#careerBody').innerHTML = `<div class="stats">${st.map(([a, b]) => `<div class="stat"><b>${b}</b><span>${a}</span></div>`).join('')}</div><div class="section-t">Best ranks</div><div class="ranks" style="grid-template-columns:repeat(3,1fr)">${['duel', 'doubles', 'standard'].map((k) => `<div>${Prog.rankSVG(S.best[k] || 250, 44, S.games[k] >= 3)}<b>${Prog.MODES[k].n}</b>${S.games[k] >= 3 ? Prog.rankOf(S.best[k]).name : 'Unranked'}</div>`).join('')}</div><div class="section-t">Collection</div><p style="margin:0;color:var(--dim);font-size:17px">${Object.keys(S.own).length} of ${Prog.ITEMS.length} items unlocked.</p>`;
+    $('#careerBody').innerHTML = `<div class="stats">${st.map(([a, b]) => `<div class="stat"><b>${b}</b><span>${a}</span></div>`).join('')}</div><div class="section-t">Best ranks</div><div class="ranks" style="grid-template-columns:repeat(3,1fr)">${['duel', 'doubles', 'standard'].map((k) => `<div>${Prog.rankSVG(S.best[k] || 250, 44, S.games[k] >= 3)}<b>${Prog.MODES[k].n}</b>${S.games[k] >= 3 ? Prog.rankOf(S.best[k]).name : 'Unranked'}</div>`).join('')}</div><div class="section-t">Collection</div><p style="margin:0;color:var(--dim);font-size:17px">${Object.keys(S.own).length} of ${Prog.ITEMS.length} items unlocked.</p>` + extraHTML(UI.careerExtra);
   }
   function renderSettings() {
     const G = Game.settings, S = Prog.S, V = G.vol;
@@ -5045,6 +5075,8 @@ const UI = (() => {
   }
   function init(disp) {
     display = disp;
+    for (const k of ['menuExtra', 'titleExtra', 'careerExtra']) UI[k] = UI[k] || [];
+    for (const s of $$('.mi-slot')) s.outerHTML = MI[s.dataset.mi] || MI.def;
     for (const b of $$('[data-go]')) b.onclick = () => { Sound.init(); Sound.S.ui(b.dataset.go === 'title' ? 'back' : 'click'); show(b.dataset.go); };
     $('#setBack').onclick = () => back();
     $('#btnResume').onclick = () => Match.resume();
@@ -5069,7 +5101,7 @@ const UI = (() => {
     });
     syncVol();
   }
-  return { init, show, update, results, reveal, refreshDisplay, syncVol, get cur() { return cur; } };
+  return { init, show, update, results, reveal, refreshDisplay, syncVol, get cur() { return cur; }, menuExtra: [], titleExtra: [], careerExtra: [] };
 })();
 
 // ---------------------------------------------------------------- the Ludus: a guided lesson in the arena, the training-yard panel, the first-match offer
