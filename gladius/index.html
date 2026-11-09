@@ -3251,7 +3251,7 @@ const Prog = (() => {
   const MODES = { duel: { n: 'Duel', s: '1v1', size: 1, d: 'Just you, a blade, and one rival. Pure skill.' }, doubles: { n: 'Doubles', s: '2v2', size: 2, d: 'Fight beside a partner. Assists win games.' }, standard: { n: 'Standard', s: '3v3', size: 3, d: 'The full spectacle. Chaos, demos, glory.' }, spectacle: { n: 'Spectacle', s: '3v3', size: 3, d: 'The games of the day: one wild rule each match. Low gravity, endless fury, lightning and worse.', tag: 'Rotating rules', unranked: true }, training: { n: 'Training', s: 'Free play', size: 1, d: 'Practice on passive dummies. No clock, no rank.' } };
   const CH = [['win', 'Win {n} matches', 2, 3], ['ko', 'Score {n} KOs', 6, 10], ['demo', 'Demolish {n} gladiators', 1, 3], ['par', 'Land {n} parries', 3, 5], ['mvp', 'Earn MVP', 1, 1], ['pads', 'Collect {n} fury pads', 15, 25], ['flawless', "Win without being KO'd", 1, 1], ['bless', "Claim {n} Emperor's Blessings", 2, 3], ['dmg', 'Deal {n} damage', 800, 1200], ['splat', 'Wall-splat {n} foes', 1, 3], ['slam', 'Land {n} meteor slams', 2, 4], ['dh', 'Land {n} dodge strikes', 3, 5], ['as', 'Earn {n} assists', 3, 6], ['play', 'Play {n} matches', 3, 3]];
   const NAMES = ['Flamma', 'Priscus', 'Verus', 'Crixus', 'Spiculus', 'Tetraites', 'Carpophorus', 'Celadus', 'Ursus', 'Tigris', 'Ferox', 'Velox', 'Taurus', 'Lupus', 'Corvus', 'Draco', 'Castor', 'Pollux', 'Brutus', 'Maximus', 'Invictus', 'Saltius', 'Calculus', 'Boomerus', 'Hermes', 'Triumphus', 'Aureolus', 'Scylax', 'Marcus', 'Cassius', 'Nero', 'Vulcan'];
-  const KEY = 'gladius.save.v2';
+  const KEY = 'gladius.save.v3', KEY_V2 = 'gladius.save.v2';
   let S = null;
   const xpFor = (L) => 250 + 40 * (L - 1);
   function rankOf(mmr) { if (mmr >= 2100) return { tier: 7, div: 0, name: 'Imperator', c: '#ffd24a' }; const t = Math.min(6, Math.floor(mmr / 300)), d = Math.min(2, Math.floor((mmr - t * 300) / 100)); return { tier: t, div: d, name: TIERS[t][0] + ' ' + ROMAN[d + 1], c: TIERS[t][1] }; }
@@ -3275,15 +3275,78 @@ const Prog = (() => {
   function icon(it) { if (it.slot === 'emblem') return `<img class="ic" src="${Tex.emblemIcon(it.id)}" alt="">`; return `<svg class="ic" viewBox="0 0 40 40">${ICONS[it.slot].replace(/C/g, RAR[it.r].c)}</svg>`; }
   function fresh() {
     const own = {}; ITEMS.filter((i) => i.r === 0).forEach((i) => (own[i.id] = 0));
-    return { v: 2, name: 'You', xp: 0, level: 1, mmr: { duel: 250, doubles: 250, standard: 250 }, games: { duel: 0, doubles: 0, standard: 0 }, best: { duel: 250, doubles: 250, standard: 250 }, streak: 0, bestStreak: 0, own, equip: Object.assign({}, DEFAULT_COS), chal: [], stats: { matches: 0, wins: 0, ko: 0, de: 0, as: 0, demo: 0, par: 0, mvp: 0, bless: 0, dmg: 0, time: 0 }, settings: {}, pending: [] };
+    return { v: 3, name: 'You', xp: 0, level: 1, mmr: { duel: 250, doubles: 250, standard: 250 }, games: { duel: 0, doubles: 0, standard: 0 }, best: { duel: 250, doubles: 250, standard: 250 }, streak: 0, bestStreak: 0, own, equip: Object.assign({}, DEFAULT_COS), chal: [], stats: { matches: 0, wins: 0, ko: 0, de: 0, as: 0, demo: 0, par: 0, mvp: 0, bless: 0, dmg: 0, time: 0 }, settings: {}, pending: [] };
   }
+  // ---------- save v3: whatever was stored (v3, else v2) is deep-merged onto fresh() and then repaired, so a damaged or older save can never break a menu.
+  // merge(): keys that fresh() knows keep their type (a wrong-typed or non-finite value falls back to the default); keys it does not know (fields other
+  // modules add lazily) are carried over untouched.
+  const isObj = (o) => !!o && typeof o === 'object' && !Array.isArray(o), fin = (v) => typeof v === 'number' && isFinite(v);
+  function merge(base, src) {
+    if (!isObj(src)) return base;
+    for (const k of Object.keys(src)) {
+      if (k in Object.prototype) continue;
+      const own = Object.prototype.hasOwnProperty.call(base, k), b = base[k], s = src[k];
+      if (!own) base[k] = s; else if (isObj(b)) merge(b, s); else if (Array.isArray(b)) { if (Array.isArray(s)) base[k] = s; } else if (typeof b === 'number') { if (fin(s)) base[k] = s; } else if (typeof s === typeof b) base[k] = s;
+    }
+    return base;
+  }
+  const SET_DEF = JSON.parse(JSON.stringify(Game.settings)); // the code defaults, captured before any save is applied: a setting of the wrong type is dropped
+  function repair(d) {
+    const s = merge(fresh(), d); s.v = 3;
+    s.name = (typeof s.name === 'string' && s.name.trim().slice(0, 14)) || 'You';
+    s.level = clamp(Math.floor(s.level), 1, 9999); s.xp = clamp(Math.floor(s.xp), 0, xpFor(s.level) - 1);
+    for (const m of ['duel', 'doubles', 'standard']) { s.mmr[m] = clamp(Math.round(s.mmr[m]), 0, 9999); s.games[m] = Math.max(0, Math.floor(s.games[m])); s.best[m] = Math.max(Math.round(s.best[m]), s.mmr[m]); }
+    s.streak = Math.round(s.streak); s.bestStreak = Math.max(0, Math.round(s.bestStreak), s.streak);
+    for (const k of Object.keys(s.stats)) { if (!fin(s.stats[k])) delete s.stats[k]; else if (s.stats[k] < 0) s.stats[k] = 0; }
+    const own = {}; for (const id of Object.keys(s.own)) if (BY[id]) own[id] = s.own[id] === 1 ? 1 : 0;
+    s.pending = (Array.isArray(s.pending) ? s.pending : []).map((e) => (typeof e === 'string' ? e : isObj(e) && typeof e.id === 'string' ? { id: e.id, gold: !!e.gold } : null)).filter((e) => e && BY[e.id || e]).slice(-60);
+    for (const e of s.pending) { const id = e.id || e; if (!(id in own)) own[id] = 1; }
+    for (const i of ITEMS) if (i.r === 0 && !(i.id in own)) own[i.id] = 0;
+    s.own = own;
+    for (const sl of SLOTS) { const id = s.equip[sl.id], it = BY[id]; if (!it || it.slot !== sl.id || !(id in own)) s.equip[sl.id] = DEFAULT_COS[sl.id]; }
+    const seen = new Set(), known = new Set(CH.map((c) => c[0]));
+    s.chal = (Array.isArray(s.chal) ? s.chal : []).filter((c) => isObj(c) && known.has(c.k) && !seen.has(c.k) && typeof c.t === 'string' && c.t && fin(c.n) && c.n > 0 && fin(c.p) && c.p >= 0 && c.p < c.n && seen.add(c.k)).slice(0, 3);
+    for (const k of ['spoils', 'shield', 'fastTrack', 'meta']) if (k in s && !isObj(s[k])) delete s[k];
+    const st = s.settings;
+    for (const k of Object.keys(SET_DEF)) if (k in st && (typeof st[k] !== typeof SET_DEF[k] || (typeof st[k] === 'number' && !fin(st[k])))) delete st[k];
+    if ('vol' in st && !isObj(st.vol)) delete st.vol;
+    if (st.vol) for (const k of Object.keys(SET_DEF.vol)) st.vol[k] = fin(st.vol[k]) ? clamp(st.vol[k], 0, 1) : SET_DEF.vol[k];
+    if ('quality' in st && ![-1, 0, 1, 2].includes(st.quality)) delete st.quality;
+    return s;
+  }
+  // Meta (defined below) keeps its own state under S.meta; it is told whenever the save object is replaced
+  const tellMeta = (ev) => { try { if (Meta && Meta.onSave) Meta.onSave(ev); } catch (e) { console.error(e); } };
   function load() {
-    try { const raw = Store.get(KEY); S = raw ? Object.assign(fresh(), JSON.parse(raw)) : fresh(); } catch (e) { S = fresh(); }
-    if (!S.own || typeof S.own !== 'object') S.own = {}; for (const i of ITEMS) if (i.r === 0 && !(i.id in S.own)) S.own[i.id] = 0;
-    S.equip = Object.assign({}, DEFAULT_COS, S.equip && typeof S.equip === 'object' ? S.equip : {});
-    Object.assign(Game.settings, S.settings || {}); refill(); return S;
+    let d = null;
+    for (const k of [KEY, KEY_V2]) { try { const raw = Store.get(k); d = raw ? JSON.parse(raw) : null; } catch (e) { d = null; } if (isObj(d)) break; d = null; }
+    S = repair(d);
+    Object.assign(Game.settings, S.settings); refill(); tellMeta('load'); return S;
   }
-  function save() { S.settings = Game.settings; try { Store.set(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } }
+  function save() { S.settings = Game.settings; S.v = 3; try { Store.set(KEY, JSON.stringify(S)); } catch (e) { /* ignore */ } }
+  // a save travels between browsers as a text code: "GLD3." + base64(UTF-8 JSON). Settings stay with the device.
+  function exportCode() {
+    const b = new TextEncoder().encode(JSON.stringify(Object.assign({}, S, { settings: undefined }))); let o = '';
+    for (let i = 0; i < b.length; i++) o += String.fromCharCode(b[i]);
+    return 'GLD3.' + btoa(o);
+  }
+  // returns the repaired save a code holds (without applying it), or null when the text is not a save code
+  function readCode(code) {
+    try {
+      const c = String(code || '').replace(/\s+/g, '').replace(/^GLD\d\./, ''); if (c.length < 16) return null;
+      const s = atob(c), b = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) b[i] = s.charCodeAt(i);
+      const d = JSON.parse(new TextDecoder().decode(b));
+      return isObj(d) && fin(d.level) && isObj(d.own) ? repair(d) : null;
+    } catch (e) { return null; }
+  }
+  function importCode(code) { const d = readCode(code); if (!d) return false; d.settings = Game.settings; S = d; refill(); save(); tellMeta('import'); return true; }
+  // extra XP outside applyMatch (contracts, feats, bounties…): pays level-up spoils and, given the match summary, keeps the results screen in step
+  function addXp(n, res, label) {
+    n = Math.round(n); if (!(n > 0)) return 0;
+    S.xp += n; S.stats.xpTotal = (S.stats.xpTotal || 0) + n;
+    let ups = 0; while (S.xp >= xpFor(S.level)) { S.xp -= xpFor(S.level); S.level++; ups++; grant(rollDrop(1)); }
+    if (res) { if (label) res.xpLines.push([label, n]); res.xp = (res.xp || 0) + n; res.levelUps = (res.levelUps || 0) + ups; res.lvl1 = S.level; res.xp1 = S.xp; res.drops = S.pending.slice(); res.next = nextUp(res.mode); res.pityLeft = pityLeft(); }
+    return ups;
+  }
   function refill() {
     while (S.chal.length < 3) {
       const used = new Set(S.chal.map((c) => c.k)), opts = CH.filter((c) => !used.has(c[0])), c = pick(opts), n = randi(c[2], c[3]);
@@ -3392,8 +3455,100 @@ const Prog = (() => {
     res.drops = S.pending.slice(); res.next = nextUp(r.mode); res.pityLeft = pityLeft();
     save(); return res;
   }
-  return { RAR, SLOTS, ITEMS, BY, MODES, NAMES, TIERS, rankOf, rankSVG, icon, xpFor, load, save, fresh, applyMatch, rollDrop, grant, skillFor, botLoadout, winsTo, nextDiv, nextUp, pityLeft, get S() { return S; }, reset() { const keep = S.settings; S = fresh(); S.settings = keep; refill(); save(); } };
+  return { RAR, SLOTS, ITEMS, BY, MODES, NAMES, TIERS, rankOf, rankSVG, icon, xpFor, load, save, fresh, applyMatch, rollDrop, grant, skillFor, botLoadout, winsTo, nextDiv, nextUp, pityLeft, addXp, exportCode, readCode, importCode, KEY, get S() { return S; }, reset() { const keep = S.settings; S = fresh(); S.settings = keep; refill(); save(); tellMeta('reset'); } };
 })();
+
+// ---------------------------------------------------------------- meta: reasons to come back (save tools, rivals, daily contracts, records, feats, the bounty)
+// Everything Meta persists lives under S.meta. Its UI is built here: title cards and Career sections are handed to UI.titleExtra / UI.careerExtra
+// (with a self-injecting fallback when those hooks are not there), the results block hangs off Bus 'results', clicks are delegated from document.
+const Meta = (() => {
+  const isObj = (o) => !!o && typeof o === 'object' && !Array.isArray(o), fin = (v) => typeof v === 'number' && isFinite(v);
+  const int = (v, d = 0, lo = 0, hi = 1e9) => (fin(v) ? clamp(Math.round(v), lo, hi) : d);
+  const sfx = (k) => { try { Sound.S.ui(k); } catch (e) { /* audio not ready */ } };
+  const titleCards = [], careerSecs = [], resBlocks = [], repairs = [], ACT = {};
+  // D(): the S.meta object, shape-repaired once per save object (a reset or an import swaps the object)
+  let cur = null;
+  function D() {
+    const S = Prog.S; if (cur && S.meta === cur) return cur;
+    const m = isObj(S.meta) ? S.meta : (S.meta = {});
+    for (const f of repairs) f(m, S);
+    return (cur = m);
+  }
+  // ---------- save tools (Career): a copyable code, and a two-click import
+  const io = { mode: 'out', arm: 0, note: '', cls: '', draft: '' };
+  function ioNote(t, cls) { io.note = t; io.cls = cls || ''; }
+  function saveHTML() {
+    const imp = io.mode === 'in';
+    const blurb = (Store.persistent ? 'Progress saves in this browser.' : 'This browser blocks storage, so progress lasts until you close the page.') + ' Copy this code to carry your career to another device, or load one here.';
+    return `<div class="section-t">Save</div><p class="mt-note ${io.note ? io.cls : ''}" data-meta-note>${esc(io.note || blurb)}</p><div class="mt-io"><input type="text" class="mt-code" data-meta-io spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="Save code" ${imp ? `placeholder="Paste a save code" value="${esc(io.draft)}"` : `readonly value="${esc(Prog.exportCode())}"`}>`
+      + (imp ? `<button class="btn sm primary" data-meta="ioLoad"><span>${io.arm ? 'Replace my progress' : 'Load'}</span></button><button class="btn sm" data-meta="ioCancel"><span>Cancel</span></button>`
+        : `<button class="btn sm" data-meta="ioCopy"><span>Copy code</span></button><button class="btn sm" data-meta="ioImport"><span>Load a code…</span></button>`)
+      + '</div>';
+  }
+  const ioBox = () => document.querySelector('[data-meta-io]');
+  function ioSelect() { const b = ioBox(); if (!b) return; try { b.focus({ preventScroll: true }); b.select(); b.setSelectionRange(0, b.value.length); } catch (e) { /* not focusable right now */ } }
+  ACT.ioCopy = () => {
+    const b = ioBox(); if (!b) return; const code = b.value; ioSelect();
+    const done = (ok) => { ioNote(ok ? 'Copied. Paste it somewhere safe.' : 'The code is selected: copy it with ' + (IS_TOUCH ? 'a long press.' : 'Ctrl / ⌘ + C.'), ok ? 'ok' : 'warn'); const n = document.querySelector('[data-meta-note]'); if (n) { n.textContent = io.note; n.className = 'mt-note ' + io.cls; } };
+    let ok = false; try { ok = document.execCommand && document.execCommand('copy'); } catch (e) { ok = false; }
+    if (ok) { done(true); return; }
+    try { navigator.clipboard.writeText(code).then(() => done(true), () => done(false)); } catch (e) { done(false); }
+  };
+  ACT.ioImport = () => { io.mode = 'in'; io.arm = 0; io.draft = ''; ioNote('Paste a save code below. Loading it replaces the career in this browser.', ''); renderCareer(); const b = ioBox(); if (b) b.focus({ preventScroll: true }); };
+  ACT.ioCancel = () => { io.mode = 'out'; io.arm = 0; io.draft = ''; ioNote('', ''); renderCareer(); };
+  ACT.ioLoad = () => {
+    const b = ioBox(); if (!b) return; io.draft = b.value.trim();
+    const d = Prog.readCode(io.draft);
+    if (!d) { io.arm = 0; ioNote(io.draft ? 'That is not a Gladius save code.' : 'Paste a save code first.', 'bad'); renderCareer(); sfx('back'); return; }
+    if (!io.arm || io.arm !== io.draft) { io.arm = io.draft; ioNote(`Found ${d.name} · level ${d.level} · ${d.stats.matches} matches · ${Object.keys(d.own).length} items. Press again to replace your current progress.`, 'warn'); renderCareer(); sfx('click'); return; }
+    Prog.importCode(io.draft); io.mode = 'out'; io.arm = 0; io.draft = ''; ioNote('Career loaded.', 'ok');
+    try { UI.refreshDisplay(); if (UI.cur === 'career') UI.show('career'); else renderCareer(); } catch (e) { renderCareer(); } sfx('equip');
+  };
+  careerSecs.push({ id: 'save', order: 90, html: saveHTML });
+  // ---------- surfaces
+  const bySec = (a, b) => a.order - b.order;
+  const cardHTML = (c) => `<div class="card plaque mt-card mt-c-${c.id}" data-meta-card="${c.id}">${c.html()}</div>`;
+  const titleHTML = () => titleCards.sort(bySec).map(cardHTML).join('');
+  const careerInner = () => careerSecs.sort(bySec).map((c) => { const h = c.html(); return h ? `<div class="mt-sec mt-s-${c.id}">${h}</div>` : ''; }).join('');
+  const careerHTML = () => `<div class="mt-career" data-meta-career>${careerInner()}</div>`;
+  // re-rendering replaces the pressed button, so focus moves to its successor (keyboard and pad users keep their place)
+  const FOCUS_NEXT = { ioImport: '[data-meta-io]', ioCancel: '[data-meta="ioImport"]', ioLoad: '[data-meta="ioLoad"], [data-meta="ioImport"]' };
+  function renderCareer() {
+    const w = document.querySelector('[data-meta-career]'); if (!w) return;
+    const a = document.activeElement, key = a && w.contains(a) ? a.dataset.meta : null;
+    w.innerHTML = careerInner();
+    if (key) { const n = w.querySelector(FOCUS_NEXT[key] || `[data-meta="${key}"]`); if (n) n.focus({ preventScroll: true }); }
+  }
+  function renderTitle() { for (const c of titleCards) { const w = document.querySelector(`[data-meta-card="${c.id}"]`); if (w) w.innerHTML = c.html(); } }
+  // the hooks light up once the menus build reads them; until then (or if one is never read) the observers below add the same markup after each render
+  let hooked = false;
+  function hook() {
+    if (hooked) return; hooked = true;
+    try { const a = (UI.titleExtra = UI.titleExtra || []); for (const c of titleCards.sort(bySec)) a.push(() => cardHTML(c)); } catch (e) { /* hook not writable */ }
+    try { (UI.careerExtra = UI.careerExtra || []).push(careerHTML); } catch (e) { /* hook not writable */ }
+    const watch = (sel, fn) => { const t = document.querySelector(sel); if (t && typeof MutationObserver !== 'undefined') new MutationObserver(fn).observe(t, { childList: true }); };
+    watch('#tChal', () => { if (document.querySelector('[data-meta-card]')) { renderTitle(); return; } const side = document.querySelector('#scr-title .side'); if (side && titleCards.length) { side.classList.add('mt-side'); side.insertAdjacentHTML('beforeend', titleHTML()); } });
+    watch('#careerBody', () => { const body = document.getElementById('careerBody'); if (body && !document.querySelector('[data-meta-career]')) body.insertAdjacentHTML('beforeend', careerHTML()); });
+  }
+  document.addEventListener('click', (e) => { const b = e.target.closest ? e.target.closest('[data-meta]') : null, f = b && ACT[b.dataset.meta]; if (f) f(b, e); });
+  document.addEventListener('focusin', (e) => { const t = e.target; if (t && t.matches && t.matches('[data-meta-io][readonly]')) setTimeout(() => { try { t.select(); } catch (err) { /* gone */ } }, 0); });
+  document.addEventListener('keydown', (e) => { const t = e.target; if (!t || !t.matches || !t.matches('[data-meta-io]')) return; e.stopPropagation(); if (e.code === 'Enter' && io.mode === 'in') { e.preventDefault(); ACT.ioLoad(); } else if (e.code === 'Escape' && io.mode === 'in') { e.preventDefault(); ACT.ioCancel(); } });
+  document.addEventListener('input', (e) => { const t = e.target; if (t && t.matches && t.matches('[data-meta-io]') && io.mode === 'in') { io.draft = t.value; io.arm = 0; } });
+  document.head.appendChild(el('style', '', `
+.mt-dim{ margin:0 0 8px; color:var(--dim); font-size:16px; line-height:1.3; }
+.mt-io{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.mt-code{ flex:1 1 220px; min-width:0; min-height:38px; padding:0 10px; font:600 14px/1 ui-monospace,Menlo,Consolas,monospace; color:var(--sand); background:rgba(0,0,0,.35); border:1px solid rgba(185,119,59,.55); border-radius:0; -webkit-user-select:text; user-select:text; touch-action:auto; }
+.mt-code:focus{ outline:2px solid var(--gold); outline-offset:1px; }
+.mt-code::selection{ background:rgba(245,192,69,.45); color:#fff; }
+.mt-note{ min-height:42px; margin:0 0 8px; font-size:16px; line-height:1.3; color:var(--dim); }
+.mt-note.ok{ color:#8fe06a; } .mt-note.bad{ color:#ff8a7a; } .mt-note.warn{ color:var(--gold); }
+#scr-title .side.mt-side{ max-height:calc(100% - 44px - var(--sat) - var(--sab)); overflow-y:auto; touch-action:pan-y; scrollbar-width:none; }
+#scr-title .side.mt-side::-webkit-scrollbar{ display:none; }
+`)).id = 'meta-css';
+  function onSave(ev) { cur = null; if (ev !== 'load') { io.mode = 'out'; io.arm = 0; } D(); hook(); }
+  return { onSave, D, renderCareer, renderTitle, titleHTML, careerHTML, ACT };
+})();
+__G.Meta = Meta;
 
 // ---------------------------------------------------------------- menus & screens
 const TIPS = ['Tap Block just as a blow lands to PARRY and stagger your foe.', 'Hit anyone at supersonic speed to DEMOLISH them. Blocking head-on stops it.', 'Hold Strike to charge a heavy blow. It breaks guards.', 'Jump, then jump again with a direction to dodge-strike.', 'Hold Strike in the air to Meteor Slam the sand.', 'Launch a foe into the wall for a WALL SPLAT.', 'Amphorae refill all your fury. Small pads give a little.', "Grab the Emperor's Blessing for full fury and gilded damage.", 'Block + Boost is a shield charge. Fast enough, it demolishes.', 'Boost in the air and hold Jump to fly.', 'Faster strikes hit harder. Momentum is damage.', 'Jump at the wall in mid-air to wall-kick.'];
