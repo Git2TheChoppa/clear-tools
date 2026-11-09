@@ -641,7 +641,7 @@ function trs(x, y, z, rx = 0, ry = 0, rz = 0, sx = 1, sy = sx, sz = sx) {
 
 // ---------------------------------------------------------------- audio (all synthesized)
 const Sound = (() => {
-  let ctx = null, out, sfxBus, musBus, crowdBus, revSend, noise, ambGain, boostG, boostF, boostRum, lastStep = 0;
+  let ctx = null, out, muf, mufA = 0, sfxBus, musBus, crowdBus, revSend, noise, ambGain, boostG, boostF, boostRum, lastStep = 0;
   const vol = { master: 0.8, music: 0.4, sfx: 0.9 };
   const L = { pos: new THREE.Vector3(), right: new THREE.Vector3(1, 0, 0) };
   const mus = { timer: null, mode: null, next: 0, step: 0, bpm: 92, intensity: 0 };
@@ -654,7 +654,7 @@ const Sound = (() => {
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.value = -12; comp.knee.value = 8; comp.ratio.value = 5; comp.attack.value = 0.003; comp.release.value = 0.22;
     comp.connect(ctx.destination);
-    out = ctx.createGain(); out.connect(comp);
+    out = ctx.createGain(); muf = ctx.createBiquadFilter(); muf.type = 'lowpass'; muf.frequency.value = 20000; muf.Q.value = 0.5; out.connect(muf); muf.connect(comp);
     sfxBus = ctx.createGain(); sfxBus.connect(out);
     musBus = ctx.createGain(); musBus.connect(out);
     crowdBus = ctx.createGain(); crowdBus.connect(out);
@@ -957,6 +957,8 @@ const Sound = (() => {
 
   return {
     init, S, crowd, cheer, ooh, boost, boostMode, duck, music, setIntensity, vol, applyVolumes, L,
+    // 0 = open mix … 1 = heavily muffled (pause, knocked out, slow motion); cheap to call every frame
+    muffle(a) { if (!ctx || Math.abs(a - mufA) < 0.02) return; mufA = a; muf.frequency.setTargetAtTime(20000 * Math.pow(0.03, a), ctx.currentTime, 0.08); },
     // synth kit for other modules: every helper is a no-op/returns null until the AudioContext exists (check Sound.ready first)
     kit: { chain: (pos, base, wet) => chain(pos, base, wet), osc: (...a) => { if (ctx) osc(...a); }, nz: (...a) => { if (ctx) nz(...a); }, horn: (notes, gain, root) => horn(notes, gain, root), now: () => (ctx ? ctx.currentTime : 0), get ctx() { return ctx; }, get sfx() { return sfxBus; }, get crowd() { return crowdBus; }, get music() { return musBus; } },
     get ready() { return !!ctx; },
@@ -2300,7 +2302,7 @@ void main(){ vec2 p = gl_PointCoord - 0.5; float c = cos(vFR.y), s = sin(vFR.y);
   }
   function update(dt, camera, renderer) {
     renderer.getDrawingBufferSize(_s);
-    const sc = _s.y / (2 * Math.tan(camera.fov * Math.PI / 360));
+    const sc = (Post.on ? Post.height : _s.y) / (2 * Math.tan(camera.fov * Math.PI / 360));
     ADD.mat.uniforms.uScale.value = NRM.mat.uniforms.uScale.value = sc;
     ADD.update(dt); NRM.update(dt);
     for (const r of rings) { if (r.t >= r.dur) { r.m.visible = false; continue; } r.t += dt; const f = Math.min(1, r.t / r.dur), s = lerp(r.r0, r.r1, easeOutCubic(f)); r.m.scale.set(s, s, s); r.m.material.uniforms.uA.value = r.a0 * (1 - f); }
@@ -4008,16 +4010,134 @@ const Match = (() => {
   return Object.assign(M, { init, queue, start, rematch, update, pause, resume, forfeit, toMenu, startAttract, stopAttract });
 })();
 
+// ---------------------------------------------------------------- post-processing: HDR target → bloom → tone map + grade (hand-written passes, no addons)
+const Post = (() => {
+  // Looks are keyed by Arena.preset; unknown presets fall back to 'dusk'. sh/hi are split-tone tints for shadows/highlights (display space).
+  const LOOKS = {
+    noon: { ev: 0.84, bloom: 0.55, thresh: 0.95, haze: 0.03, sat: 1.16, con: 1.12, sh: [0.97, 1.0, 1.05], hi: [1.04, 1.01, 0.96], vig: 0.22, grain: 0.02 },
+    dusk: { bloom: 0.62, thresh: 0.92, haze: 0.045, sat: 1.14, con: 1.07, sh: [0.94, 0.99, 1.08], hi: [1.07, 1.01, 0.93], vig: 0.3, grain: 0.024 },
+    night: { ev: 0.95, bloom: 0.8, thresh: 0.85, haze: 0.06, sat: 1.05, con: 1.09, sh: [0.92, 0.98, 1.12], hi: [1.06, 1.0, 0.94], vig: 0.38, grain: 0.03 },
+    storm: { bloom: 0.8, thresh: 0.85, haze: 0.06, sat: 0.92, con: 1.1, sh: [0.93, 1.0, 1.07], hi: [1.0, 1.02, 1.02], vig: 0.36, grain: 0.032 },
+    dawn: { bloom: 0.7, thresh: 0.95, haze: 0.07, sat: 1.08, con: 1.03, sh: [0.97, 0.98, 1.08], hi: [1.07, 0.99, 0.98], vig: 0.26, grain: 0.022 },
+    saturnalia: { bloom: 1.0, thresh: 0.78, haze: 0.06, sat: 1.06, con: 1.08, sh: [0.93, 0.98, 1.12], hi: [1.08, 1.0, 0.92], vig: 0.36, grain: 0.03 },
+  };
+  const P = { on: false, wanted: false, scale: 1, height: 0, target: null, LOOKS };
+  let R, scene, camera, Q = 2, hdr = null, mips = [], soft = [], fsScene, fsCam, tri, mPre, mDown, mUp, mOut, type, t = 0, checked = false, lookName = null, L = LOOKS.dusk;
+  let blurA = 0, lowA = 0, pulse = 0, focusA = 0;
+  const shock = { x: 0.5, y: 0.5, t: 1, amp: 0 }, dyn = { acc: 0, n: 0, cool: 3, good: 0, back: 8 }, _sz = new THREE.Vector2(), _pv = new THREE.Vector3();
+  const VS = 'varying vec2 vUv; void main(){ vUv = position.xy * 0.5 + 0.5; gl_Position = vec4(position.xy, 0.0, 1.0); }';
+  const mat = (fs, uniforms, add) => new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: fs, uniforms, depthTest: false, depthWrite: false, toneMapped: false, blending: add ? THREE.AdditiveBlending : THREE.NoBlending });
+  const FS_PRE = `uniform sampler2D tSrc; uniform vec2 uTexel; uniform float uThresh, uKnee, uHaze; varying vec2 vUv;
+vec3 s(vec2 o){ return min(texture2D(tSrc, vUv + o * uTexel).rgb, vec3(16.0)); }
+float w(vec3 c){ return 1.0 / (1.0 + dot(c, vec3(0.2126, 0.7152, 0.0722))); }
+void main(){ vec3 a = s(vec2(-1.0, -1.0)), b = s(vec2(1.0, -1.0)), c = s(vec2(-1.0, 1.0)), d = s(vec2(1.0, 1.0)), e = s(vec2(0.0));
+ float wa = w(a), wb = w(b), wc = w(c), wd = w(d), we = w(e); vec3 col = (a * wa + b * wb + c * wc + d * wd + e * we) / (wa + wb + wc + wd + we);
+ float br = max(col.r, max(col.g, col.b)); float sf = clamp(br - uThresh + uKnee, 0.0, 2.0 * uKnee); sf = sf * sf / (4.0 * uKnee + 0.0001);
+ gl_FragColor = vec4(col * max(max(sf, br - uThresh) / max(br, 0.0001), uHaze), 1.0); }`;
+  const FS_DOWN = `uniform sampler2D tSrc; uniform vec2 uTexel; varying vec2 vUv;
+void main(){ vec3 c = texture2D(tSrc, vUv).rgb * 4.0; c += texture2D(tSrc, vUv + uTexel * vec2(-1.0, -1.0)).rgb + texture2D(tSrc, vUv + uTexel * vec2(1.0, -1.0)).rgb + texture2D(tSrc, vUv + uTexel * vec2(-1.0, 1.0)).rgb + texture2D(tSrc, vUv + uTexel).rgb; gl_FragColor = vec4(c * 0.125, 1.0); }`;
+  const FS_UP = `uniform sampler2D tSrc; uniform vec2 uTexel; uniform float uGain; varying vec2 vUv;
+void main(){ vec2 o = uTexel; vec3 c = texture2D(tSrc, vUv + vec2(-2.0 * o.x, 0.0)).rgb + texture2D(tSrc, vUv + vec2(2.0 * o.x, 0.0)).rgb + texture2D(tSrc, vUv + vec2(0.0, -2.0 * o.y)).rgb + texture2D(tSrc, vUv + vec2(0.0, 2.0 * o.y)).rgb;
+ c += 2.0 * (texture2D(tSrc, vUv + vec2(-o.x, o.y)).rgb + texture2D(tSrc, vUv + o).rgb + texture2D(tSrc, vUv - o).rgb + texture2D(tSrc, vUv + vec2(o.x, -o.y)).rgb); gl_FragColor = vec4(c * (uGain / 12.0), 1.0); }`;
+  const FS_OUT = `uniform sampler2D tScene, tBloom, tSoft; uniform float uExposure, uBloom, uAberr, uBlur, uVig, uGrain, uTime, uSat, uCon, uAspect, uShockAmp, uFocusA, uFade; uniform vec3 uSh, uHi, uShock, uFocus; varying vec2 vUv;
+vec3 fit(vec3 v){ vec3 a = v * (v + 0.0245786) - 0.000090537; vec3 b = v * (0.983729 * v + 0.4329510) + 0.238081; return a / b; }
+vec3 aces(vec3 c){ const mat3 mi = mat3(vec3(0.59719, 0.07600, 0.02840), vec3(0.35458, 0.90834, 0.13383), vec3(0.04823, 0.01566, 0.83777)); const mat3 mo = mat3(vec3(1.60475, -0.10208, -0.00327), vec3(-0.53108, 1.10813, -0.07276), vec3(-0.07367, -0.00605, 1.07602));
+ c *= uExposure / 0.6; c = mo * fit(mi * c); return clamp(c, 0.0, 1.0); }
+vec3 srgb(vec3 c){ return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c)); }
+float hash(vec2 p){ vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+void main(){ vec2 uv = vUv;
+ if (uShockAmp > 0.001) { vec2 sd = uv - uShock.xy; sd.x *= uAspect; float dd = length(sd) + 0.0001; float ring = dd - uShock.z * 0.85; uv += (sd / dd) * exp(-ring * ring * 260.0) * (1.0 - uShock.z) * uShockAmp * vec2(1.0 / uAspect, 1.0); }
+ vec2 c = uv - 0.5; float r2 = dot(c, c); vec3 col;
+ if (uBlur > 0.004) { float k = uBlur * smoothstep(0.015, 0.3, r2); vec3 acc = vec3(0.0); for (int i = 0; i < 6; i++) acc += texture2D(tScene, 0.5 + c * (1.0 - k * 0.013 * float(i))).rgb; col = acc / 6.0; }
+ else col = texture2D(tScene, uv).rgb;
+ if (uAberr > 0.0004) { vec2 d = c * uAberr * (0.3 + r2 * 1.6); col.r = texture2D(tScene, uv + d).r; col.b = texture2D(tScene, uv - d).b; }
+ if (uFocusA > 0.004) { vec2 fd = uv - uFocus.xy; fd.x *= uAspect; float m = smoothstep(uFocus.z, uFocus.z * 2.6, length(fd * vec2(1.0, 0.72))) * uFocusA; col = mix(col, texture2D(tSoft, uv).rgb, m); }
+ col += texture2D(tBloom, uv).rgb * uBloom;
+ col = srgb(aces(col));
+ float l = dot(col, vec3(0.299, 0.587, 0.114)); col = mix(vec3(l), col, uSat); col *= mix(uSh, uHi, smoothstep(0.12, 0.88, l)); col = (col - 0.5) * uCon + 0.5;
+ col *= 1.0 - uVig * smoothstep(0.18, 1.0, r2 * 2.0);
+ col += (hash(gl_FragCoord.xy + fract(uTime) * 61.7) - 0.5) * uGrain;
+ gl_FragColor = vec4(clamp(col, 0.0, 1.0) * uFade, 1.0); }`;
+  const rt = (w, h, o) => new THREE.WebGLRenderTarget(Math.max(2, w | 0), Math.max(2, h | 0), Object.assign({ type, format: THREE.RGBAFormat, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, depthBuffer: false, stencilBuffer: false, generateMipmaps: false }, o));
+  function init(renderer, sc, cam, q) {
+    R = renderer; scene = sc; camera = cam; Q = q; P.wanted = q > 0 && Game.settings.post !== false;
+    if (!P.wanted) return;
+    try {
+      const gl2 = R.capabilities.isWebGL2, fl = gl2 && (R.extensions.has('EXT_color_buffer_float') || R.extensions.has('EXT_color_buffer_half_float'));
+      type = fl ? THREE.HalfFloatType : THREE.UnsignedByteType;
+      const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(new Float32Array([-1, -1, 0, 3, -1, 0, -1, 3, 0]), 3));
+      tri = new THREE.Mesh(g, null); tri.frustumCulled = false; fsScene = new THREE.Scene(); fsScene.add(tri); fsCam = new THREE.Camera();
+      const tx = () => ({ value: new THREE.Vector2() });
+      mPre = mat(FS_PRE, { tSrc: { value: null }, uTexel: tx(), uThresh: { value: 1 }, uKnee: { value: 0.5 }, uHaze: { value: 0.04 } });
+      mDown = mat(FS_DOWN, { tSrc: { value: null }, uTexel: tx() });
+      mUp = mat(FS_UP, { tSrc: { value: null }, uTexel: tx(), uGain: { value: 1 } }, true);
+      mOut = mat(FS_OUT, { tScene: { value: null }, tBloom: { value: null }, tSoft: { value: null }, uExposure: { value: 1 }, uBloom: { value: 0.7 }, uAberr: { value: 0 }, uBlur: { value: 0 }, uVig: { value: 0.3 }, uGrain: { value: 0.02 }, uTime: { value: 0 }, uSat: { value: 1 }, uCon: { value: 1 }, uAspect: { value: 1 }, uShockAmp: { value: 0 }, uFocusA: { value: 0 }, uFade: { value: 1 }, uSh: { value: new THREE.Vector3(1, 1, 1) }, uHi: { value: new THREE.Vector3(1, 1, 1) }, uShock: { value: new THREE.Vector3(0.5, 0.5, 1) }, uFocus: { value: new THREE.Vector3(0.5, 0.5, 0.2) } });
+      alloc(); P.on = true;
+      Bus.on('ko', (e) => kick(e.pos, e.kind === 'demo' ? 1 : 0.75)); Bus.on('slam', (e) => kick(e.g.pos, 0.6)); Bus.on('splat', (e) => kick(e.g.pos, 0.5)); Bus.on('parry', (e) => kick(e.pos, 0.35)); Bus.on('bless', (e) => kick(e.g.pos, 0.4));
+    } catch (e) { console.warn('post-processing unavailable', e); P.on = false; }
+  }
+  function alloc() {
+    R.getDrawingBufferSize(_sz); const w = Math.max(2, Math.round(_sz.x * P.scale)), h = Math.max(2, Math.round(_sz.y * P.scale)), n = Q > 1 ? 6 : 5;
+    if (!hdr) { hdr = rt(w, h, { depthBuffer: true, samples: R.capabilities.isWebGL2 ? (Q > 1 ? 4 : 2) : 0 }); for (let i = 0; i < n; i++) mips.push(rt(2, 2)); soft = [rt(2, 2), rt(2, 2), rt(2, 2)]; P.target = hdr; }
+    hdr.setSize(w, h); let mw = w, mh = h; for (const m of mips) { mw = Math.max(2, mw >> 1); mh = Math.max(2, mh >> 1); m.setSize(mw, mh); }
+    mw = w; mh = h; for (const m of soft) { mw = Math.max(2, mw >> 1); mh = Math.max(2, mh >> 1); m.setSize(mw, mh); }
+    P.height = h;
+  }
+  function resize() { if (P.on) alloc(); }
+  function setScale(v) { v = clamp(v, 0.5, 1); if (Math.abs(v - P.scale) < 0.01) return; P.scale = v; if (P.on) alloc(); }
+  // dynamic resolution: drop quickly when frames run long; probe back up after a steady stretch, backing off if the probe fails
+  function adapt(dt) {
+    if (Game.settings.dynRes === false) { if (P.scale !== 1) setScale(1); return; }
+    dyn.acc += dt; dyn.n++; dyn.cool -= dt; if (dyn.acc < 1) return;
+    const ms = 1000 * dyn.acc / dyn.n; dyn.acc = 0; dyn.n = 0; if (dyn.cool > 0 || document.hidden) return;
+    if (ms > 23) { if (P.scale > 0.5) { if (dyn.probe) dyn.back = Math.min(90, dyn.back * 2); setScale(P.scale * (ms > 34 ? 0.75 : 0.87)); dyn.cool = 2; } dyn.good = 0; dyn.probe = false; }
+    else if (ms < 18.2 && P.scale < 1) { if (++dyn.good >= dyn.back) { setScale(P.scale * 1.12); dyn.good = 0; dyn.cool = 2; dyn.probe = true; } }
+    else { dyn.good = 0; dyn.probe = false; }
+  }
+  function kick(pos, amp) { if (!P.on || REDUCED_MOTION || !pos) return; _pv.set(pos.x, (pos.y || 0) + 1, pos.z).project(camera); if (_pv.z > 1) return; shock.x = _pv.x * 0.5 + 0.5; shock.y = _pv.y * 0.5 + 0.5; shock.t = 0; shock.amp = amp; pulse = Math.max(pulse, amp); }
+  function pass(m, src, dst) { m.uniforms.tSrc.value = src.texture; m.uniforms.uTexel.value.set(1 / src.width, 1 / src.height); tri.material = m; R.setRenderTarget(dst); R.render(fsScene, fsCam); }
+  function render(dt) {
+    if (!P.on) { R.render(scene, camera); return; }
+    t += dt; adapt(dt);
+    const name = Arena.preset; if (name !== lookName) { lookName = name; L = LOOKS[name] || LOOKS.dusk; }
+    R.setRenderTarget(hdr); R.render(scene, camera);
+    const ac = R.autoClear; R.autoClear = false;
+    mPre.uniforms.uThresh.value = L.thresh; mPre.uniforms.uHaze.value = L.haze;
+    pass(mPre, hdr, mips[0]); for (let i = 1; i < mips.length; i++) pass(mDown, mips[i - 1], mips[i]);
+    for (let i = mips.length - 2; i >= 0; i--) { mUp.uniforms.uGain.value = i === 0 ? 0.55 : 1; pass(mUp, mips[i + 1], mips[i]); }
+    // gameplay-driven lens: radial blur at speed, aberration from trauma/impacts, portrait focus behind the menu gladiator
+    const me = Match.active ? Match.me : null, U = mOut.uniforms, menu = !Match.active && UI.display && UI.display.root.visible && (UI.cur === 'title' || UI.cur === 'armory' || UI.cur === 'reveal');
+    const wantBlur = me && me.alive && !REDUCED_MOTION ? (me.ss ? 0.7 : me.boosting ? 0.22 : me.st === 'dodge' ? 0.3 : 0) : 0; blurA = damp(blurA, wantBlur, wantBlur > blurA ? 7 : 3, dt);
+    lowA = damp(lowA, me && me.alive && me.hp < TUNE.HP * 0.3 ? 1 : 0, 3, dt); pulse = Math.max(0, pulse - dt * 2.4); focusA = damp(focusA, menu ? 1 : 0, 4, dt);
+    if (focusA > 0.01) { pass(mDown, hdr, soft[0]); pass(mDown, soft[0], soft[1]); pass(mDown, soft[1], soft[2]); _pv.copy(UI.display.root.position); _pv.y += 1.05; _pv.project(camera); U.uFocus.value.set(_pv.x * 0.5 + 0.5, _pv.y * 0.5 + 0.5, 0.2); U.tSoft.value = soft[2].texture; }
+    if (shock.t < 1) shock.t = Math.min(1, shock.t + dt / 0.55);
+    const tr = FX.trauma, rm = REDUCED_MOTION ? 0 : 1;
+    U.tScene.value = hdr.texture; U.tBloom.value = mips[0].texture; U.uExposure.value = R.toneMappingExposure * (L.ev || 1); U.uBloom.value = L.bloom * (1 + pulse * 0.5);
+    U.uAberr.value = 0.0006 + rm * (tr * tr * 0.0035 + pulse * 0.002 + blurA * 0.001); U.uBlur.value = blurA; U.uVig.value = L.vig + lowA * 0.16 + (menu ? 0.08 : 0); U.uGrain.value = L.grain; U.uTime.value = t;
+    U.uSat.value = L.sat * (1 - lowA * 0.22); U.uCon.value = L.con; U.uSh.value.fromArray(L.sh); U.uHi.value.fromArray(L.hi); U.uAspect.value = hdr.width / hdr.height;
+    U.uShock.value.set(shock.x, shock.y, shock.t); U.uShockAmp.value = shock.t < 1 ? shock.amp * 0.05 : 0; U.uFocusA.value = focusA * 0.85;
+    tri.material = mOut; R.setRenderTarget(null); R.render(fsScene, fsCam); R.autoClear = ac;
+    if (!checked) { checked = true; for (const m of [mPre, mDown, mUp, mOut]) { const pr = R.properties.get(m).currentProgram; if (pr && pr.diagnostics && pr.diagnostics.runnable === false) { console.warn('post shader failed; falling back to direct rendering'); P.on = false; } } }
+  }
+  // compile scene programs for the HDR target up front (tone mapping/colour space differ from on-screen programs)
+  function prewarm() { if (P.on) { R.setRenderTarget(hdr); R.compile(scene, camera); R.setRenderTarget(null); } else R.compile(scene, camera); }
+  // the settings toggle: the canvas is created without its own multisampling when post is active, so switching means a reload
+  function setEnabled(v) { Game.settings.post = !!v; Prog.save(); if (!!v !== P.wanted && Q > 0) location.reload(); }
+  return Object.assign(P, { init, render, resize, prewarm, setEnabled, kick, setScale, pulse(a = 0.5) { pulse = Math.max(pulse, a); } });
+})();
+__G.Post = Post;
+
 // ---------------------------------------------------------------- boot + main loop
 (function main() {
   const load = $('#loading'), msg = $('#loadMsg');
   const fail = (t) => { load.classList.add('err'); msg.textContent = t; };
   if (typeof THREE === 'undefined') { fail('Could not load the 3D engine. Check your connection and reload.'); return; }
-  let renderer;
-  try { renderer = new THREE.WebGLRenderer({ canvas: $('#c'), antialias: true, powerPreference: 'high-performance' }); } catch (e) { fail('WebGL is not available on this device or browser.'); return; }
   Prog.load();
   Object.assign(Sound.vol, Game.settings.vol); Game.settings.vol = Sound.vol;
   const q = Game.settings.quality >= 0 ? Game.settings.quality : IS_TOUCH ? 1 : 2;
+  // with post-processing the scene is drawn into a multisampled HDR target, so the canvas itself needs no antialiasing
+  let renderer;
+  try { renderer = new THREE.WebGLRenderer({ canvas: $('#c'), antialias: !(q > 0 && Game.settings.post !== false), powerPreference: 'high-performance' }); } catch (e) { fail('WebGL is not available on this device or browser.'); return; }
   renderer.setPixelRatio(Math.min(devicePixelRatio || 1, [1, 1.5, 2][q]));
   renderer.setSize(innerWidth, innerHeight);
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -4028,23 +4148,23 @@ const Match = (() => {
   const steps = [
     ['Raking the sand…', () => Tex.init(q)],
     ['Raising the colosseum…', () => { Arena.build(scene, renderer, q); Sim.pads = Arena.pads; }],
-    ['Filling the stands…', () => { FX.init(scene, q); Arena.setPreset('dusk'); Cam.init(camera); HUD.init(camera); Input.init($('#c')); }],
+    ['Filling the stands…', () => { FX.init(scene, q); Arena.setPreset('dusk'); Cam.init(camera); HUD.init(camera); Input.init($('#c')); Post.init(renderer, scene, camera, q); }],
     ['Summoning gladiators…', () => {
       display = new Rig.Rig({ team: 0, cos: Prog.S.equip, skin: Rig.SKIN[0] }); display.addTo(scene);
       display.root.position.copy(Cam.MENU); display.root.rotation.y = Cam.MENU_YAW;
       display.fakeG = { st: 'idle', vel: V3(), ground: true, alive: true, pose: null, cos: Prog.S.equip, gildT: 0, invT: 0 };
       UI.display = display; UI.init(display); Match.init(scene); Match.startAttract();
     }],
-    ['Opening the gates…', () => { renderer.compile(scene, camera); }],
+    ['Opening the gates…', () => { Post.prewarm(); }],
   ];
   let si = 0;
   function next() {
     if (si >= steps.length) { start(); return; }
-    msg.textContent = steps[si][0];
+    msg.textContent = steps[si][0]; load.style.setProperty('--p', (si / steps.length).toFixed(2));
     setTimeout(() => { try { steps[si][1](); si++; next(); } catch (e) { console.error(e); fail('Something went wrong while building the arena: ' + e.message); } }, 30);
   }
   function start() {
-    UI.show('title'); load.classList.add('gone'); setTimeout(() => load.remove(), 600);
+    load.style.setProperty('--p', '1'); UI.show('title'); load.classList.add('gone'); setTimeout(() => load.remove(), 600);
     Sound.music('menu');
     const unlock = () => { Sound.init(); UI.syncVol(); Sound.applyVolumes(); };
     addEventListener('pointerdown', unlock); addEventListener('keydown', unlock); addEventListener('touchstart', unlock, { passive: true });
@@ -4061,11 +4181,12 @@ const Match = (() => {
       }
       Arena.update(dt, now / 1000, Sim);
       FX.update(dt, camera, renderer);
-      renderer.render(scene, camera);
+      Post.render(dt);
+      Sound.muffle(Match.active ? (Match.paused ? 1 : Match.me && !Match.me.alive ? 0.55 : Match.slowT > 0 ? 0.35 : 0) : 0);
     }
     requestAnimationFrame(frame);
   }
-  addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+  addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); Post.resize(); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
   document.addEventListener('visibilitychange', () => { if (document.hidden) { if (Match.active && !Match.paused && Match.phase !== 'done') Match.pause(); Sound.suspend(); } else Sound.resume(); });
   Object.assign(__G, { Sim, Match, UI, Prog, Arena, Cam, FX, HUD, Input, Sound, Rig, Tex, Game, TUNE, Bus, renderer, scene, camera }); Object.defineProperty(__G, 'display', { get() { return display; }, configurable: true });
   next();
