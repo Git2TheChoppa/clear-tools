@@ -610,7 +610,7 @@ button:focus-visible,[tabindex]:focus-visible{ outline:2px solid var(--gold); ou
 #rcard .rico{ width:84px; height:84px; filter:drop-shadow(0 0 14px var(--rc)); }
 #rcard .ri{ font-size:clamp(26px, 4vw, 38px); }
 @media (max-height:520px){
-  #scr-reveal{ padding-top:calc(6px + var(--sat)); padding-bottom:calc(6px + var(--sab)); } #scr-reveal .reveal{ width:min(400px, 52vw); } .reveal .btns .btn{ min-height:44px; font-size:18px; padding:0 16px; }
+  #scr-reveal{ padding-top:calc(6px + var(--sat)); padding-bottom:calc(6px + var(--sab)); } #scr-reveal .reveal{ width:min(400px, 52vw); } #scr-reveal.opened .crate{ display:none; } .reveal .btns .btn{ min-height:44px; font-size:18px; padding:0 16px; }
   .crate{ width:130px; height:100px; margin-bottom:10px; } .crate .box{ height:68px; } .crate .lid{ height:32px; } .crate .box::before,.crate .lid::before{ left:16px; } .crate .box::after,.crate .lid::after{ right:16px; } .crate .lockp{ top:26px; transform:scale(.8); }
   .crate .rays{ width:260px; height:260px; margin:-130px 0 0 -130px; }
   #rcard{ padding:10px 18px; } #rcard .rico{ width:52px; height:52px; margin-bottom:2px; } #rcard .ri{ font-size:24px; } .reveal .btns{ margin-top:10px; } .rfoot{ margin-top:6px; font-size:13px; }
