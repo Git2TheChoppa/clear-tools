@@ -20,6 +20,7 @@
 :root[data-theme="dark"]{ --tufa:#22170f; --soot:#150d08; --marble:#f3e9d6; }
 html{ scroll-padding-top:env(safe-area-inset-top,0px); }
 *,*::before,*::after{ box-sizing:border-box; }
+[hidden]{ display:none !important; } /* an author display rule (.btn is inline-flex) would otherwise beat the hidden attribute */
 html,body{ height:100%; margin:0; overflow:hidden; background:#1a110b; color:var(--marble); font-family:var(--ui); -webkit-user-select:none; user-select:none; -webkit-tap-highlight-color:transparent; touch-action:none; overscroll-behavior:none; }
 canvas#c{ position:fixed; inset:0; width:100%; height:100%; display:block; outline:none; }
 button{ font:inherit; color:inherit; }
@@ -760,7 +761,8 @@ body.touch #hud .combo b{ font-size:32px; } body.touch #hud .combo span{ font-si
   .crate{ width:130px; height:100px; margin-bottom:10px; } .crate .box{ height:68px; } .crate .lid{ height:32px; } .crate .box::before,.crate .lid::before{ left:16px; } .crate .box::after,.crate .lid::after{ right:16px; } .crate .lockp{ top:26px; transform:scale(.8); }
   .crate .rays{ width:260px; height:260px; margin:-130px 0 0 -130px; }
   #rcard{ padding:10px 18px; } #rcard .rico{ width:52px; height:52px; margin-bottom:2px; } #rcard .ri{ font-size:24px; } .reveal .btns{ margin-top:10px; } .rfoot{ margin-top:6px; font-size:13px; }
-  .rrow{ margin-top:8px; max-height:32vh; } .rrow .rcard{ min-width:130px; padding:8px 10px; }
+  .rrow{ margin-top:8px; max-height:none; flex-wrap:nowrap; justify-content:flex-start; overflow-x:auto; overflow-y:hidden; touch-action:pan-x; -webkit-overflow-scrolling:touch; }
+  .rrow .rcard{ flex:0 0 auto; min-width:124px; padding:6px 8px; } .rrow .rcard .rico{ width:30px; height:30px; margin:0 auto 2px; } .rrow .rcard .ri{ font-size:16px; } .rrow .rcard .rk{ display:none; } .rrow .rcard .btn{ min-height:36px; margin-top:4px; }
 }
 @media (orientation:portrait) and (max-width:760px){
   #scr-reveal.opened{ align-items:end; background:linear-gradient(180deg, rgba(18,11,7,.04) 0%, rgba(18,11,7,.06) 40%, rgba(18,11,7,.8) 60%, rgba(18,11,7,.9) 100%); }
@@ -820,7 +822,7 @@ body.touch #hud .scoreboard{ max-height:calc(100% - 20px); overflow:hidden; padd
   body.touch #hud .objective{ top:calc(64px + var(--sat)); width:220px; margin-left:-110px; padding:3px 8px 4px; }
   body.touch #hud .ob-t b{ font-size:12px; } body.touch #hud .ob-t small{ font-size:11px; }
   body.touch #hud .feed{ top:calc(62px + var(--sat)); right:calc(10px + var(--sar)); }
-  body.touch #hud .accolades{ top:calc(6px + var(--sat)); right:calc(64px + var(--sar)); max-height:58px; overflow:hidden; }
+  body.touch #hud .accolades{ top:calc(6px + var(--sat)); right:calc(64px + var(--sar)); }
   body.touch #hud .announce{ top:23%; }
   body.touch #hud .tip{ top:auto; bottom:calc(122px + var(--sab)); max-width:min(440px, 50vw); font-size:15px; }
   body.touch #hud .hints{ bottom:calc(116px + var(--sab)); max-width:min(440px, 50vw); font-size:12px; flex-direction:column; align-items:center; gap:3px; }
@@ -880,23 +882,33 @@ body.touch #hud .scoreboard{ max-height:calc(100% - 20px); overflow:hidden; padd
 @keyframes fmpad{ 0%{ box-shadow:0 0 0 0 rgba(255,214,110,.9); } 100%{ box-shadow:0 0 0 8px rgba(255,214,110,0); } }
 
 /* phone lanes (integration): one message at a time in the middle of a small screen */
-body.touch #hud .hints .hn{ display:none; white-space:nowrap; }
-body.touch #hud .hints[data-i="0"] .hn:nth-child(1), body.touch #hud .hints[data-i="1"] .hn:nth-child(2), body.touch #hud .hints[data-i="2"] .hn:nth-child(3){ display:block; }
-@media (orientation: portrait){ body.touch #hud .hints{ bottom:calc(var(--cb) + 4px + var(--sab)); font-size:12.5px; max-width:96vw; } }
+body.touch #hud .hints.one .hn{ display:none; white-space:nowrap; }
+body.touch #hud .hints.one[data-i="0"] .hn:nth-child(1), body.touch #hud .hints.one[data-i="1"] .hn:nth-child(2), body.touch #hud .hints.one[data-i="2"] .hn:nth-child(3){ display:block; }
 body.touch #hud.slainon .tip, body.touch #hud.slainon .hints{ opacity:0; }
+body.touch #hud .acc{ max-width:100%; white-space:nowrap; overflow:hidden; }
+body.touch #hud .acc-tot{ display:none; } /* no room for a running total beside a phone's toasts */
 @media (orientation: portrait){
+  body.touch #hud .hints{ bottom:calc(var(--cb) + 4px + var(--sab)); font-size:12.5px; max-width:96vw; }
   body.touch #hud.respawnon .chatlog, body.touch #hud.respawnon .favor{ opacity:0; }
   body.touch #hud .respawn{ top:calc(102px + var(--sat)); bottom:auto; left:calc(10px + var(--sal)); transform:none; } /* under the HP bar, which is empty just then */
-  body.touch #hud .accolades{ top:calc(288px + var(--sat)); } /* below the banner, not beside it */
+  body.touch #hud .rs-l{ display:none; } /* the ring is the countdown: this leaves room for a note beside the decree panel */
+  /* toasts: the newest one only, anchored just above the tip lane on the right, so it can never reach the controls band at any screen height */
+  body.touch #hud .accolades{ top:auto; bottom:calc(var(--cb) + 58px + var(--sab)); right:calc(10px + var(--sar)); max-width:62vw; transform-origin:100% 100%; }
+  body.touch #hud .acc:nth-last-child(n+2){ display:none; }
+  body.touch #hud .chatlog{ max-width:46vw; }
 }
 @media (orientation: landscape){
-  body.touch #hud .objective:not([hidden]) ~ .announce{ top:29%; }
+  body.touch #hud .objective:not([hidden]) ~ .announce{ top:27%; }
   body.touch #hud .tip, body.touch #hud .hints{ left:45%; max-width:min(360px, 42vw); }
   body.touch #hud .hints, body.touch #hud.hintson .tip{ bottom:calc(122px + var(--sab)); }
-  body.touch #hud .respawn{ top:47%; width:auto; left:50%; margin:0; transform:translateX(-50%); flex-direction:row; gap:8px; }
+  body.touch #hud .respawn{ top:42%; width:auto; left:43%; margin:0; transform:translateX(-50%); flex-direction:row; gap:8px; }
   body.touch #hud .respawn svg{ width:46px; height:46px; } body.touch #hud .respawn b{ width:46px; height:46px; line-height:46px; right:auto; font-size:22px; }
   body.touch #hud .rs-l{ margin:0; font-size:12px; } body.touch #hud .respawn small{ margin:0; font-size:12px; }
-  body.touch #hud .slain{ top:calc(47% + 50px); }
+  body.touch #hud .slain{ top:calc(42% + 50px); left:43%; max-width:min(280px, 34vw); } /* clear of the Lock button and above the fury dial */
+  /* toasts: the two newest, in the gap between the scorebug and the pause button */
+  body.touch #hud .accolades{ top:calc(6px + var(--sat)); right:calc(64px + var(--sar)); max-width:calc(50vw - 234px - var(--sar)); }
+  body.touch #hud .acc{ font-size:13px; padding:3px 10px 3px 12px; gap:6px; }
+  body.touch #hud .acc:nth-last-child(n+3){ display:none; }
 }
 /* ---------- touch */
 #touch{ position:fixed; inset:0; z-index:4; touch-action:none; pointer-events:auto; }
@@ -4937,7 +4949,7 @@ const HUD = (() => {
     if (Match.phase === 'play') HN.t += dt;
     const touch = Input.device === 'touch', want = HN.t > 0.6 && HN.t < 20 && !(touch && tipT > 0); // on a phone the hints share the tip's lane: one message at a time, one line at a time
     if (touch && want) { const i = ((HN.t / 5.5) | 0) % 3; if (i !== HN.i) { HN.i = i; E.hints.dataset.i = i; } }
-    if (want && HN.dev !== Input.device) { HN.dev = Input.device; hid(E.hints, false); E.hints.innerHTML = Input.device === 'touch' ? '<span class="hn"><b>Strike</b> tap to strike · hold for a heavy blow</span><span class="hn"><b>Block</b> just as a blow lands to parry</span><span class="hn"><b>Boost</b> to go supersonic and demolish</span>' : hintChip('move', 'move') + hintChip('atk', 'strike · hold heavy') + hintChip('block', 'block · parry') + hintChip('boost', 'boost') + hintChip('jump', 'jump') + hintChip('lock', 'target cam'); }
+    if (want && HN.dev !== Input.device) { HN.dev = Input.device; hid(E.hints, false); cls(E.hints, 'one', Input.device === 'touch'); HN.i = -1; E.hints.innerHTML = Input.device === 'touch' ? '<span class="hn"><b>Strike</b> tap to strike · hold for a heavy blow</span><span class="hn"><b>Block</b> just as a blow lands to parry</span><span class="hn"><b>Boost</b> to go supersonic and demolish</span>' : hintChip('move', 'move') + hintChip('atk', 'strike · hold heavy') + hintChip('block', 'block · parry') + hintChip('boost', 'boost') + hintChip('jump', 'jump') + hintChip('lock', 'target cam'); }
     if (want !== HN.on) { HN.on = want; cls(E.hints, 'on', want); cls(E.hud, 'hintson', want); }
   }  let numN = 0, numT = 0;
   function num(pos, text, cls) {
@@ -5284,7 +5296,7 @@ const Prog = (() => {
   function nextDiv(mode) { const m = S.mmr[mode]; return m == null || m >= 2100 ? '' : rankOf(m - m % 100 + 100).name; }
   // loop-4: up to three near-miss lines sorted by closeness ({ m: est. matches, t: results text, q: queue text, hot/warn })
   function nextUp(mode) {
-    const out = [], T = S.stats, per = T.matches ? Math.max(120, (T.xpTotal || 0) / T.matches) : 300;
+    const out = [], T = S.stats, per = T.matches ? Math.max(120, (T.xpReal != null ? T.xpReal : T.xpTotal || 0) / T.matches) : 300; // xpReal: XP from real matches (practice is not a match)
     const gap = xpFor(S.level) - S.xp, em = Math.max(1, Math.ceil(gap / per));
     out.push({ m: em, t: `${gap} XP to Level ${S.level + 1}`, q: `${gap} XP to Level ${S.level + 1}` });
     if (mode && mode !== 'training' && S.mmr[mode] != null) {
@@ -5328,7 +5340,7 @@ const Prog = (() => {
       S.chal = S.chal.filter((c) => c.p < c.n); refill();
     }
     const xp = res.xpLines.reduce((a, b) => a + b[1], 0); res.xp = xp;
-    res.lvl0 = S.level; res.xp0 = S.xp; S.xp += xp; T.xpTotal = (T.xpTotal || 0) + xp;
+    res.lvl0 = S.level; res.xp0 = S.xp; S.xp += xp; T.xpTotal = (T.xpTotal || 0) + xp; if (!training) T.xpReal = (T.xpReal != null ? T.xpReal : (T.xpTotal || 0) - xp) + xp;
     res.levelUps = 0; while (S.xp >= xpFor(S.level)) { S.xp -= xpFor(S.level); S.level++; res.levelUps++; grant(rollDrop(1)); }
     res.lvl1 = S.level; res.xp1 = S.xp;
     // loop-3: a spoils crate every win (and half of losses), guaranteed Uncommon+ for the first three matches, 5% Golden Spoils (Import+)
@@ -5632,7 +5644,8 @@ const Meta = (() => {
     m.contracts = int(m.contracts); m.sweeps = int(m.sweeps);
   });
   // today's three contracts (rolled on first use each day; the same day always rolls the same three)
-  function daily() { const d = D(), t = today(); if (!d.daily || t > d.daily.day) d.daily = rollDaily(t); return d.daily; } // only ever rolls forward: a clock set back keeps the stored day (and what it already paid)
+  // only ever rolls forward: a clock set back keeps the stored day (and what it already paid). A stored day far in the future (the clock was ahead and came back) is adopted as today, so tomorrow rolls again
+  function daily() { const d = D(), t = today(); if (d.daily && d.daily.day - t > 1) d.daily.day = t; if (!d.daily || t > d.daily.day) d.daily = rollDaily(t); return d.daily; }
   // the streak as it stands today: lit (fought today), risk (fought yesterday, not yet today) or cold
   function streakNow() { const s = D().streak, gap = today() - s.last; return gap <= 0 ? { n: s.n, st: 'lit' } : gap === 1 && s.n > 0 ? { n: s.n, st: 'risk' } : { n: 0, st: 'cold' }; }
   const streakXp = (n) => (n >= 2 ? 5 * Math.min(n, 10) : 0);
@@ -5642,6 +5655,7 @@ const Meta = (() => {
   });
   onEnd.push((L, M, res, out) => {
     if (!L.real || M.forfeited) return; const d = D(), st = M.me.stats, win = out.win, t = today(), s = d.streak;
+    if (s.last - t > 1) s.last = t; // the clock was ahead and came back: today counts as fought, the streak carries on from here
     if (t > s.last) { s.n = t - s.last === 1 ? s.n + 1 : 1; s.last = t; s.best = Math.max(s.best, s.n); if (s.n >= 2) out.heads.push({ k: 'gold', i: 'flame', t: `${s.n}-day streak`, s: `+${streakXp(s.n)} XP on every match today` }); }
     if (t === s.last && streakXp(s.n)) Prog.addXp(streakXp(s.n), res, `Day streak ×${s.n}`);
     const dl = daily(), inc = { play: 1, win: win ? 1 : 0, mvp: M.mvpId === M.me.id ? 1 : 0, flawless: win && st.de === 0 ? 1 : 0, duelWin: win && M.mode === 'duel' ? 1 : 0, specWin: win && M.mode === 'spectacle' ? 1 : 0, favor2: st.favorPeak >= 2 ? 1 : 0, favor3: st.favorPeak >= 3 ? 1 : 0, rival: win ? L.seated.length : 0 };
@@ -5755,7 +5769,7 @@ const Meta = (() => {
   careerSecs.push({ id: 'feats', order: 40, html: featsCareer });
   // a toast for each feat, one after another once the results are up
   function toast(f, i) {
-    setTimeout(() => { if (UI.cur !== 'results') return; const t = el('div', 'mt-toast', `${ICON.star}<div><b>Feat · ${esc(f.n)}</b><span>${esc(f.t)} · ${esc(rewardText(f.rw))}</span></div>`); document.body.appendChild(t); sfx('equip'); setTimeout(() => t.remove(), 3700); }, 900 + i * 3900);
+    setTimeout(() => { if (Match.active) return; const t = el('div', 'mt-toast', `${ICON.star}<div><b>Feat · ${esc(f.n)}</b><span>${esc(f.t)} · ${esc(rewardText(f.rw))}</span></div>`); document.body.appendChild(t); sfx('equip'); setTimeout(() => t.remove(), 3700); }, 900 + i * 3900);
   }
   // ---------- the Emperor's Bounty: one marked enemy (the Nemesis first, then a rival) pays +100 score and bonus XP to the first KO you land on them
   const BOUNTY_XP = 75;
@@ -6078,7 +6092,7 @@ const UI = (() => {
     $('#setBody').innerHTML = grp('Audio', 'audio', rng('sVm', 'Master volume', Math.round(V.master * 100), 0, 100) + rng('sVmu', 'Music', Math.round(V.music * 100), 0, 100) + rng('sVs', 'Effects', Math.round(V.sfx * 100), 0, 100))
       + grp('Controls', 'pad', rng('sSens', 'Look sensitivity', Math.round(G.sens * 100), 20, 250, 1) + chk('sInv', 'Invert camera Y', G.invY) + chk('sLock', 'Target cam by default', G.lock)
         + (IS_TOUCH ? rng('sBtn', 'Button size', Math.round(num('btnScale', 1) * 100), 80, 140, 1) + chk('sLefty', 'Left-handed layout', on('lefty', false), 'Buttons on the left, stick on the right') : '')
-        + chk('sRumble', 'Rumble', on('rumble', true), 'Controller vibration') + `<details class="sref"><summary>${IS_TOUCH ? 'Touch controls' : 'Controls reference'}</summary>${ctl}</details>`)
+        + (IS_TOUCH ? '' : chk('sRumble', 'Rumble', on('rumble', true), 'Controller vibration')) + `<details class="sref"><summary>${IS_TOUCH ? 'Touch controls' : 'Controls reference'}</summary>${ctl}</details>`)
       + grp('Camera', 'cam', rng('sCam', 'Camera distance', Math.round(num('camDist', 1) * 100), 80, 140, 1) + rng('sShake', 'Screen shake', Math.round(G.shake * 100), 0, 100, 1))
       + grp('Graphics', 'gfx', sel('sQ', 'Quality', '<option value="-1">Auto</option><option value="0">Low</option><option value="1">Medium</option><option value="2">High</option>') + chk('sPost', 'Bloom &amp; grading', on('post', true), 'Glow and filmic colour') + chk('sDyn', 'Dynamic resolution', on('dynRes', true), 'Keeps the frame rate smooth') + sel('sArena', 'Lighting', `<option value="random">Random</option>${Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${p.label}</option>`).join('')}`))
       + grp('Interface', 'hud', rng('sHud', 'HUD size', Math.round(num('hudScale', 1) * 100), 80, 130, 1) + chk('sRadar', 'Radar', on('radar', true), 'Mini map of the sand') + chk('sDmg', 'Damage numbers', G.dmgNums))
@@ -6424,12 +6438,14 @@ body.touch .ld-act{ min-height:44px; padding:0 18px; font-size:16px; } body.touc
 body.touch .ld-yard button{ min-height:44px; justify-content:center; }
 @media (orientation: landscape){
   body.touch #ludus{ --ld-top:calc(62px + var(--sat)); }
-  body.touch .ld-wrap,body.touch .ld-yard,body.touch .ld-offer{ left:calc(196px + var(--sal)); right:calc(300px + var(--sar)); } /* the HUD's left column and the action buttons (right 300 px) stay clear */
+  body.touch .ld-wrap,body.touch .ld-yard,body.touch .ld-offer{ left:calc(128px + var(--sal)); right:calc(300px + var(--sar)); } /* clear of the combo counter and of the action buttons (right 300 px) */
+  body.touch #hud .favor:not([hidden]) ~ #ludus .ld-wrap{ left:calc(196px + var(--sal)); width:min(420px, max(250px, calc(100vw - 508px - var(--sal) - var(--sar)))); } /* the favour meter is up (the taunt lesson): step aside */
+  body.touch .ld-b{ white-space:normal; padding:0 12px; font-size:16px; line-height:1.1; }
   body.touch #hud.ld-on .radar{ display:none; } body.touch #hud.ld-on .announce{ top:64%; }
   body.touch .ld-text{ font-size:15px; line-height:1.25; }
-  body.touch .ld-wrap{ width:min(420px, calc(100vw - 508px - var(--sal) - var(--sar))); }
-  body.touch .ld-yard{ max-width:calc(100vw - 504px - var(--sal) - var(--sar)); flex-wrap:wrap; justify-content:center; }
-  body.touch .ld-offer{ top:var(--ld-top); bottom:auto; width:min(500px, calc(100vw - 508px - var(--sal) - var(--sar))); }
+  body.touch .ld-wrap{ width:min(420px, max(250px, calc(100vw - 440px - var(--sal) - var(--sar)))); }
+  body.touch .ld-yard{ max-width:max(250px, calc(100vw - 436px - var(--sal) - var(--sar))); flex-wrap:wrap; justify-content:center; }
+  body.touch .ld-offer{ top:var(--ld-top); bottom:auto; width:min(500px, max(250px, calc(100vw - 440px - var(--sal) - var(--sar)))); }
   body.touch .ld-grad{ padding-top:calc(60px + var(--sat)); }
 }
 @media (orientation: portrait){
@@ -7381,7 +7397,7 @@ const Match = (() => {
     let sdt = dt;
     if (M.active && !M.paused) {
       M.t += dt;
-      if (M.phase === 'intro' && (M.t > 2.9 || (M.t > 0.6 && (Input.pressed('jump') || Input.pressed('confirm') || Input.pressed('atk'))))) beginCount(false);
+      if (M.phase === 'intro' && (M.t > 2.9 || (M.t > 0.6 && !guard && (Input.pressed('jump') || Input.pressed('confirm') || Input.pressed('atk'))))) beginCount(false);
       else if (M.phase === 'count') { const c = 3 - Math.floor(M.t / 0.8); if (c !== prevCount && c > 0) { prevCount = c; HUD.ann(String(c), 'count', M.quick && c === 2 ? 'Round ' + M.round : '', 0.7); Sound.S.count(c); } if (M.t >= 2.4) go(); }
       else if (M.phase === 'play') {
         if (M.roundT > 0) { // duel: the aftermath of a KO; the clock waits, then a dip to black covers the reset
@@ -7399,7 +7415,7 @@ const Match = (() => {
         }
       } else if (M.phase === 'ot') { M.clock += dt; M.time += dt; }
       else if (M.phase === 'otc' && M.t > 2) { kickoff(); for (const g of M.glads) { g.alive = true; g.hp = TUNE.HP; } Sim.frozen = true; Sim.play = false; beginCount(true); }
-      else if (M.phase === 'end') { if (M.t > 1.2) skipBtn(true); if (M.t > 2.2) celebrate(); else if (M.t > 1.2 && skipWanted()) { celebrate(); finish(); } }
+      else if (M.phase === 'end') { if (M.t > 1.2) skipBtn(true); if (M.t > 2.2) celebrate(); else if (M.t > 1.2 && !guard && skipWanted()) { celebrate(); finish(); } }
       else if (M.phase === 'celebrate') { FX.confetti(dt, 70); for (const g of M.glads) { const c = g.cel; if (c) g.pose = M.t >= c.at && M.t < c.at + c.dur ? c.pose : 'victory'; } if (M.t > 4.8 || (M.t > 1.0 && skipWanted())) finish(); }
       HUD.clock(M.clock, M.ot, M.mode === 'training');
       if (M.mutator) Mutators.update(dt, M.glads);
