@@ -4088,7 +4088,7 @@ const Input = (() => {
       if (e.code === 'KeyF' && !e.repeat && !e.ctrlKey && !e.metaKey) fullscreen();
     });
     addEventListener('keyup', (e) => keys.delete(e.code));
-    addEventListener('blur', () => { keys.clear(); mb.fill(false); releaseAll(); setTimeout(() => { if (!document.hasFocus || !document.hasFocus()) autoPause(); }, 120); });
+    addEventListener('blur', () => { keys.clear(); mb.fill(false); releaseAll(); setTimeout(() => { if (!IS_TOUCH && (!document.hasFocus || !document.hasFocus())) autoPause(); }, 120); }); // phones pause on visibilitychange instead: an embedded frame loses focus for reasons that are not the player leaving
     document.addEventListener('visibilitychange', () => { if (!document.hidden) return; keys.clear(); mb.fill(false); releaseAll(); if (typeof Match !== 'undefined' && Match.active && Match.paused && Match.resumeT > 0) Match.pause(); });
     cv.addEventListener('mousedown', (e) => { if (!enabled) return; mb[e.button] = true; latch.add(['atk', 'lock', 'block'][e.button] || 'atk'); setDev('kb'); if (!document.pointerLockElement && cv.requestPointerLock) { try { const p = cv.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) { /* sandboxed */ } } });
     addEventListener('mouseup', (e) => { mb[e.button] = false; });
