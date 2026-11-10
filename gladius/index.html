@@ -877,6 +877,16 @@ body.touch #hud .scoreboard{ max-height:calc(100% - 20px); overflow:hidden; padd
 .furymini.pad .fm-bar{ animation:fmpad .4s ease-out; }
 @keyframes fmpad{ 0%{ box-shadow:0 0 0 0 rgba(255,214,110,.9); } 100%{ box-shadow:0 0 0 8px rgba(255,214,110,0); } }
 
+/* phone lanes (integration): one message at a time in the middle of a small screen */
+body.touch #hud.slainon .tip, body.touch #hud.slainon .hints{ opacity:0; }
+@media (orientation: landscape){
+  body.touch #hud .objective:not([hidden]) ~ .announce{ top:29%; }
+  body.touch #hud .tip, body.touch #hud .hints{ left:45%; max-width:min(360px, 42vw); }
+  body.touch #hud .respawn{ top:47%; width:auto; left:50%; margin:0; transform:translateX(-50%); flex-direction:row; gap:8px; }
+  body.touch #hud .respawn svg{ width:46px; height:46px; } body.touch #hud .respawn b{ width:46px; height:46px; line-height:46px; right:auto; font-size:22px; }
+  body.touch #hud .rs-l{ margin:0; font-size:12px; } body.touch #hud .respawn small{ margin:0; font-size:12px; }
+  body.touch #hud .slain{ top:calc(47% + 50px); }
+}
 /* ---------- touch */
 #touch{ position:fixed; inset:0; z-index:4; touch-action:none; pointer-events:auto; }
 #touch[hidden]{ display:none; }
