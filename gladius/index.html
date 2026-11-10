@@ -6532,7 +6532,9 @@ body.touch .ld-yard button{ min-height:44px; justify-content:center; }
     if (hide) return;
     const W = innerWidth, H = innerHeight; _m.set(x, (g ? g.pos.y : 0) + o.h, z).project(__G.camera);
     // the edge arrow keeps out of the HUD's top band and, on a portrait phone, out of the controls band at the bottom
-    const port = IS_TOUCH && H > W, lo = port ? 175 : IS_TOUCH ? 110 : 150, hi = port ? H - Math.min(H * 0.44, 340) - 34 : H - 70;
+    // (on a portrait phone the lesson card sits under that band: the pin stays below the card; its box is measured twice a second, not per frame)
+    if (Sim.time - (o.cbT || -9) > 0.5 || o.cbT > Sim.time) { o.cbT = Sim.time; o.cb = IS_TOUCH && H > W && E.card && !E.wrap.hidden ? E.card.getBoundingClientRect().bottom + 26 : 0; }
+    const port = IS_TOUCH && H > W, lo = Math.max(port ? 175 : IS_TOUCH ? 110 : 150, o.cb || 0), hi = port ? H - Math.min(H * 0.44, 340) - 34 : H - 70;
     let sx = (_m.x * 0.5 + 0.5) * W, sy = (-_m.y * 0.5 + 0.5) * H; const front = _m.z < 1 && _m.z > -1, off = !(front && sx > 50 && sx < W - 50 && sy > lo && sy < H - 40);
     if (off) { let ax = sx - W / 2, ay = sy - (lo + hi) / 2; if (!front) { ax = -ax; ay = -ay; } const a = Math.atan2(ay, ax); sx = W / 2 + Math.cos(a) * (W / 2 - 60); sy = (lo + hi) / 2 + Math.sin(a) * Math.max(10, (hi - lo) / 2); E.edge.style.setProperty('--a', (a * 180 / Math.PI + 90).toFixed(0) + 'deg'); }
     if (off !== o.off) { o.off = off; E.mark.classList.toggle('off', off); }
