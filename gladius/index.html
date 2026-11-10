@@ -5254,6 +5254,7 @@ const Tutorial = (() => {
 .ld-top{ display:flex; align-items:center; gap:12px; min-height:24px; }
 .ld-kick{ font-weight:800; font-size:13px; letter-spacing:.16em; color:var(--gold); white-space:nowrap; }
 .ld-kick b{ color:#fff2c4; }
+.ld-tname{ display:none; }
 .ld-prog{ flex:1; display:flex; gap:3px; justify-content:center; }
 .ld-prog i{ flex:0 1 20px; height:4px; background:rgba(255,255,255,.14); }
 .ld-prog i.ok{ background:linear-gradient(90deg,#c98a1a,#ffd66e); } .ld-prog i.sk{ background:rgba(185,119,59,.5); }
@@ -5353,7 +5354,13 @@ body.touch .ld-yard button{ min-height:44px; justify-content:center; }
 @media (orientation: portrait){
   body.touch #ludus{ --ld-top:calc(150px + var(--sat)); } /* below the scorebug and the HP / fury row */
   body.touch .ld-wrap{ width:min(440px, calc(100vw - 20px)); }
-  body.touch .ld-name{ font-size:18px; } body.touch .ld-text{ font-size:15px; }
+  /* compact card so the partner (high on a tall screen) stays in view: lesson number + name share the row with Skip, the progress ticks run along the bottom edge */
+  body.touch .ld-card{ padding:2px 8px 9px 12px; } body.touch .ld-kick,body.touch .ld-name{ display:none; }
+  body.touch .ld-tname{ display:block; flex:1; min-width:0; text-align:left; font-family:var(--display); font-weight:700; font-size:16px; letter-spacing:.05em; text-transform:uppercase; color:var(--marble); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  body.touch .ld-tname b{ margin-right:6px; color:var(--gold); }
+  body.touch .ld-prog{ position:absolute; left:12px; right:12px; bottom:3px; } body.touch .ld-prog i{ flex:1 1 auto; height:3px; }
+  body.touch .ld-text{ font-size:15px; text-align:left; } body.touch .ld-goal{ justify-content:flex-start; margin-top:4px; min-height:0; }
+  body.touch .ld-hint{ text-align:left; }
   body.touch .ld-yard{ width:min(440px, calc(100vw - 20px)); flex-wrap:wrap; justify-content:center; }
   body.touch .ld-yard button{ flex:1 1 40%; }
   body.touch .ld-offer{ top:var(--ld-top); bottom:auto; width:min(440px, calc(100vw - 20px)); }
@@ -5370,11 +5377,11 @@ body.touch .ld-yard button{ min-height:44px; justify-content:center; }
   function build() {
     if (root) return;
     hudEl = document.getElementById('hud'); root = el('div'); root.id = 'ludus';
-    root.innerHTML = '<div class="ld-wrap" hidden><div class="ld-card"><div class="ld-top"><span class="ld-kick"></span><span class="ld-prog"></span><button class="ld-skip" data-ld="skip" tabindex="-1"><i></i><span></span></button></div><div class="ld-name"></div><div class="ld-text"></div><div class="ld-goal"><span class="ld-pips"></span><span class="ld-lab"></span><button class="ld-b ld-act" data-ld="taunt" tabindex="-1" hidden>Taunt</button></div><div class="ld-hint"></div><div class="ld-stamp"><span></span></div></div></div>'
+    root.innerHTML = '<div class="ld-wrap" hidden><div class="ld-card"><div class="ld-top"><span class="ld-kick"></span><span class="ld-tname"></span><span class="ld-prog"></span><button class="ld-skip" data-ld="skip" tabindex="-1"><i></i><span></span></button></div><div class="ld-name"></div><div class="ld-text"></div><div class="ld-goal"><span class="ld-pips"></span><span class="ld-lab"></span><button class="ld-b ld-act" data-ld="taunt" tabindex="-1" hidden>Taunt</button></div><div class="ld-hint"></div><div class="ld-stamp"><span></span></div></div></div>'
       + '<div class="ld-mark" hidden><div class="ld-pin"><b></b><em></em><i></i></div><div class="ld-edge"><i></i><b></b></div></div><div class="ld-yard" hidden></div><div class="ld-offer plaque" hidden></div><div class="ld-grad" hidden></div>';
     hudEl.appendChild(root);
     const q = (s) => root.querySelector(s);
-    Object.assign(E, { wrap: q('.ld-wrap'), card: q('.ld-card'), kick: q('.ld-kick'), prog: q('.ld-prog'), skipFill: q('.ld-skip i'), skipLab: q('.ld-skip span'), name: q('.ld-name'), text: q('.ld-text'), pips: q('.ld-pips'), lab: q('.ld-lab'), act: q('.ld-act'), hint: q('.ld-hint'), stamp: q('.ld-stamp span'), mark: q('.ld-mark'), pinLab: q('.ld-pin b'), pinDist: q('.ld-pin em'), edge: q('.ld-edge i'), edgeLab: q('.ld-edge b'), yard: q('.ld-yard'), offer: q('.ld-offer'), grad: q('.ld-grad') });
+    Object.assign(E, { wrap: q('.ld-wrap'), card: q('.ld-card'), kick: q('.ld-kick'), prog: q('.ld-prog'), skipFill: q('.ld-skip i'), skipLab: q('.ld-skip span'), name: q('.ld-name'), tname: q('.ld-tname'), text: q('.ld-text'), pips: q('.ld-pips'), lab: q('.ld-lab'), act: q('.ld-act'), hint: q('.ld-hint'), stamp: q('.ld-stamp span'), mark: q('.ld-mark'), pinLab: q('.ld-pin b'), pinDist: q('.ld-pin em'), edge: q('.ld-edge i'), edgeLab: q('.ld-edge b'), yard: q('.ld-yard'), offer: q('.ld-offer'), grad: q('.ld-grad') });
     // HUD buttons act on press and never take focus (a focused button would swallow Space / Enter during play)
     const press = (e) => { const b = e.target.closest && e.target.closest('[data-ld]'); if (!b) return; e.preventDefault(); e.stopPropagation(); if (e.type === 'pointerdown') hud(b.dataset.ld); };
     root.addEventListener('pointerdown', press); root.addEventListener('mousedown', press);
@@ -5500,7 +5507,7 @@ body.touch .ld-yard button{ min-height:44px; justify-content:center; }
     if (!tu.done && tu.step !== i) { tu.step = i; Prog.save(); }
     if (me.alive) me.hp = TUNE.HP; if (dum.alive) dum.hp = TUNE.HP; dum.brain.set('stand'); mark(null); E.act.hidden = true; E.hint.innerHTML = '';
     if (s.enter) s.enter();
-    E.kick.innerHTML = `LUDUS · LESSON <b>${NUM[i + 1]}</b> OF ${NUM[STEPS.length]}`; E.name.innerHTML = esc(s.name) + (s.opt ? '<small>Bonus</small>' : '');
+    E.kick.innerHTML = `LUDUS · LESSON <b>${NUM[i + 1]}</b> OF ${NUM[STEPS.length]}`; E.name.innerHTML = esc(s.name) + (s.opt ? '<small>Bonus</small>' : ''); E.tname.innerHTML = `<b>${NUM[i + 1]}</b> ${esc(s.name)}`;
     renderProg(); renderPips(); renderText(); renderSkip();
     E.card.classList.remove('done', 'in'); void E.card.offsetWidth; E.card.classList.add('in');
   }
