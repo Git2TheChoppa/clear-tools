@@ -401,7 +401,8 @@ body.touch #hud .combo b{ font-size:32px; } body.touch #hud .combo span{ font-si
 .mt b{ font-weight:700; }
 .mt small{ max-width:100%; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:14px; font-weight:600; color:var(--dim); letter-spacing:.01em; }
 #tMenu .btn::before{ content:""; position:absolute; left:-1px; top:-1px; bottom:-1px; width:5px; background:var(--gold); transform:scaleY(0); transition:transform .14s; }
-#tMenu .btn:focus-visible::before,#tMenu .btn:active::before{ transform:scaleY(1); }
+#tMenu .btn:active::before{ transform:scaleY(1); }
+#tMenu .btn:focus-visible::before{ transform:scaleY(1); }
 #tMenu .btn:not(.primary):active{ background:linear-gradient(180deg, rgba(110,72,40,.96), rgba(56,36,22,.96)); border-color:var(--gold); }
 #tMenu .btn.primary:active{ background:linear-gradient(180deg, #fff0b0, #f6c04a 55%, #dc9b22); }
 .mbdg{ position:absolute; right:-8px; top:-10px; padding:2px 8px; transform:skewX(10deg); font-style:normal; font-size:12px; font-weight:800; letter-spacing:.1em; line-height:1.35; text-transform:uppercase; white-space:nowrap; color:#2a1606; background:linear-gradient(180deg, #ffe7a0, #e6a92c); box-shadow:0 2px 8px rgba(0,0,0,.55); pointer-events:none; }
@@ -592,7 +593,8 @@ body.touch #hud .combo b{ font-size:32px; } body.touch #hud .combo span{ font-si
 #armGrid .item.locked .ic{ opacity:.38; filter:none; }
 #armGrid .item.locked b{ color:#cbbfa8; }
 #armGrid .lk{ position:absolute; right:-4px; bottom:-2px; width:26px; height:26px; padding:4px; fill:none; stroke:#f3e9d6; stroke-width:2; stroke-linejoin:round; background:rgba(20,12,7,.92); border:1px solid rgba(243,233,214,.4); border-radius:50%; }
-#armGrid .item.pv{ border-style:solid; border-color:var(--rc); box-shadow:0 0 0 1px var(--rc), 0 0 18px color-mix(in srgb, var(--rc) 45%, transparent); }
+#armGrid .item.pv{ border-style:solid; border-color:var(--rc); box-shadow:0 0 0 1px var(--rc), 0 0 14px var(--rc); }
+@supports (color: color-mix(in srgb, red 50%, blue)){ #armGrid .item.pv{ box-shadow:0 0 0 1px var(--rc), 0 0 18px color-mix(in srgb, var(--rc) 45%, transparent); } }
 #armGrid .item.eq::after{ content:none; }
 #armGrid .eqm{ position:absolute; left:0; right:0; bottom:0; padding:2px 0; font-size:11px; font-weight:800; letter-spacing:.12em; text-transform:uppercase; color:#2a1606; background:var(--gold); }
 #armGrid .item.eq{ padding-bottom:22px; }
@@ -723,7 +725,7 @@ body.touch #hud .combo b{ font-size:32px; } body.touch #hud .combo span{ font-si
 .crate{ cursor:pointer; }
 .crate.gold .box,.crate.gold .lid{ filter:brightness(1.4) saturate(1.3); border-color:#8a6a1e; }
 .crate.gold::after{ content:"GOLDEN SPOILS"; position:absolute; left:50%; top:-30px; transform:translateX(-50%); font-weight:800; font-size:15px; letter-spacing:.14em; color:#ffd24a; text-shadow:0 1px 2px #000; white-space:nowrap; }
-.rrow{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:14px; max-width:min(900px, 94vw); }
+.rrow{ display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin-top:14px; max-width:min(900px, 94vw); max-height:44vh; overflow-y:auto; touch-action:pan-y; }
 .rrow .rcard{ min-width:160px; padding:12px 14px; display:flex; flex-direction:column; align-items:center; gap:2px; }
 .rrow .rcard .ri{ font-size:22px; } .rrow .rcard .rico{ width:44px; height:44px; margin-bottom:4px; } .rrow .rcard .rr{ font-size:15px; } .rrow .rcard .btn{ margin-top:8px; }
 .rfoot{ margin-top:12px; min-height:18px; color:var(--dim); font-size:15px; }
@@ -758,7 +760,7 @@ body.touch #hud .combo b{ font-size:32px; } body.touch #hud .combo span{ font-si
   .crate{ width:130px; height:100px; margin-bottom:10px; } .crate .box{ height:68px; } .crate .lid{ height:32px; } .crate .box::before,.crate .lid::before{ left:16px; } .crate .box::after,.crate .lid::after{ right:16px; } .crate .lockp{ top:26px; transform:scale(.8); }
   .crate .rays{ width:260px; height:260px; margin:-130px 0 0 -130px; }
   #rcard{ padding:10px 18px; } #rcard .rico{ width:52px; height:52px; margin-bottom:2px; } #rcard .ri{ font-size:24px; } .reveal .btns{ margin-top:10px; } .rfoot{ margin-top:6px; font-size:13px; }
-  .rrow{ margin-top:8px; } .rrow .rcard{ min-width:130px; padding:8px 10px; }
+  .rrow{ margin-top:8px; max-height:32vh; } .rrow .rcard{ min-width:130px; padding:8px 10px; }
 }
 @media (orientation:portrait) and (max-width:760px){
   #scr-reveal.opened{ align-items:end; background:linear-gradient(180deg, rgba(18,11,7,.04) 0%, rgba(18,11,7,.06) 40%, rgba(18,11,7,.8) 60%, rgba(18,11,7,.9) 100%); }
@@ -818,7 +820,7 @@ body.touch #hud .scoreboard{ max-height:calc(100% - 20px); overflow:hidden; padd
   body.touch #hud .objective{ top:calc(64px + var(--sat)); width:220px; margin-left:-110px; padding:3px 8px 4px; }
   body.touch #hud .ob-t b{ font-size:12px; } body.touch #hud .ob-t small{ font-size:11px; }
   body.touch #hud .feed{ top:calc(62px + var(--sat)); right:calc(10px + var(--sar)); }
-  body.touch #hud .accolades{ top:calc(140px + var(--sat)); right:calc(112px + var(--sar)); }
+  body.touch #hud .accolades{ top:calc(6px + var(--sat)); right:calc(64px + var(--sar)); max-height:58px; overflow:hidden; }
   body.touch #hud .announce{ top:23%; }
   body.touch #hud .tip{ top:auto; bottom:calc(122px + var(--sab)); max-width:min(440px, 50vw); font-size:15px; }
   body.touch #hud .hints{ bottom:calc(116px + var(--sab)); max-width:min(440px, 50vw); font-size:12px; flex-direction:column; align-items:center; gap:3px; }
@@ -882,6 +884,11 @@ body.touch #hud .hints .hn{ display:none; white-space:nowrap; }
 body.touch #hud .hints[data-i="0"] .hn:nth-child(1), body.touch #hud .hints[data-i="1"] .hn:nth-child(2), body.touch #hud .hints[data-i="2"] .hn:nth-child(3){ display:block; }
 @media (orientation: portrait){ body.touch #hud .hints{ bottom:calc(var(--cb) + 4px + var(--sab)); font-size:12.5px; max-width:96vw; } }
 body.touch #hud.slainon .tip, body.touch #hud.slainon .hints{ opacity:0; }
+@media (orientation: portrait){
+  body.touch #hud.respawnon .chatlog, body.touch #hud.respawnon .favor{ opacity:0; }
+  body.touch #hud .respawn{ top:calc(102px + var(--sat)); bottom:auto; left:calc(10px + var(--sal)); transform:none; } /* under the HP bar, which is empty just then */
+  body.touch #hud .accolades{ top:calc(288px + var(--sat)); } /* below the banner, not beside it */
+}
 @media (orientation: landscape){
   body.touch #hud .objective:not([hidden]) ~ .announce{ top:29%; }
   body.touch #hud .tip, body.touch #hud .hints{ left:45%; max-width:min(360px, 42vw); }
@@ -4559,7 +4566,7 @@ const Input = (() => {
   };
   function setDev(d) { if (d === device) return; device = d; try { Bus.emit('device', { device: d }); } catch (e) { /* listener error */ } }
   // pause the match when the player's hands leave the game (focus, pointer lock or pad lost); never in menus
-  function autoPause() { try { if (typeof Match !== 'undefined' && Match.active && !Match.paused && UI.cur === 'hud' && Match.phase !== 'done' && Match.phase !== 'celebrate') Match.pause(); } catch (e) { /* not booted */ } }
+  function autoPause() { try { if (typeof Match !== 'undefined' && Match.active && (!Match.paused || Match.resumeT > 0) && UI.cur === 'hud' && Match.phase !== 'done' && Match.phase !== 'celebrate') Match.pause(); } catch (e) { /* not booted */ } }
   // ---------- touch: every finger is tracked by identifier and keeps the job it started with
   const F = new Map(), BR = [], bcnt = {}, TV = { boost: null, lock: null, taunt: null, chg: -1 };
   let tz = null, base = null, knob = null, hint = null, btnEls = [], sId = null, sx = 0, sy = 0, lookId = null, hintDone = false, ghostX = 0, ghostY = 0, por = false, lefty = false;
@@ -4744,7 +4751,7 @@ const Input = (() => {
     get device() { return device; }, get enabled() { return enabled; },
     get fullscreenOK() { try { return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); } catch (e) { return false; } },
     get portrait() { return por; },
-    clearTouch() { releaseAll(); },
+    clearTouch() { releaseAll(); }, clearLook() { tLook.x = tLook.y = look.x = look.y = 0; },
   };
 })();
 
@@ -4765,7 +4772,7 @@ const Cam = (() => {
   function kick(dir, amt) { C.kickV.addScaledVector(dir, amt * motionK()); }
   function fovPunch(v) { C.fovK += v * motionK(); }
   let vOff = 0, vW = 0, vH = 0; // shell: off-axis shift of the image (fraction of the screen height), only for portrait touch play
-  function viewOff(want, dt) { vOff = Math.abs(want - vOff) < 0.002 ? want : damp(vOff, want, 5, dt); if (cam && (vOff !== cam.__vo || innerWidth !== vW || innerHeight !== vH)) { cam.__vo = vOff; vW = innerWidth; vH = innerHeight; if (vOff) cam.setViewOffset(vW, vH, 0, vOff * vH, vW, vH); else if (cam.view && cam.view.enabled) cam.clearViewOffset(); } }
+  function viewOff(want, dt) { vOff = !dt || innerWidth !== vW || innerHeight !== vH || Math.abs(want - vOff) < 0.002 ? want : damp(vOff, want, 5, dt); if (cam && (vOff !== cam.__vo || innerWidth !== vW || innerHeight !== vH)) { cam.__vo = vOff; vW = innerWidth; vH = innerHeight; if (vOff) cam.setViewOffset(vW, vH, 0, vOff * vH, vW, vH); else if (cam.view && cam.view.enabled) cam.clearViewOffset(); } }
   function update(dt, P, T, lockOn) {
     C.t += dt; const wantPos = _v, wantLook = _w; let fov = 70, k = 5;
     if (C.lock > 0) C.lock = Math.max(0, C.lock - dt);
@@ -4887,10 +4894,10 @@ const HUD = (() => {
     E.acc.appendChild(d); const list = E.acc.querySelectorAll('.acc'); if (list.length > 4) list[0].remove(); d._h = setTimeout(() => accGone(d), 2600);
   }
   // hit combo for the human: consecutive landed hits within 1.6 s ("3 HITS · 41"); a hit taken ends it
-  const CB = { n: 0, dmg: 0, t: -9, on: false };
+  const CB = { n: 0, dmg: 0, t: -9, on: false }, SEEN = new Set();
   function comboHit(e) {
     const me = V.me; if (!me || !E.hud.classList.contains('on')) return;
-    if (e.v === me) { CB.n = 0; return; } if (e.a !== me) return;
+    if (e.v === me) { CB.n = 0; CB.dmg = 0; return; } if (e.a !== me) return;
     const t = Sim.time; if (t - CB.t > 1.6) { CB.n = 0; CB.dmg = 0; } CB.t = t; CB.n++; CB.dmg += e.dmg || 0;
     if (CB.n < 2) return;
     if (!CB.on) { CB.on = true; hid(E.combo, false); } cls(E.combo, 'drop', false);
@@ -4945,7 +4952,7 @@ const HUD = (() => {
     if (annT > 0) { annT -= dt; if (annT <= 0) annOut(false); }
     if (tipT > 0) { tipT -= dt; if (tipT <= 0) E.tip.classList.remove('on'); }
     // nameplates
-    const seen = new Set();
+    const seen = SEEN; seen.clear();
     for (const g of glads) {
       if (g === me || !g.alive) continue;
       seen.add(g.id);
@@ -5025,7 +5032,7 @@ const HUD = (() => {
   function hudReset(on) {
     V.hp = -1; V.ghost = 1; V.ghostHold = 0; V.f = -1; V.buffs = ''; V.fury = -1; V.rs = -1;
     hid(E.radar, true); RA.acc = 1; HN.t = 0; HN.dev = ''; HN.on = false; cls(E.hints, 'on', false); cls(E.hud, 'hintson', false); boardKey = '';
-    if (!on) { respawn2(null); favor(null); objective(null); rounds(null); finale(false); CB.n = 0; CB.on = false; hid(E.combo, true); ACC.el = null; }
+    if (!on) { hid(E.respawn, true); cls(E.hud, 'respawnon', false); favor(null); objective(null); rounds(null); finale(false); CB.n = 0; CB.dmg = 0; CB.t = -9; CB.on = false; hid(E.combo, true); ACC.el = null; }
   }
   const popEl = (e, from = 1.8, ms = 380, rot = '') => { if (e && e.animate && !REDUCED_MOTION) e.animate([{ transform: `${rot}scale(${from})`, opacity: 0.2 }, { transform: `${rot}scale(1)`, opacity: 1 }], { duration: ms, easing: 'cubic-bezier(.2,.9,.3,1.35)' }); };
   // crowd favour: five pips, a fill inside the current one, draining look while idle, rank-up flourish, "the crowd wants" call with its timer
@@ -5064,7 +5071,7 @@ const HUD = (() => {
   }
   function finale(on) { cls(E.scorebug, 'finale', !!on); }
   // HUD scale (settings.hudScale 0.8–1.3): every cluster scales from its own corner via --hs
-  function applyScale() { const v = clamp(+Game.settings.hudScale || 1, 0.8, 1.3); if (E.hud) E.hud.style.setProperty('--hs', v.toFixed(2)); return v; }
+  function applyScale() { const v = Math.min(clamp(+Game.settings.hudScale || 1, 0.8, 1.3), IS_TOUCH && innerHeight > innerWidth ? 1.05 : 1.3); if (E.hud) E.hud.style.setProperty('--hs', v.toFixed(2)); return v; } // (main() calls it again on resize)
   // radar: the elliptical arena (own side at the bottom), pads, the Blessing, the objective ring, team dots and the human's arrow + camera wedge; ≤ 15 Hz
   const RA = { acc: 1, ctx: null, w: 0, h: 0, dpr: 1, chk: 0 };
   function radar(dt, glads, me) {
@@ -5116,7 +5123,8 @@ const HUD = (() => {
   }
   function furyPad() { pulse(E.fury, 'pad', 420); pulse(E.furyMini, 'pad', 420); }
   function respawn2(t, note) {
-    if (t == null) { if (V.rs !== -1) { V.rs = -1; hid(E.respawn, true); } return; }
+    if (t == null) { if (V.rs !== -1) { V.rs = -1; hid(E.respawn, true); cls(E.hud, 'respawnon', false); } return; }
+    if (V.rs === -1) cls(E.hud, 'respawnon', true);
     if (V.rs === -1 || t > V.rs + 0.05) V.rsMax = Math.max(0.5, t); V.rs = t; hid(E.respawn, false);
     tx(E.rsNum, String(Math.ceil(t))); sty(E.rsArc, 'strokeDashoffset', (213.6 * (1 - clamp(t / V.rsMax, 0, 1))).toFixed(1)); tx(E.rsNote, note || '');
   }
@@ -5930,7 +5938,7 @@ const UI = (() => {
     Input.enable(inGame); $('#touch').hidden = !(inGame && IS_TOUCH);
     if (!inGame) Input.clearTouch();
     if (n === 'title') renderTitle(); if (n === 'play') renderModes(); if (n === 'armory') renderArmory(); if (n === 'career') renderCareer(); if (n === 'settings') renderSettings();
-    if (n === 'title' || n === 'play' || n === 'career' || n === 'settings') Cam.set('menu'); if (n === 'armory') Cam.set('armory');
+    if (!Match.active) { if (n === 'title' || n === 'play' || n === 'career' || n === 'settings') Cam.set('menu'); if (n === 'armory') Cam.set('armory'); } // (Settings is also reachable from the pause menu)
     if (display) display.root.visible = ['title', 'play', 'armory', 'career', 'settings'].includes(n) && !Match.active;
     if ((prevScr === 'armory' || prevScr === 'reveal') && n !== prevScr) refreshDisplay();
     if (prevScr === 'reveal' && n !== 'reveal') { $('#scr-reveal').classList.remove('opened'); if (n === 'results') Cam.set('end'); }
@@ -5986,7 +5994,7 @@ const UI = (() => {
       try {
         const badge = val(e.badge), sub = val(e.sub), b = el('button', 'btn mx', `<span>${MI[e.id] || MI.def}<span class="mt"><b>${esc(e.label)}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</span></span>${badge ? `<em class="mbdg${/nemesis/i.test(badge) ? ' red' : ''}">${esc(badge)}</em>` : ''}`);
         b.dataset.mx = e.id; b.onclick = () => { Sound.init(); Sound.S.ui('click'); try { e.onClick(); } catch (err) { console.error(err); } };
-        b.addEventListener('pointerenter', () => Sound.S.ui('hover')); after.insertAdjacentElement('afterend', b); after = b;
+        b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') Sound.S.ui('hover'); }); after.insertAdjacentElement('afterend', b); after = b;
       } catch (err) { console.error(err); }
     }
     let i = 0; for (const b of list.children) b.style.setProperty('--i', i++);
@@ -6080,10 +6088,14 @@ const UI = (() => {
     bind('sVm', (e) => { V.master = e.value / 100; Sound.applyVolumes(); }); bind('sVmu', (e) => { V.music = e.value / 100; Sound.applyVolumes(); }); bind('sVs', (e) => { V.sfx = e.value / 100; Sound.applyVolumes(); });
     bind('sSens', (e) => (G.sens = e.value / 100)); bind('sInv', (e) => (G.invY = e.checked)); bind('sLock', (e) => (G.lock = e.checked)); bind('sShake', (e) => (G.shake = e.value / 100)); bind('sDmg', (e) => (G.dmgNums = e.checked));
     bind('sBtn', (e) => { G.btnScale = e.value / 100; tl(); }); bind('sLefty', (e) => { G.lefty = e.checked; tl(); }); bind('sCam', (e) => { G.camDist = e.value / 100; tl(); }); bind('sRumble', (e) => (G.rumble = e.checked));
-    bind('sPost', (e) => { G.post = e.checked; try { const P = __G.Post; if (P && P.setEnabled) P.setEnabled(e.checked); } catch (err) { console.error(err); } }); bind('sDyn', (e) => (G.dynRes = e.checked));
+    bind('sPost', (e) => { if (Match.active) { e.checked = G.post !== false; return; } G.post = e.checked; try { const P = __G.Post; if (P && P.setEnabled) P.setEnabled(e.checked); } catch (err) { console.error(err); } }); bind('sDyn', (e) => (G.dynRes = e.checked));
     bind('sHud', (e) => { G.hudScale = e.value / 100; hud(); }); bind('sRadar', (e) => { G.radar = e.checked; hud(); });
     bind('sName', (e) => (S.name = e.value.trim().slice(0, 14) || 'You')); bind('sArena', (e) => (G.arena = e.value));
-    $('#sQ').onchange = (e) => { G.quality = +e.target.value; if (G.quality < 0) delete G.autoQ; Prog.save(); location.reload(); }; // choosing Auto again forgets a tier the frame-rate governor settled on
+    $('#sQ').onchange = (e) => { if (Match.active) return; G.quality = +e.target.value; if (G.quality < 0) delete G.autoQ; Prog.save(); location.reload(); }; // choosing Auto again forgets a tier the frame-rate governor settled on
+    if (Match.active) for (const id of ['sQ', 'sPost']) { // both reload the page, which would throw the match away: locked until it is over
+      const e = $('#' + id), row = e && e.closest('.srow'), lab = row && row.querySelector('.sl'); if (!e) continue; e.disabled = true; if (row) row.style.opacity = '.55';
+      if (lab && !lab.querySelector('.lockn')) lab.insertAdjacentHTML('beforeend', '<small class="lockn">Change it after the match</small>');
+    }
     // Two-click confirm instead of confirm(): browser dialogs are blocked in sandboxed/embedded pages.
     let resetArm = 0;
     $('#sReset').onclick = () => {
@@ -6154,10 +6166,11 @@ const UI = (() => {
     const w1 = (f1 * 100).toFixed(0) + '%', ok = () => cur === 'results' && bar();
     const snap = (w) => { const b = bar(); b.style.transition = 'none'; b.style.width = w; void b.offsetWidth; b.style.transition = ''; };
     Tm.set('rank', () => {
-      if (!ok()) return;
+      const end = () => { const b = bar(); if (b) { b.style.transition = 'none'; b.style.width = w1; } }; // left the screen mid-animation: land on the final value
+      if (!ok()) { end(); return; }
       if (!crossed || res.placing) { bar().style.width = w1; return; }
       bar().style.width = up ? '100%' : '0%';
-      Tm.set('rank', () => { if (!ok()) return; snap(up ? '0%' : '100%'); Tm.set('rank', () => { if (ok()) bar().style.width = w1; }, 60); }, 1000);
+      Tm.set('rank', () => { if (!ok()) { end(); return; } snap(up ? '0%' : '100%'); Tm.set('rank', () => { if (ok()) bar().style.width = w1; else end(); }, 60); }, 1000);
     }, 250);
   }
   // loop-8: tier promotion ceremony (overlay inside #scr-results; confetti driven by its own rAF while it is up)
@@ -6277,7 +6290,7 @@ const UI = (() => {
     $('#btnRevNext').onclick = () => { if (revealCur && !revealCur.open) openCrate(); else nextReveal(); };
     $('#btnOpenAll').onclick = () => { Sound.S.ui('click'); openAll(); };
     $('#crate').addEventListener('pointerdown', () => openCrate());
-    for (const b of $$('button')) b.addEventListener('pointerenter', () => Sound.S.ui('hover'));
+    for (const b of $$('button')) b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') Sound.S.ui('hover'); });
     addEventListener('keydown', (e) => {
       if (promoOn && cur === 'results') { e.preventDefault(); endCeremony(); return; }
       if (e.code === 'Enter' && cur === 'results' && document.activeElement === document.body) $('#btnAgain').click();
@@ -6849,7 +6862,7 @@ body.touch .ld-yard button{ min-height:44px; justify-content:center; }
     if (!b) {
       if (Array.from(list.querySelectorAll('button')).some((x) => /ludus/i.test(x.textContent))) return; // the menus hook drew it
       b = el('button', 'btn ld-menu'); b.dataset.ludus = 'start'; b.title = 'The gladiator school'; const play = list.querySelector('[data-go="play"]'); list.insertBefore(b, play ? play.nextSibling : list.firstChild);
-      b.addEventListener('pointerenter', () => Sound.S.ui('hover'));
+      b.addEventListener('pointerenter', (e) => { if (e.pointerType === 'mouse') Sound.S.ui('hover'); });
     }
     const h = '<span>Ludus</span>' + (tut().done ? '' : '<em class="ld-badge">Start here</em>'); if (b._h !== h) { b._h = h; b.innerHTML = h; b.title = menuSub(); }
   }
@@ -7166,7 +7179,7 @@ const Match = (() => {
   function skipWanted() { const w = M.skipReq || Input.pressed('confirm') || Input.pressed('jump') || Input.pressed('atk') || Input.pressed('pause'); M.skipReq = false; return w; }
   // quick = a between-rounds kickoff (duel): the count starts at 2 and names the round
   function beginCount(ot, quick) {
-    M.phase = 'count'; M.t = quick ? 0.8 : 0; M.quick = !!quick; prevCount = -1; HUD.E.intro.innerHTML = ''; Cam.set('play'); Cam.yaw = M.me.team ? -Math.PI / 2 : Math.PI / 2; Cam.pitch = 0.2; Arena.gesture = 0;
+    M.phase = 'count'; M.t = quick ? 0.8 : 0; M.quick = !!quick; prevCount = -1; if (Input.clearLook) Input.clearLook(); HUD.E.intro.innerHTML = ''; Cam.set('play'); Cam.yaw = M.me.team ? -Math.PI / 2 : Math.PI / 2; Cam.pitch = 0.2; Arena.gesture = 0;
     if (!quick) HUD.tip(M.mutator && !ot ? M.mutator.name + ': ' + M.mutator.desc : M.mode === 'duel' && !ot ? 'First to ' + ROMAN_N(M.target) + ' wins, or the most KOs when the clock runs out. Every KO is a fresh kickoff.' : pick(TIPS), M.mode === 'duel' && !ot ? 4.5 : 3.2);
     if (M.mode === 'duel' && !ot) HUD.sub('ROUND ' + M.round);
     if (ot) { HUD.sub(M.lastStand ? 'LAST STAND' : 'SUDDEN DEATH'); HUD.ann(M.lastStand ? 'LAST STAND' : 'OVERTIME', 'red', M.lastStand ? 'No respawns · last team standing' : 'Next KO wins', 1.6); }
@@ -7237,7 +7250,7 @@ const Match = (() => {
     Bus.on('taunt', (e) => { if (!M.active) return; if (M.roundT > 0) M.roundT = Math.max(M.roundT, Math.min(2.2, e.g.stunDur + 0.25)); /* the round waits for a victory emote */ Sound.S.whoosh(e.g.pos, 0.8); if (isMe(e.g)) { Arena.excite = Math.min(1, Arena.excite + 0.12); Sound.cheer(0.5); } else if (Math.hypot(e.g.pos.x - M.me.pos.x, e.g.pos.z - M.me.pos.z) < 30 && e.g.team !== M.me.team) Sound.ooh(); });
   }
   function endMatch(winner) {
-    M.phase = 'end'; M.t = 0; M.winner = winner; Sim.play = false; Sim.respawns = false;
+    M.phase = 'end'; M.t = 0; M.winner = winner; Sim.play = false; Sim.respawns = false; if (HUD.finale) HUD.finale(false);
     const w = M.glads.filter((g) => g.team === winner).sort((a, b) => b.stats.score - a.stats.score); M.mvpId = w.length ? w[0].id : -1;
     const win = winner === M.me.team; HUD.ann(win ? 'VICTORY' : 'DEFEAT', win ? 'gold' : 'red', '', 3);
     Sound.S.fanfare(win); Sound.cheer(1.5); Arena.excite = 1; Arena.cheer[winner] = 1.2; Arena.waveT = 6; Arena.wave = 0;
@@ -7281,7 +7294,12 @@ const Match = (() => {
   // pause press that triggered the resume, which Match.update sees later in the same frame (frame order: Input.poll → UI.update → Match.update).
   function resume(now) {
     M.resumeGuard = true; Sound.init();
-    if (now === true || !M.active || !M.paused) { M.paused = false; M.resumeT = 0; UI.show('hud'); return; }
+    const ceremony = M.active && Sim.frozen && HUD.E.hud.classList.contains('cel'); // the Ludus graduation: phase 'play', controls deliberately off
+    if (now === true || !M.active || !M.paused || ceremony || (M.phase !== 'play' && M.phase !== 'ot')) { // the 3-2-1 only guards live play
+      M.paused = false; M.resumeT = 0; UI.show('hud'); if (M.phase === 'count') prevCount = -1; // (redraw the kickoff numeral the pause interrupted)
+      if (ceremony) { Input.enable(false); const t = $('#touch'); if (t) t.hidden = true; }
+      return;
+    }
     M.resumeT = Input.device === 'touch' ? 1 : 1.35; M.resumeT0 = M.resumeT; M.resumeN = 0; UI.show('hud');
   }
   function forfeit() {
@@ -7289,7 +7307,7 @@ const Match = (() => {
     if (M.phase === 'end') { celebrate(); finish(); return; } // the result is already decided (a pause can land in the final blow): keep it
     M.forfeited = M.mode !== 'training'; M.winner = M.mode === 'training' ? -1 : 1 - M.me.team; finish();
   }
-  function toMenu() { MT.clearAll(); Mutators.restore(); Decree.reset(false); clearGlads(); M.active = false; M.phase = 'none'; startAttract(); UI.show('title'); Sound.music('menu'); }
+  function toMenu() { MT.clearAll(); Mutators.restore(); Decree.reset(false); clearGlads(); HUD.show(false); M.active = false; M.phase = 'none'; startAttract(); UI.show('title'); Sound.music('menu'); }
   // ---------- attract mode (bots sparring behind the menus)
   function startAttract() {
     if (M.attract) return; clearGlads(); Sim.reset(); M.attract = true; Arena.setPreset(Game.settings.arena !== 'random' && PRESETS[Game.settings.arena] ? Game.settings.arena : 'dusk');
@@ -7354,7 +7372,7 @@ const Match = (() => {
     if (M.active && !guard && Input.pressed('pause') && (!M.paused || M.resumeT > 0) && (M.phase === 'play' || M.phase === 'ot' || M.phase === 'count' || M.phase === 'intro')) { pause(); return; }
     if (M.paused && M.resumeT > 0) { // resume countdown: the sim stays frozen below (M.paused) until it runs out
       M.resumeT -= dt; const n = Math.max(1, Math.ceil((M.resumeT / M.resumeT0) * 3));
-      if (M.resumeT <= 0) { M.paused = false; M.resumeT = 0; HUD.ann('', 'count', '', 0.01); }
+      if (M.resumeT <= 0) { M.paused = false; M.resumeT = 0; HUD.ann('', 'count', '', 0.01); if (Input.clearLook) Input.clearLook(); }
       else if (n !== M.resumeN) { M.resumeN = n; HUD.ann(String(n), 'count', '', 0.7); Sound.S.count(n); }
     }
     let sdt = dt;
@@ -7592,7 +7610,7 @@ const Match = (() => {
       }
       for (const a of e.assists) if (e.top && e.top.g === a && e.top.d >= 90) award(a, 'Takedown', 75); else award(a, 'Assist', 50);
       v.lastKiller = by;
-      if (isMe(v)) { HUD.ann("KO'D", 'red', by ? 'by ' + esc(by.name) : '', 1.4); FX.shake(0.5); }
+      if (isMe(v)) FX.shake(0.5); // the KO'D banner itself comes from slainFeel, with the blows that did it
       if (v.brain && chance(0.35)) AI.chat(v, e.kind === 'demo' ? 'demoed' : 'died');
       koLate(e, leaderBefore);
       afterKo(e);
@@ -7602,7 +7620,7 @@ const Match = (() => {
     Bus.on('counter', (e) => { award(e.a, 'Counter Hit', 25); if (isMe(e.a)) HUD.num(_pv.set(e.pos.x, e.pos.y + 0.7, e.pos.z), 'COUNTER', 'info'); });
     Bus.on('pincer', (e) => { award(e.a, 'Pincer', 30); award(e.b, 'Pincer', 30); if (isMe(e.a) || isMe(e.b)) HUD.num(_pv.set(e.pos.x, e.pos.y + 0.7, e.pos.z), 'PINCER', 'info'); });
     Bus.on('tech', (e) => { award(e.g, 'Tech', 10); if (isMe(e.g) && Sound.ready) { const k = Sound.kit, n = k.now(); k.osc(k.sfx, 'triangle', 660, n, 0.09, 0.07, 0.003, 990); k.nz(k.sfx, n, 0.08, 0.05, 'bandpass', 2400, 1.2); } });
-    Bus.on('trade', (e) => { award(e.a, 'Trade', 25); award(e.b, 'Trade', 25); if (M.active && HUD.feed) HUD.feed(e.a, e.b, 'trade'); if (isMe(e.a) || isMe(e.b)) { HUD.ann('TRADE!', 'gold', '', 0.8); hitstop(0.06); } });
+    Bus.on('trade', (e) => { award(e.a, 'Trade', 25); award(e.b, 'Trade', 25); if (isMe(e.a) || isMe(e.b)) { HUD.ann('TRADE!', 'gold', '', 0.8); hitstop(0.06); } });
     Bus.on('ssStrike', (e) => { award(e.a, 'Supersonic Strike', 40); });
   }
   function NAMESHUF() { const a = Prog.NAMES.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return Meta.seat(a, M); } // Meta seats rivals where the enemy team pops its names
@@ -7838,7 +7856,7 @@ __G.Post = Post;
     }
     requestAnimationFrame(frame);
   }
-  addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); Post.resize(); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+  addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight); Post.resize(); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); if (HUD.applyScale) HUD.applyScale(); });
   // phones drop the WebGL context when the page sleeps under memory pressure: say so and offer the way back instead of a frozen frame
   $('#c').addEventListener('webglcontextlost', (e) => {
     e.preventDefault(); if (document.getElementById('ctxLost')) return;
