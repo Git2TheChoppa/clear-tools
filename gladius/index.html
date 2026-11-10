@@ -5340,7 +5340,7 @@ const Prog = (() => {
     res.drops = S.pending.slice(); res.next = nextUp(r.mode); res.pityLeft = pityLeft();
     save(); return res;
   }
-  return { RAR, SLOTS, ITEMS, BY, MODES, NAMES, TIERS, rankOf, rankSVG, icon, xpFor, load, save, fresh, applyMatch, rollDrop, grant, skillFor, botLoadout, winsTo, nextDiv, nextUp, pityLeft, addXp, chalText, exportCode, readCode, importCode, KEY, get S() { return S; }, reset() { const keep = S.settings; S = fresh(); S.settings = keep; refill(); save(); tellMeta('reset'); } };
+  return { RAR, SLOTS, ITEMS, BY, MODES, NAMES, TIERS, rankOf, rankSVG, icon, xpFor, load, save, fresh, applyMatch, rollDrop, grant, skillFor, botLoadout, winsTo, nextDiv, nextUp, pityLeft, addXp, chalText, exportCode, readCode, importCode, KEY, get S() { return S; }, reset() { const keep = S.settings; S = fresh(); S.settings = keep; refill(); save(); try { if (Store.get(KEY_V2)) Store.set(KEY_V2, ''); } catch (e) { /* ignore */ } tellMeta('reset'); } }; // a reset also blanks the old v2 save, so it can never come back as the fallback
 })();
 
 // ---------------------------------------------------------------- meta: reasons to come back (save tools, rivals, daily contracts, records, feats, the bounty)
@@ -5519,7 +5519,7 @@ const Meta = (() => {
     const ng = L.seated.find((g) => g.nemesis && g.rival.id === d.nem);
     if (ng && win) {
       d.nemBeat = (d.nemBeat || 0) + 1; Prog.addXp(150, res, 'Nemesis defeated');
-      if (d.nemBeat >= 3) { rec(d.nem).g = 0; d.nem = null; d.nemBeat = 0; d.vanq = int(d.vanq) + 1; Prog.addXp(300, res, 'Nemesis vanquished'); crate(3); out.heads.push({ k: 'gold', i: 'skull', t: 'Nemesis vanquished', s: `${ng.rival.n} holds nothing over you · +300 XP and Rare spoils` }); }
+      if (d.nemBeat >= 3) { rec(d.nem).g = 0; d.nem = null; d.nemBeat = 0; d.vanq = int(d.vanq) + 1; Prog.addXp(300, res, 'Nemesis vanquished'); crate(3); out.heads.push({ k: 'gold', i: 'skull', t: 'Nemesis vanquished', s: `${ng.rival.n} holds nothing over you · +300 XP and Very Rare spoils` }); }
       else out.heads.push({ k: 'gold', i: 'skull', t: 'Nemesis defeated', s: `${ng.rival.n} · ${d.nemBeat} of 3 to break the hold` });
     } else if (ng) d.nemBeat = Math.max(0, (d.nemBeat || 0) - 1);
     // crowned: the rival with the most KOs on you (three or more) since the last one was vanquished; a sitting Nemesis is only usurped by a clear margin
@@ -5622,25 +5622,135 @@ const Meta = (() => {
     if (t === s.last && streakXp(s.n)) Prog.addXp(streakXp(s.n), res, `Day streak ×${s.n}`);
     const dl = daily(), inc = { play: 1, win: win ? 1 : 0, mvp: M.mvpId === M.me.id ? 1 : 0, flawless: win && st.de === 0 ? 1 : 0, duelWin: win && M.mode === 'duel' ? 1 : 0, specWin: win && M.mode === 'spectacle' ? 1 : 0, favor2: st.favorPeak >= 2 ? 1 : 0, favor3: st.favorPeak >= 3 ? 1 : 0, rival: win ? L.seated.length : 0 };
     out.daily = dl.list.map((c) => { const p0 = c.p; if (p0 < c.n) { c.p = Math.min(c.n, p0 + (c.k in inc ? inc[c.k] : +st[c.k] || 0)); if (c.p >= c.n) { d.contracts++; Prog.addXp(c.xp, res, 'Contract: ' + c.t); } } return { t: c.t, p0, p: c.p, n: c.n, xp: c.xp, done: c.p >= c.n, fresh: c.p >= c.n && p0 < c.n }; });
-    if (!dl.swept && dl.list.every((c) => c.p >= c.n)) { dl.swept = true; d.sweeps++; Prog.addXp(SWEEP_XP, res, 'All contracts complete'); crate(3); out.heads.push({ k: 'gold', i: 'scroll', t: 'Contracts complete', s: 'Rare spoils earned · three more tomorrow' }); }
+    if (!dl.swept && dl.list.every((c) => c.p >= c.n)) { dl.swept = true; d.sweeps++; Prog.addXp(SWEEP_XP, res, 'All contracts complete'); crate(3); out.heads.push({ k: 'gold', i: 'scroll', t: 'Contracts complete', s: 'Very Rare spoils earned · three more tomorrow' }); }
   });
   const contractRow = (c, fresh, full) => { const done = c.p >= c.n; return `<li class="${done ? 'done' : ''}${fresh ? ' fresh' : ''}" style="--p:${(100 * c.p / c.n).toFixed(0)}%"><span>${done ? ICON.check : ''}${esc(c.t)}</span><small>${done ? `+${c.xp} XP` : `${c.p}/${c.n}${full ? ` · ${c.xp} XP` : ''}`}</small></li>`; };
   function streakChip() { const s = streakNow(); return s.n ? `<span class="mt-streak ${s.st}" title="+5 XP per match for each day, up to +50">${ICON.flame}${s.n} day${s.n > 1 ? 's' : ''}${s.st === 'risk' ? ' · fight today' : ''}</span>` : ''; }
   function dailyCard() {
     const dl = daily(), all = dl.list.every((c) => c.p >= c.n);
-    return `<h3>Contracts${streakChip()}</h3><ul class="mt-daily">${dl.list.map((c) => contractRow(c)).join('')}</ul><div class="mt-foot${all ? ' done' : ''}">${all ? 'All done. Three more tomorrow' : `All three: +${SWEEP_XP} XP &amp; Rare spoils`} · ${resetsIn()}${all ? '' : ' left'}</div>`;
+    return `<h3>Contracts${streakChip()}</h3><ul class="mt-daily">${dl.list.map((c) => contractRow(c)).join('')}</ul><div class="mt-foot${all ? ' done' : ''}">${all ? 'All done. Three more tomorrow' : `All three: +${SWEEP_XP} XP &amp; Very Rare spoils`} · ${resetsIn()}${all ? '' : ' left'}</div>`;
   }
   titleCards.push({ id: 'daily', order: 10, html: dailyCard });
   function dailyCareer() {
     const d = D(), dl = daily(), s = streakNow(), all = dl.list.every((c) => c.p >= c.n);
     const line = s.st === 'lit' ? `Day streak ${s.n}${streakXp(s.n) ? ` · +${streakXp(s.n)} XP on every match` : ' · come back tomorrow to start the bonus'}` : s.st === 'risk' ? `Day streak ${s.n} · fight today to keep it` : 'Fight on consecutive days to build a streak: +5 XP per match for each day, up to +50';
-    return `<div class="section-t">Contracts of the day<small>${all ? 'all done · ' : ''}new in ${resetsIn()}</small></div><ul class="mt-daily">${dl.list.map((c) => contractRow(c, false, true)).join('')}</ul><p class="mt-foot">${all ? 'All three done: the Rare spoils are yours.' : `Finish all three for +${SWEEP_XP} XP and guaranteed Rare spoils.`} ${ICON.flame}${esc(line)}${d.streak.best > 1 ? ` · best ${d.streak.best}` : ''}${d.contracts ? ` · ${d.contracts} contract${d.contracts > 1 ? 's' : ''} fulfilled` : ''}</p>`;
+    return `<div class="section-t">Contracts of the day<small>${all ? 'all done · ' : ''}new in ${resetsIn()}</small></div><ul class="mt-daily">${dl.list.map((c) => contractRow(c, false, true)).join('')}</ul><p class="mt-foot">${all ? 'All three done: the Very Rare spoils are yours.' : `Finish all three for +${SWEEP_XP} XP and guaranteed Very Rare spoils.`} ${ICON.flame}${esc(line)}${d.streak.best > 1 ? ` · best ${d.streak.best}` : ''}${d.contracts ? ` · ${d.contracts} contract${d.contracts > 1 ? 's' : ''} fulfilled` : ''}</p>`;
   }
   careerSecs.push({ id: 'daily', order: 10, html: dailyCareer });
   resBlocks.push({ id: 'daily', order: 10, html: () => {
     if (!last || !last.daily) return ''; const all = last.daily.every((c) => c.done), s = streakNow();
-    return `<div class="rank-row"><div class="rn" style="font-size:19px">Contracts of the day</div>${s.n ? `<span class="mt-streak ${s.st}" style="margin-left:auto">${ICON.flame}${s.n} day${s.n > 1 ? 's' : ''}</span>` : ''}</div><ul class="mt-daily" style="margin-top:8px">${last.daily.map((c) => contractRow(c, c.fresh, true)).join('')}</ul><div class="mt-foot${all ? ' done' : ''}">${all ? 'All done. Come back tomorrow for three more' : `All three: +${SWEEP_XP} XP &amp; Rare spoils`} · ${resetsIn()}${all ? '' : ' left'}</div>`;
+    return `<div class="rank-row"><div class="rn" style="font-size:19px">Contracts of the day</div>${s.n ? `<span class="mt-streak ${s.st}" style="margin-left:auto">${ICON.flame}${s.n} day${s.n > 1 ? 's' : ''}</span>` : ''}</div><ul class="mt-daily" style="margin-top:8px">${last.daily.map((c) => contractRow(c, c.fresh, true)).join('')}</ul><div class="mt-foot${all ? ' done' : ''}">${all ? 'All done. Come back tomorrow for three more' : `All three: +${SWEEP_XP} XP &amp; Very Rare spoils`} · ${resetsIn()}${all ? '' : ' left'}</div>`;
   } });
+  // ---------- records, match history and the Tonight counter (real matches only; a first value is set quietly, beating it is called out)
+  const night = { n: 0, w: 0 }; // this page load
+  const n0 = (v) => Math.round(v).toLocaleString('en-US'), mmss = (v) => `${Math.floor(v / 60)}:${String(Math.round(v) % 60).padStart(2, '0')}`;
+  // key, label, the value this match set (null: none), format, lower is better
+  const REC = [
+    ['ko', 'Most KOs', (x) => x.st.ko, n0], ['dmg', 'Most damage', (x) => x.st.dmg, n0], ['score', 'Highest score', (x) => x.st.score, n0], ['demo', 'Most demolitions', (x) => x.st.demo, n0],
+    ['fast', 'Fastest win', (x) => (x.win && x.time > 5 ? Math.round(x.time) : null), mmss, 1], ['comeback', 'Biggest comeback', (x) => (x.win && x.low <= -2 ? -x.low : null), (v) => `${v} down`],
+    ['run', 'Longest win run', (x) => (x.win ? x.run : null), (v) => `${v} straight`], ['favor', 'Loudest crowd', (x) => x.st.favorPeak || 0, (v) => (Favor.NAMES && Favor.NAMES[v]) || String(v)],
+  ];
+  const RESULT = ['W', 'L', 'F'];
+  repairs.push((m) => {
+    const rc = isObj(m.rec) ? m.rec : {}; m.rec = {};
+    for (const [k] of REC) { const e = rc[k]; if (isObj(e) && fin(e.v) && e.v > 0) m.rec[k] = { v: e.v, t: int(e.t, 0, 0, 9e15), m: typeof e.m === 'string' ? e.m : '' }; }
+    m.hist = (Array.isArray(m.hist) ? m.hist : []).filter((e) => isObj(e) && typeof e.m === 'string' && RESULT.includes(e.r)).slice(0, 10)
+      .map((e) => ({ m: e.m, r: e.r, a: int(e.a), b: int(e.b), d: fin(e.d) ? Math.round(e.d) : null, k: int(e.k), t: int(e.t, 0, 0, 9e15) }));
+    m.wrun = int(m.wrun);
+  });
+  onStart.push((L) => { L.low = 0; });
+  onKo.push((L) => { setTimeout(() => { if (live !== L || !Match.me) return; const s = Match.score, t = Match.me.team; L.low = Math.min(L.low, (s[t] | 0) - (s[1 - t] | 0)); }, 0); }); // after the director has counted the KO
+  onEnd.push((L, M, res, out) => {
+    if (!L.real) return; const d = D(), st = M.me.stats, t = M.me.team, sc = M.score || [0, 0], win = out.win;
+    night.n++; if (win) night.w++;
+    d.wrun = win ? d.wrun + 1 : 0;
+    d.hist.unshift({ m: M.mode, r: M.forfeited ? 'F' : win ? 'W' : 'L', a: sc[t] | 0, b: sc[1 - t] | 0, d: res && fin(res.d) ? res.d : null, k: st.ko | 0, t: Date.now() }); if (d.hist.length > 10) d.hist.length = 10;
+    if (M.forfeited) return;
+    const x = { st, win, time: M.time || 0, low: Math.min(L.low || 0, (sc[t] | 0) - (sc[1 - t] | 0)), run: d.wrun }, fresh = [];
+    for (const [k, n, f, fmt, lower] of REC) {
+      const v = f(x); if (!fin(v) || v <= 0) continue; const p = d.rec[k];
+      if (!p || (lower ? v < p.v : v > p.v)) { if (p) fresh.push({ k, n, v, was: p.v, fmt }); d.rec[k] = { v, t: Date.now(), m: M.mode }; }
+    }
+    out.recs = fresh;
+    if (fresh.length) out.heads.push({ k: 'gold', i: 'star', t: fresh.length > 1 ? `${fresh.length} new records` : 'New record', s: fresh.slice(0, 3).map((r) => `${r.n} ${r.fmt(r.v)} (was ${r.fmt(r.was)})`).join(' · ') });
+  });
+  const ago = (t) => { const s = (Date.now() - t) / 1000; return !t ? '' : s < 90 ? 'just now' : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129600 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} d ago`; };
+  const modeName = (m) => (Prog.MODES[m] ? Prog.MODES[m].n : m);
+  // the last five, oldest on the left; the newest pip is ringed
+  const formPips = (h) => { let o = ''; for (let i = 4; i >= 0; i--) { const e = h[i]; o += e ? `<i class="${e.r}${i === 0 ? ' now' : ''}" title="${esc(modeName(e.m))} ${e.a}–${e.b}">${e.r === 'F' ? 'L' : e.r}</i>` : '<i></i>'; } return o; };
+  function formCard() {
+    const d = D(), h = d.hist, e = h[0], tn = night.n ? `Tonight ${night.w}–${night.n - night.w}` : '';
+    const last = e ? `${e.r === 'W' ? 'Won' : e.r === 'F' ? 'Forfeit' : 'Lost'} ${e.a}–${e.b} · ${esc(modeName(e.m))}${e.d != null ? ` · <b class="${e.d >= 0 ? 'up' : 'down'}">${e.d >= 0 ? '+' : ''}${e.d}</b>` : ''}` : 'Your last five matches show here.';
+    const best = ['ko', 'dmg', 'run'].filter((k) => d.rec[k]).map((k) => { const r = REC.find((x) => x[0] === k); return `${r[1].replace(/^(Most|Longest) /, '')} ${r[3](d.rec[k].v)}`; });
+    return `<h3>Form<small>${tn}</small></h3><div class="mt-form">${formPips(h)}<span class="mt-last">${last}</span></div><div class="mt-foot">${best.length ? 'Bests · ' + esc(best.join(' · ')) : 'Set your first records on the sand.'}</div>`;
+  }
+  titleCards.push({ id: 'form', order: 30, html: formCard });
+  function recordsCareer() {
+    const d = D(), tiles = REC.map(([k, n, , fmt]) => { const r = d.rec[k]; return `<div class="mt-rk${r ? '' : ' none'}"><small>${esc(n)}</small><b>${r ? esc(fmt(r.v)) : '–'}</b><i>${r ? `${esc(modeName(r.m))} · ${ago(r.t)}` : 'Not yet set'}</i></div>`; }).join('');
+    const rows = d.hist.map((e) => `<li class="${e.r}"><b>${e.r === 'F' ? 'L' : e.r}</b><span>${esc(modeName(e.m))}${e.r === 'F' ? ' · forfeit' : ''}</span><span class="sc">${e.a}–${e.b}</span><span class="mm ${e.d == null ? '' : e.d >= 0 ? 'up' : 'down'}">${e.d == null ? '' : (e.d >= 0 ? '+' : '') + e.d}</span><small>${ago(e.t)}</small></li>`).join('');
+    return `<div class="section-t">Records<small>${night.n ? `tonight ${night.n} played · ${night.w} won` : ''}</small></div><div class="mt-recs">${tiles}</div>`
+      + `<div class="section-t" style="margin-top:14px">Last ${Math.max(1, d.hist.length)} matches<small>${d.wrun > 1 ? `${d.wrun} wins in a row` : ''}</small></div>${rows ? `<ul class="mt-hist">${rows}</ul>` : '<p class="mt-empty">Nothing yet. Every real match is logged here.</p>'}`;
+  }
+  careerSecs.push({ id: 'records', order: 30, html: recordsCareer });
+  // ---------- feats: lifetime deeds with a reward each (a number is XP, 'c<r>' a crate of at least that rarity). Counters Prog keeps (ko, demo, par, wins) count from day one.
+  const FEATS = [
+    ['cent', 'Centurion', 'Score {n} KOs', 'ko', 100, 'c3'], ['victor', 'Victor', 'Win {n} matches', 'wins', 25, 'c3'], ['wall', 'Wall Breaker', 'Wall-splat {n} foes', 'splat', 25, 400],
+    ['untouch', 'The Untouchable', "Win {n} matches without being KO'd", 'flawless', 5, 'c3'], ['darling', "Crowd's Darling", 'Earn {n} Ovations', 'ovations', 3, 'c3'],
+    ['decreed', 'Decreed', 'Claim {n} decrees', 'decree', 10, 400], ['demol', 'Demolisher', 'Demolish {n} gladiators', 'demo', 25, 'c2'], ['iron', 'Iron Wall', 'Land {n} parries', 'par', 50, 300],
+    ['ripo', 'Riposte Artist', 'Land {n} ripostes', 'rip', 25, 300], ['meteor', 'Meteor', 'Land {n} meteor slams', 'slam', 25, 300], ['show', 'Showman', 'Finish {n} taunts', 'taunts', 25, 300],
+    ['slayer', 'Rival Slayer', 'Defeat {n} rivals', 'rivals', 10, 400], ['breaker', 'Nemesis Breaker', 'Vanquish a Nemesis', 'vanq', 1, 'c4'],
+  ].map(([id, n, t, k, goal, rw]) => ({ id, n, t: Prog.chalText(t, goal), k, goal, rw }));
+  const LIFE = ['splat', 'slam', 'rip', 'taunts', 'ovations', 'decree', 'flawless', 'rivals'], PROG_KEY = { ko: 1, demo: 1, par: 1, wins: 1 };
+  repairs.push((m) => {
+    const lf = isObj(m.life) ? m.life : {}; m.life = {}; for (const k of LIFE) m.life[k] = int(lf[k]);
+    const ft = isObj(m.feat) ? m.feat : {}; m.feat = {}; for (const f of FEATS) if (fin(ft[f.id]) && ft[f.id] > 0) m.feat[f.id] = ft[f.id];
+  });
+  const featVal = (f, d) => (PROG_KEY[f.k] ? +Prog.S.stats[f.k] || 0 : f.k === 'vanq' ? int(d.vanq) : d.life[f.k] || 0);
+  const rewardText = (rw) => (typeof rw === 'number' ? `+${rw} XP` : `${Prog.RAR[+rw.slice(1)].n} spoils`);
+  const toasts = [];
+  onEnd.push((L, M, res, out) => {
+    if (!L.real || M.forfeited) return; const d = D(), st = M.me.stats, win = out.win;
+    for (const k of ['splat', 'slam', 'rip', 'taunts', 'ovations', 'decree']) d.life[k] += Math.max(0, Math.round(+st[k] || 0));
+    if (win && st.de === 0) d.life.flawless++; if (win) d.life.rivals += L.seated.length;
+    out.feats = [];
+    for (const f of FEATS) {
+      if (d.feat[f.id] || featVal(f, d) < f.goal) continue;
+      d.feat[f.id] = Date.now(); out.feats.push(f.id);
+      if (typeof f.rw === 'number') Prog.addXp(f.rw, res, 'Feat: ' + f.n); else crate(+f.rw.slice(1));
+      out.heads.push({ k: 'gold', i: 'star', t: 'Feat · ' + f.n, s: `${f.t} · ${rewardText(f.rw)}` }); toasts.push(f);
+    }
+  });
+  function featsCareer() {
+    const d = D(), done = FEATS.filter((f) => d.feat[f.id]).length;
+    const list = FEATS.slice().sort((a, b) => !!d.feat[a.id] - !!d.feat[b.id] || featVal(b, d) / b.goal - featVal(a, d) / a.goal).map((f) => {
+      const v = Math.min(f.goal, featVal(f, d)), ok = !!d.feat[f.id];
+      return `<div class="mt-feat${ok ? ' done' : ''}" style="--p:${(100 * v / f.goal).toFixed(0)}%"><b>${ok ? ICON.check : ''}${esc(f.n)}</b><small>${ok ? 'Done' : `${v}/${f.goal}`}</small><p>${esc(f.t)} · ${esc(rewardText(f.rw))}</p><span class="mt-bar"><i></i></span></div>`;
+    }).join('');
+    return `<div class="section-t">Feats<small>${done} of ${FEATS.length}</small></div><div class="mt-feats">${list}</div>`;
+  }
+  careerSecs.push({ id: 'feats', order: 40, html: featsCareer });
+  // a toast for each feat, one after another once the results are up
+  function toast(f, i) {
+    setTimeout(() => { const t = el('div', 'mt-toast', `${ICON.star}<div><b>Feat · ${esc(f.n)}</b><span>${esc(f.t)} · ${esc(rewardText(f.rw))}</span></div>`); document.body.appendChild(t); sfx('equip'); setTimeout(() => t.remove(), 3700); }, 900 + i * 3900);
+  }
+  // ---------- the Emperor's Bounty: one marked enemy (the Nemesis first, then a rival) pays +100 score and bonus XP to the first KO you land on them
+  const BOUNTY_XP = 75;
+  onStart.push((L, M) => {
+    if (!L.real) return; const me = M.me, foes = M.glads.filter((g) => g.team !== me.team && !g.human && !g.passive); if (!foes.length) return;
+    const g = foes.find((x) => x.nemesis) || (L.seated.length ? pick(L.seated) : M.mode === 'duel' ? null : pick(foes)); if (!g) return;
+    g.bounty = true; g.preBounty = g.titleName || ''; g.titleName = (g.nemesis ? 'Nemesis · ' : '') + 'Bounty · +100'; L.bounty = { g, paid: false }; L.dirty = true;
+    let seen = 0; const wait = () => setTimeout(() => {
+      if (live !== L || !Match.active || !g.bounty) return; if (Match.phase !== 'play' || Match.paused) { seen = 0; wait(); return; }
+      if (++seen < 6) { wait(); return; } // a moment after the fight starts, clear of the GO banner
+      try { HUD.ann("Emperor's Bounty", 'gold', `${esc(g.name)} · +100 for the first KO`, 2.4); } catch (e) { /* HUD not up */ }
+    }, 300);
+    wait();
+  });
+  onKo.push((L, e, me) => {
+    const b = L.bounty; if (!b || b.paid || e.by !== me || e.v !== b.g) return;
+    b.paid = true; b.g.bounty = false; b.g.titleName = b.g.preBounty; bonus(me, "Emperor's Bounty", 100);
+  });
+  onEnd.push((L, M, res) => { const b = L.bounty; if (!b) return; b.g.bounty = false; if (b.paid && !M.forfeited) Prog.addXp(BOUNTY_XP, res, "Emperor's Bounty"); });
   // results: call-outs go right under the title, the detail cards after the grid (both are Meta's own elements inside #scr-results .res)
   Bus.on('results', () => {
     const host = document.querySelector('#scr-results .res'); if (!host) return;
@@ -5654,6 +5764,7 @@ const Meta = (() => {
       const parts = resBlocks.sort(bySec).map((b) => { const h = b.html(); return h ? `<div class="res-card plaque mt-rc mt-r-${b.id}">${h}</div>` : ''; }).join('');
       if (parts) { const box = el('div', 'mt-res', parts), act = host.querySelector(':scope > .res-actions'); if (act) host.insertBefore(box, act); else host.appendChild(box); }
     } catch (e) { console.error(e); }
+    toasts.splice(0).forEach(toast);
   });
   // the hooks light up once the menus build reads them; until then (or if one is never read) the observers below add the same markup after each render
   let hooked = false;
@@ -5727,12 +5838,52 @@ const Meta = (() => {
 @keyframes mt-pop{ from{ opacity:0; transform:scale(1.25); } }
 .mt-res{ display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:14px; }
 .mt-rl{ margin-top:8px; display:flex; flex-direction:column; gap:2px; }
-@media (prefers-reduced-motion: reduce){ .mt-head,.mt-daily li.fresh,.mt-streak.risk{ animation:none; } }
+.mt-form{ display:flex; align-items:center; gap:5px; min-width:0; }
+.mt-form i{ flex:none; display:grid; place-items:center; width:26px; height:26px; font-style:normal; font-weight:900; font-size:14px; border:1px solid rgba(255,255,255,.18); background:rgba(0,0,0,.3); color:var(--dim); }
+.mt-form i.W{ background:linear-gradient(180deg,#5fae4a,#2f6d26); border-color:#9fdc86; color:#f2ffe8; }
+.mt-form i.L,.mt-form i.F{ background:linear-gradient(180deg,#b8432f,#6d2014); border-color:#ff9c8a; color:#ffece8; }
+.mt-form i.now{ box-shadow:0 0 0 2px #2a1606, 0 0 0 3px var(--gold); }
+.mt-last{ min-width:0; margin-left:6px; font-size:15px; color:var(--dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.mt-last b.up,.mt-hist .up{ color:#9fdc86; } .mt-last b.down,.mt-hist .down{ color:#ff9c8a; }
+.mt-recs{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:6px; }
+.mt-rk{ padding:6px 10px 7px; border:1px solid rgba(255,255,255,.1); background:rgba(0,0,0,.2); min-width:0; }
+.mt-rk small{ display:block; font-size:12px; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--sand); }
+.mt-rk b{ display:block; font-size:22px; font-weight:800; line-height:1.15; color:var(--marble); font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mt-rk i{ display:block; font-style:normal; font-size:13px; color:var(--dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .mt-rk.none b{ color:var(--dim); }
+.mt-hist{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:3px; }
+.mt-hist li{ display:grid; grid-template-columns:20px minmax(0,1fr) auto 42px auto; gap:10px; align-items:center; min-height:28px; padding:2px 10px 2px 8px; font-size:15px; background:rgba(0,0,0,.2); border-left:3px solid #9fdc86; }
+.mt-hist li.L,.mt-hist li.F{ border-left-color:#ff9c8a; } .mt-hist li b{ font-weight:900; } .mt-hist li.W b{ color:#9fdc86; } .mt-hist li.L b,.mt-hist li.F b{ color:#ff9c8a; }
+.mt-hist span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; } .mt-hist .sc,.mt-hist .mm{ font-weight:800; font-variant-numeric:tabular-nums; } .mt-hist .mm{ text-align:right; }
+.mt-hist small{ font-size:13px; color:var(--dim); white-space:nowrap; }
+.mt-feats{ display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:6px; }
+.mt-feat{ position:relative; min-width:0; padding:7px 10px 9px; border:1px solid rgba(255,255,255,.1); background:rgba(0,0,0,.2); }
+.mt-feat b{ display:block; padding-right:56px; font-size:17px; font-weight:800; line-height:1.15; }
+.mt-feat small{ position:absolute; right:10px; top:8px; font-size:13px; font-weight:800; color:var(--sand); font-variant-numeric:tabular-nums; }
+.mt-feat p{ margin:2px 0 6px; font-size:14px; line-height:1.25; color:var(--dim); }
+.mt-bar{ display:block; height:5px; background:rgba(255,255,255,.1); } .mt-bar i{ display:block; height:100%; width:var(--p,0%); background:linear-gradient(90deg,#c98a1a,#ffd66e); }
+.mt-feat.done{ border-color:rgba(245,192,69,.65); background:rgba(120,80,12,.22); } .mt-feat.done b{ color:#ffe08a; } .mt-feat.done small{ color:var(--gold); }
+.mt-toast{ position:fixed; left:50%; top:calc(var(--sat) + 14px); z-index:90; display:flex; align-items:center; gap:10px; max-width:calc(100vw - 24px); padding:8px 18px 9px 14px; border:1px solid rgba(255,226,154,.85); background:linear-gradient(90deg, rgba(126,84,14,.97), rgba(40,26,14,.97)); box-shadow:0 8px 24px rgba(0,0,0,.45); pointer-events:none; transform:translateX(-50%); animation:mt-toast 3.6s ease both; }
+.mt-toast .mt-i{ width:22px; height:22px; margin:0; color:#ffd66e; }
+.mt-toast b{ display:block; font-family:var(--display); font-weight:900; font-size:16px; letter-spacing:.06em; text-transform:uppercase; color:#ffe08a; } .mt-toast span{ display:block; font-size:14px; color:var(--marble); }
+@keyframes mt-toast{ 0%{ opacity:0; transform:translate(-50%,-18px); } 9%,86%{ opacity:1; transform:translate(-50%,0); } 100%{ opacity:0; transform:translate(-50%,-8px); } }
+@media (prefers-reduced-motion: reduce){ .mt-head,.mt-daily li.fresh,.mt-streak.risk{ animation:none; } .mt-toast{ animation-name:mt-fade; } }
+@keyframes mt-fade{ 0%,100%{ opacity:0; } 10%,86%{ opacity:1; } }
 #scr-title .side.mt-side{ max-height:calc(100% - 44px - var(--sat) - var(--sab)); overflow-y:auto; touch-action:pan-y; scrollbar-width:none; }
 #scr-title .side.mt-side::-webkit-scrollbar{ display:none; }
+/* phones: the title cards stand alone in a swipeable strip (~300 px wide, ≤ 150 px tall); every button a thumb can hit */
+body.touch .mt-go{ min-height:44px; align-items:center; margin-top:6px; }
+body.touch .mt-c-rivals .mt-rv:nth-of-type(n+3){ display:none; }
+body.touch .mt-card{ padding:10px 14px 11px; } body.touch .mt-card h3{ margin-bottom:5px; }
+@media (max-width: 640px){
+  .mt-heads{ margin:0; } .mt-head{ flex-wrap:wrap; gap:1px 8px; max-width:100%; box-sizing:border-box; padding:5px 12px 6px 10px; font-size:15px; line-height:1.25; }
+  .mt-head b{ white-space:nowrap; font-size:14px; } .mt-head span{ flex:1 1 100%; min-width:0; }
+  .mt-rk small{ font-size:11px; letter-spacing:.04em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } .mt-rk b{ font-size:20px; }
+  .mt-hist li{ gap:8px; padding-right:8px; }
+}
+body.touch .mt-io .btn{ min-height:44px; } body.touch .mt-code{ min-height:44px; font-size:16px; }
 `)).id = 'meta-css';
   function onSave(ev) { cur = null; if (ev !== 'load') { io.mode = 'out'; io.arm = 0; live = null; last = null; stranger = null; lastMet = []; } D(); hook(); }
-  return { onSave, D, renderCareer, renderTitle, titleHTML, careerHTML, ACT, seat, CAST, TEMPER, duelTarget, daily, rollDaily, streakNow, today, set clock(f) { clock = typeof f === 'function' ? f : () => new Date(); }, get live() { return live; }, get last() { return last; } };
+  return { onSave, D, renderCareer, renderTitle, titleHTML, careerHTML, ACT, seat, CAST, TEMPER, duelTarget, daily, rollDaily, streakNow, today, tonight: () => ({ n: night.n, w: night.w }), REC, FEATS, set clock(f) { clock = typeof f === 'function' ? f : () => new Date(); }, get live() { return live; }, get last() { return last; } };
 })();
 __G.Meta = Meta;
 
@@ -6129,7 +6280,7 @@ const Tutorial = (() => {
   const PRAISE = ['Bene!', 'Optime!', 'Euge!', 'Macte!', 'Recte!'];
   const YMODES = [['stand', 'Stand', 'Dummies stand their ground. Practise combos, dodge-strikes and demolitions.'], ['block', 'Block', 'Dummies keep their shields up. Break the guard with a heavy blow.'], ['heavy', 'Strike', 'Dummies wind up heavy blows on three beats. Parry on the fourth.'], ['chase', 'Chase', 'Dummies hunt you with quick combos. Block, dodge and answer.']];
   const YSPOT = [[-9.5, -7], [-6.5, -1]];
-  const KEYS = { kb: { move: 'WASD', jump: 'Space', boost: 'Shift', atk: 'LMB', block: 'RMB', lock: 'Q', taunt: 'T', pause: 'Esc' }, pad: { move: 'L-stick', jump: 'A', boost: 'B', atk: 'X', block: 'LB', lock: 'Y', taunt: 'R3', pause: 'Start' }, touch: { move: 'Stick', jump: 'Jump', boost: 'Boost', atk: 'Strike', block: 'Block', lock: 'Lock', taunt: 'Salute', pause: 'II' } };
+  const KEYS = { kb: { move: 'WASD', jump: 'Space', boost: 'Shift', atk: 'LMB', block: 'RMB', lock: 'Q', taunt: 'T', pause: 'Esc' }, pad: { move: 'L-stick', jump: 'A', boost: 'B', atk: 'X', block: 'LB', lock: 'Y', taunt: 'R3', pause: 'Start' }, touch: { move: 'Stick', jump: 'Jump', boost: 'Boost', atk: 'Strike', block: 'Block', lock: 'Lock', taunt: 'Taunt', pause: 'II' } };
   const Y = { mode: 'stand', fury: false, intro: null }, E = {}, eased = {}, _p = V3(), _m = V3();
   let root = null, hudEl = null, me = null, dum = null, spare = null, L = null, offer = null, starting = false, pz = null, dev = '';
   // save: S.tut = { done, step, asked } (created lazily; never touched before Prog.load())
@@ -6153,6 +6304,7 @@ const Tutorial = (() => {
 .ld-top{ display:flex; align-items:center; gap:12px; min-height:24px; }
 .ld-kick{ font-weight:800; font-size:13px; letter-spacing:.16em; color:var(--gold); white-space:nowrap; }
 .ld-kick b{ color:#fff2c4; }
+.ld-tname{ display:none; }
 .ld-prog{ flex:1; display:flex; gap:3px; justify-content:center; }
 .ld-prog i{ flex:0 1 20px; height:4px; background:rgba(255,255,255,.14); }
 .ld-prog i.ok{ background:linear-gradient(90deg,#c98a1a,#ffd66e); } .ld-prog i.sk{ background:rgba(185,119,59,.5); }
@@ -6236,7 +6388,37 @@ body.touch .ld-yard{ gap:5px; padding:4px 6px; } body.touch .ld-yard > span{ dis
 body.touch .ld-offer{ bottom:calc(7% + var(--sab)); padding:10px 16px 14px; } body.touch .ld-offer h3{ font-size:19px; } body.touch .ld-offer p{ margin-bottom:9px; font-size:15px; }
 body.touch .ld-grad{ padding-top:calc(48px + var(--sat)); padding-bottom:calc(10px + var(--sab)); } body.touch .ld-laurel{ width:54px; height:48px; } body.touch .ld-ghead p{ margin-top:3px; font-size:16px; }
 body.touch .ld-gfoot{ padding:8px 14px 10px; } body.touch .ld-rew{ margin-bottom:5px; } body.touch .ld-rew svg{ width:30px; height:30px; } body.touch .ld-rew b{ font-size:16px; } body.touch .ld-rew span{ font-size:13px; } body.touch .ld-stat{ margin-bottom:7px; font-size:12px; }
-body.touch .ld-b{ min-height:42px; font-size:18px; }
+body.touch .ld-b{ min-height:48px; font-size:18px; }
+/* phones: every control a thumb can hit (44 px), the card between the HUD's top band and the controls (COMMON screen-space contract) */
+body.touch .ld-top{ min-height:44px; } body.touch .ld-skip{ min-height:44px; min-width:72px; justify-content:center; padding:0 14px; font-size:14px; }
+body.touch .ld-act{ min-height:44px; padding:0 18px; font-size:16px; } body.touch .ld-goal{ min-height:44px; }
+body.touch .ld-yard button{ min-height:44px; justify-content:center; }
+@media (orientation: landscape){
+  body.touch #ludus{ --ld-top:calc(62px + var(--sat)); }
+  body.touch .ld-wrap,body.touch .ld-yard,body.touch .ld-offer{ left:var(--sal); right:calc(300px + var(--sar)); } /* the action buttons own the right 300 px */
+  body.touch .ld-wrap{ width:min(420px, calc(100vw - 332px - var(--sal) - var(--sar))); }
+  body.touch .ld-yard{ max-width:calc(100vw - 316px - var(--sal) - var(--sar)); flex-wrap:wrap; justify-content:center; }
+  body.touch .ld-offer{ top:var(--ld-top); bottom:auto; width:min(500px, calc(100vw - 332px - var(--sal) - var(--sar))); }
+  body.touch .ld-grad{ padding-top:calc(60px + var(--sat)); }
+}
+@media (orientation: portrait){
+  body.touch #ludus{ --ld-top:calc(150px + var(--sat)); } /* below the scorebug and the HP / fury row */
+  body.touch .ld-wrap{ width:min(440px, calc(100vw - 20px)); }
+  /* compact card so the partner (high on a tall screen) stays in view: lesson number + name share the row with Skip, the progress ticks run along the bottom edge */
+  body.touch .ld-card{ padding:2px 8px 9px 12px; } body.touch .ld-kick,body.touch .ld-name{ display:none; }
+  body.touch .ld-tname{ display:block; flex:1; min-width:0; text-align:left; font-family:var(--display); font-weight:700; font-size:16px; letter-spacing:.05em; text-transform:uppercase; color:var(--marble); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  body.touch .ld-tname b{ margin-right:6px; color:var(--gold); }
+  body.touch .ld-prog{ position:absolute; left:12px; right:12px; bottom:3px; } body.touch .ld-prog i{ flex:1 1 auto; height:3px; }
+  body.touch .ld-text{ font-size:15px; text-align:left; } body.touch .ld-goal{ justify-content:flex-start; margin-top:4px; min-height:0; }
+  body.touch .ld-hint{ text-align:left; }
+  body.touch .ld-yard{ width:min(440px, calc(100vw - 20px)); flex-wrap:wrap; justify-content:center; }
+  body.touch .ld-yard button{ flex:1 1 40%; }
+  body.touch .ld-offer{ top:var(--ld-top); bottom:auto; width:min(440px, calc(100vw - 20px)); }
+  body.touch .ld-grad{ justify-content:flex-start; gap:12px; padding-top:calc(150px + var(--sat)); }
+  body.touch .ld-laurel{ width:44px; height:39px; } body.touch .ld-ghead h2{ font-size:30px; } body.touch .ld-ghead p{ font-size:15px; }
+  body.touch .ld-gfoot{ width:min(440px, calc(100vw - 20px)); } body.touch .ld-rew{ gap:8px 18px; } body.touch .ld-rew span{ display:none; }
+  body.touch .ld-btns{ gap:10px; } body.touch .ld-b{ padding:0 14px; font-size:16px; }
+}
 @media (prefers-reduced-motion: reduce){ .ld-card.in,.ld-hint,.ld-pips i.pop,.ld-card.done .ld-stamp span,.ld-pin,.ld-yard,.ld-offer,.ld-ghead,.ld-gfoot,.ld-badge,.ld-prog i.cur{ animation:none; } }
 `;
   const CHEST = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M5 18 Q5 8 14 8 H26 Q35 8 35 18 V20 H5 Z" fill="#b9773b" stroke="#2a1606" stroke-width="1.5"/><rect x="5" y="20" width="30" height="13" fill="#8a5426" stroke="#2a1606" stroke-width="1.5"/><path d="M11 8.6 V33 M29 8.6 V33" stroke="#f5c045" stroke-width="2.2"/><rect x="17" y="16" width="6" height="9" rx="1" fill="#f5c045" stroke="#2a1606" stroke-width="1.2"/></svg>';
@@ -6245,11 +6427,11 @@ body.touch .ld-b{ min-height:42px; font-size:18px; }
   function build() {
     if (root) return;
     hudEl = document.getElementById('hud'); root = el('div'); root.id = 'ludus';
-    root.innerHTML = '<div class="ld-wrap" hidden><div class="ld-card"><div class="ld-top"><span class="ld-kick"></span><span class="ld-prog"></span><button class="ld-skip" data-ld="skip" tabindex="-1"><i></i><span></span></button></div><div class="ld-name"></div><div class="ld-text"></div><div class="ld-goal"><span class="ld-pips"></span><span class="ld-lab"></span><button class="ld-b ld-act" data-ld="taunt" tabindex="-1" hidden>Salute</button></div><div class="ld-hint"></div><div class="ld-stamp"><span></span></div></div></div>'
+    root.innerHTML = '<div class="ld-wrap" hidden><div class="ld-card"><div class="ld-top"><span class="ld-kick"></span><span class="ld-tname"></span><span class="ld-prog"></span><button class="ld-skip" data-ld="skip" tabindex="-1"><i></i><span></span></button></div><div class="ld-name"></div><div class="ld-text"></div><div class="ld-goal"><span class="ld-pips"></span><span class="ld-lab"></span><button class="ld-b ld-act" data-ld="taunt" tabindex="-1" hidden>Taunt</button></div><div class="ld-hint"></div><div class="ld-stamp"><span></span></div></div></div>'
       + '<div class="ld-mark" hidden><div class="ld-pin"><b></b><em></em><i></i></div><div class="ld-edge"><i></i><b></b></div></div><div class="ld-yard" hidden></div><div class="ld-offer plaque" hidden></div><div class="ld-grad" hidden></div>';
     hudEl.appendChild(root);
     const q = (s) => root.querySelector(s);
-    Object.assign(E, { wrap: q('.ld-wrap'), card: q('.ld-card'), kick: q('.ld-kick'), prog: q('.ld-prog'), skipFill: q('.ld-skip i'), skipLab: q('.ld-skip span'), name: q('.ld-name'), text: q('.ld-text'), pips: q('.ld-pips'), lab: q('.ld-lab'), act: q('.ld-act'), hint: q('.ld-hint'), stamp: q('.ld-stamp span'), mark: q('.ld-mark'), pinLab: q('.ld-pin b'), pinDist: q('.ld-pin em'), edge: q('.ld-edge i'), edgeLab: q('.ld-edge b'), yard: q('.ld-yard'), offer: q('.ld-offer'), grad: q('.ld-grad') });
+    Object.assign(E, { wrap: q('.ld-wrap'), card: q('.ld-card'), kick: q('.ld-kick'), prog: q('.ld-prog'), skipFill: q('.ld-skip i'), skipLab: q('.ld-skip span'), name: q('.ld-name'), tname: q('.ld-tname'), text: q('.ld-text'), pips: q('.ld-pips'), lab: q('.ld-lab'), act: q('.ld-act'), hint: q('.ld-hint'), stamp: q('.ld-stamp span'), mark: q('.ld-mark'), pinLab: q('.ld-pin b'), pinDist: q('.ld-pin em'), edge: q('.ld-edge i'), edgeLab: q('.ld-edge b'), yard: q('.ld-yard'), offer: q('.ld-offer'), grad: q('.ld-grad') });
     // HUD buttons act on press and never take focus (a focused button would swallow Space / Enter during play)
     const press = (e) => { const b = e.target.closest && e.target.closest('[data-ld]'); if (!b) return; e.preventDefault(); e.stopPropagation(); if (e.type === 'pointerdown') hud(b.dataset.ld); };
     root.addEventListener('pointerdown', press); root.addEventListener('mousedown', press);
@@ -6339,8 +6521,10 @@ body.touch .ld-b{ min-height:42px; font-size:18px; }
     if (o.beam) { if (hide) beacon(null); else { beacon(x, z); beam.material.uniforms.uT.value = Sim.time; } }
     if (hide) return;
     const W = innerWidth, H = innerHeight; _m.set(x, (g ? g.pos.y : 0) + o.h, z).project(__G.camera);
-    let sx = (_m.x * 0.5 + 0.5) * W, sy = (-_m.y * 0.5 + 0.5) * H; const front = _m.z < 1 && _m.z > -1, off = !(front && sx > 50 && sx < W - 50 && sy > 150 && sy < H - 40);
-    if (off) { let ax = sx - W / 2, ay = sy - H / 2; if (!front) { ax = -ax; ay = -ay; } const a = Math.atan2(ay, ax); sx = W / 2 + Math.cos(a) * (W / 2 - 80); sy = H / 2 + Math.sin(a) * (H / 2 - 96); E.edge.style.setProperty('--a', (a * 180 / Math.PI + 90).toFixed(0) + 'deg'); }
+    // the edge arrow keeps out of the HUD's top band and, on a portrait phone, out of the controls band at the bottom
+    const port = IS_TOUCH && H > W, lo = port ? 175 : IS_TOUCH ? 110 : 150, hi = port ? H - Math.min(H * 0.44, 340) - 34 : H - 70;
+    let sx = (_m.x * 0.5 + 0.5) * W, sy = (-_m.y * 0.5 + 0.5) * H; const front = _m.z < 1 && _m.z > -1, off = !(front && sx > 50 && sx < W - 50 && sy > lo && sy < H - 40);
+    if (off) { let ax = sx - W / 2, ay = sy - (lo + hi) / 2; if (!front) { ax = -ax; ay = -ay; } const a = Math.atan2(ay, ax); sx = W / 2 + Math.cos(a) * (W / 2 - 60); sy = (lo + hi) / 2 + Math.sin(a) * Math.max(10, (hi - lo) / 2); E.edge.style.setProperty('--a', (a * 180 / Math.PI + 90).toFixed(0) + 'deg'); }
     if (off !== o.off) { o.off = off; E.mark.classList.toggle('off', off); }
     E.mark.style.transform = `translate(${sx.toFixed(1)}px,${sy.toFixed(1)}px)`;
     const dr = Math.round(d); if (dr !== o.d) { o.d = dr; E.pinDist.textContent = dr + ' m'; }
@@ -6373,7 +6557,7 @@ body.touch .ld-b{ min-height:42px; font-size:18px; }
     if (!tu.done && tu.step !== i) { tu.step = i; Prog.save(); }
     if (me.alive) me.hp = TUNE.HP; if (dum.alive) dum.hp = TUNE.HP; dum.brain.set('stand'); mark(null); E.act.hidden = true; E.hint.innerHTML = '';
     if (s.enter) s.enter();
-    E.kick.innerHTML = `LUDUS · LESSON <b>${NUM[i + 1]}</b> OF ${NUM[STEPS.length]}`; E.name.innerHTML = esc(s.name) + (s.opt ? '<small>Bonus</small>' : '');
+    E.kick.innerHTML = `LUDUS · LESSON <b>${NUM[i + 1]}</b> OF ${NUM[STEPS.length]}`; E.name.innerHTML = esc(s.name) + (s.opt ? '<small>Bonus</small>' : ''); E.tname.innerHTML = `<b>${NUM[i + 1]}</b> ${esc(s.name)}`;
     renderProg(); renderPips(); renderText(); renderSkip();
     E.card.classList.remove('done', 'in'); void E.card.offsetWidth; E.card.classList.add('in');
   }
@@ -6402,12 +6586,13 @@ body.touch .ld-b{ min-height:42px; font-size:18px; }
       tick() { if (me.fury < 45) me.fury = 45; if (me.ss) tick(1); },
       on: { ko(e) { if (e.v === dum && e.kind === 'demo') tick(2); }, hit(e) { if (e.a === me && e.v === dum) hint(`No blade needed. Hold ${G('boost')} and run straight through it.`); } } },
     { id: 'jump', name: 'Double Jump', n: 2, goal: 'Double jump',
-      text: () => `${G('jump')} jumps. Press it again in mid-air, with no direction held, for a double jump.`,
+      text: () => `${G('jump')} jumps. Press it again in mid-air, ${Input.device === 'touch' ? 'with your thumb off the stick' : 'with no direction held'}, for a double jump.`,
       on: { jump(e) { if (e.g === me && e.double) tick(); }, dodge(e) { if (e.g === me) hint(`That was a dodge. Let go of ${G('move')} before the second jump.`); } } },
     { id: 'dodge', name: 'Dodge-Strike', n: 2, goal: 'Dodge into the dummy',
       text: () => `Jump, then press ${G('jump')} again while holding a direction: a dodge. Dodge into the dummy to strike it.`,
       enter() { placeDummy(4.4, 3.2, 6); },
-      on: { dodgeHit(e) { if (e.a === me) tick(); }, jump(e) { if (e.g === me && e.double) hint(`Hold ${G('move')} toward the dummy as you press ${G('jump')} the second time.`); } } },
+      tick() { if (L.v.re && Sim.time > L.v.re && dum.alive && dum.st === 'idle') { L.v.re = 0; placeDummy(4.4, 3.2, 6); } }, // a struck partner may slide off toward the wall: bring it back into dodge range
+      on: { dodgeHit(e) { if (e.a === me) { tick(); L.v.re = Sim.time + 1.1; } }, jump(e) { if (e.g === me && e.double) hint(`Hold ${G('move')} toward the dummy as you press ${G('jump')} the second time.`); } } },
     { id: 'combo', name: 'Three-Hit Combo', n: 3, goals: ['First cut', 'Second cut', 'Finisher'],
       text: () => `Tap ${G('atk')} three times without a pause: two quick cuts and a finisher.`,
       enter() { placeDummy(3, 0, 7); },
@@ -6502,7 +6687,7 @@ body.touch .ld-b{ min-height:42px; font-size:18px; }
   function leave() { Match.paused = false; cleanup(); Match.toMenu(); }
   function cleanup() {
     uneaseAll();
-    if (L && L.grad) { Cam.lock = 0; Arena.gesture = 0; }
+    if (L && L.grad) { Cam.lock = 0; Arena.gesture = 0; if (hudEl) hudEl.classList.remove('cel'); }
     for (const g of [me, dum, spare]) if (g) g.pose = null;
     for (const g of [dum, spare]) if (g) { if (g._ai) { g.brain = g._ai; g._ai = null; } if (g.deadT > 1e8) g.deadT = 0.5; const I = g.inp; I.block = false; if (I.atk) { I.atk = false; I.atkR = true; } }
     if (root) { E.wrap.hidden = E.mark.hidden = E.yard.hidden = E.offer.hidden = E.grad.hidden = true; hudEl.classList.remove('ld-on'); } beacon(null);
@@ -6654,7 +6839,7 @@ body.touch .ld-b{ min-height:42px; font-size:18px; }
   { const st = document.createElement('style'); st.id = 'ludusCss'; st.textContent = CSS; document.head.appendChild(st);
     const ts = document.getElementById('scr-title'); if (ts && typeof MutationObserver === 'function') new MutationObserver(titleSync).observe(ts, { attributes: true, attributeFilter: ['class'], childList: true, subtree: true }); }
 
-  return Object.assign(T, { start, skip, leave, update, STEPS, goto(i) { if (T.active && L && !L.grad && STEPS[i]) { L.doneT = 0; uneaseAll(); begin(i); } }, state() { return { active: T.active, yard: T.yard, i: L ? L.i : -1, id: L && STEPS[L.i] ? STEPS[L.i].id : '', n: L ? L.n : 0, need: L && STEPS[L.i] ? STEPS[L.i].n : 0, done: !!(L && L.doneT > 0), grad: !!(L && L.grad), offer: !!offer, mode: Y.mode, fury: Y.fury, mark: L && L.mark ? { x: L.mark.g ? L.mark.g.pos.x : L.mark.x, z: L.mark.g ? L.mark.g.pos.z : L.mark.z } : null }; }, dummy() { return dum; } });
+  return Object.assign(T, { start, skip, leave, update, STEPS, okList: () => (L ? STEPS.map((x, k) => !!L.ok[k]) : []), goto(i) { if (T.active && L && !L.grad && STEPS[i]) { L.doneT = 0; uneaseAll(); begin(i); } }, state() { return { active: T.active, yard: T.yard, i: L ? L.i : -1, id: L && STEPS[L.i] ? STEPS[L.i].id : '', n: L ? L.n : 0, need: L && STEPS[L.i] ? STEPS[L.i].n : 0, done: !!(L && L.doneT > 0), grad: !!(L && L.grad), offer: !!offer, mode: Y.mode, fury: Y.fury, mark: L && L.mark ? { x: L.mark.g ? L.mark.g.pos.x : L.mark.x, z: L.mark.g ? L.mark.g.pos.z : L.mark.z } : null }; }, dummy() { return dum; } });
 })();
 __G.Tutorial = Tutorial;
 
