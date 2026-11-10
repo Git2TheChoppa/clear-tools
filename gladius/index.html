@@ -809,7 +809,7 @@ body.touch #hud .scoreboard{ max-height:calc(100% - 20px); overflow:hidden; padd
   body.touch #hud .scorebug{ top:calc(6px + var(--sat)); }
   body.touch #hud .sb-team{ height:38px; min-width:118px; padding:0 12px; gap:8px; } body.touch #hud .sb-score{ font-size:30px; } body.touch #hud .sb-name{ font-size:15px; }
   body.touch #hud .sb-clock{ height:38px; } body.touch #hud #sbClock{ font-size:25px; } body.touch #hud #sbSub{ font-size:10px; min-height:10px; }
-  body.touch #hud .vitals{ left:calc(12px + var(--sal)); top:calc(8px + var(--sat)); bottom:auto; width:min(240px, 29vw); transform-origin:0 0; }
+  body.touch #hud .vitals{ left:calc(12px + var(--sal)); top:calc(8px + var(--sat)); bottom:auto; width:min(240px, 29vw, calc(50vw - 187px - var(--sal))); transform-origin:0 0; } /* never under the scorebug, notch inset included */
   body.touch #hud .v-name{ font-size:15px; margin-bottom:3px; } body.touch #hud .v-title{ font-size:13px; }
   body.touch #hud .hpbar{ height:15px; } body.touch #hud #hpText{ line-height:15px; font-size:13px; }
   body.touch #hud .buffs{ margin-top:4px; min-height:0; } body.touch #hud .buff{ font-size:11px; padding:0 6px; }
@@ -7781,7 +7781,7 @@ void main(){ vec2 uv = vUv;
     for (let i = mips.length - 2; i >= 0; i--) { mUp.uniforms.uGain.value = i === 0 ? 0.55 : 1; pass(mUp, mips[i + 1], mips[i]); }
     // gameplay-driven lens: radial blur at speed, aberration from trauma/impacts, portrait focus behind the menu gladiator
     const me = Match.active ? Match.me : null, U = mOut.uniforms, menu = !Match.active && UI.display && UI.display.root.visible && (UI.cur === 'title' || UI.cur === 'armory' || UI.cur === 'reveal');
-    const wantBlur = me && me.alive && !REDUCED_MOTION ? (me.ss ? 0.6 : me.st === 'dodge' ? 0.22 : me.boosting ? 0.1 : 0) : 0; blurA = damp(blurA, wantBlur, wantBlur > blurA ? 7 : 3, dt);
+    const wantBlur = me && me.alive && !REDUCED_MOTION ? (me.ss ? 0.42 : me.st === 'dodge' ? 0.18 : me.boosting ? 0.07 : 0) : 0; blurA = damp(blurA, wantBlur, wantBlur > blurA ? 7 : 3, dt);
     lowA = damp(lowA, me && me.alive && me.hp < TUNE.HP * 0.3 ? 1 : 0, 3, dt); pulse = Math.max(0, pulse - dt * 2.4); focusA = damp(focusA, menu ? 1 : 0, 4, dt);
     if (focusA > 0.01) { pass(mDown, hdr, soft[0]); pass(mDown, soft[0], soft[1]); pass(mDown, soft[1], soft[2]); _pv.copy(UI.display.root.position); _pv.y += 1.05; _pv.project(camera); U.uFocus.value.set(_pv.x * 0.5 + 0.5, _pv.y * 0.5 + 0.5, 0.2); U.tSoft.value = soft[2].texture; }
     if (shock.t < 1) shock.t = Math.min(1, shock.t + dt / 0.55);
