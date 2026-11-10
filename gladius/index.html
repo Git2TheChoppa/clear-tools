@@ -7361,7 +7361,7 @@ const Match = (() => {
     Bus.on('matchStart', () => { M.slowK = 0.3; M.freezeDur = 0; M.deciding = null; tippedGB = false; Cam.killer = null; Cam.lock = 0; HUD.slain(null); slainShown = false; document.body.classList.remove('dramatic', 'impact'); });
     Bus.on('matchEnd', () => { Cam.lock = 0; document.body.classList.remove('dramatic'); });
     Bus.on('pad', (e) => { FX.pad(e.p, e.p.big); Sound.S.pad(V3(e.p.x, 0.5, e.p.z), e.p.big); });
-    Bus.on('bless', (e) => { FX.bless(e.g.pos); Sound.S.blessing(e.g.pos); award(e.g, "Emperor's Blessing", 50); Sound.cheer(0.8); Arena.gesture = 2; MT.set('blessWave', () => { if (Arena.gesture === 2) Arena.gesture = 0; }, 2500); if (M.active) HUD.ann("EMPEROR'S BLESSING", 'gold', esc(e.g.name) + ' is gilded', 1.3); if (e.g.brain && chance(0.3)) AI.chat(e.g, 'kickoff'); });
+    Bus.on('bless', (e) => { FX.bless(e.g.pos); Sound.S.blessing(e.g.pos); award(e.g, "Emperor's Blessing", 50); Sound.cheer(0.8); Arena.gesture = 2; MT.set('blessWave', () => { if (Arena.gesture === 2) Arena.gesture = 0; }, 2500); if (M.active) HUD.ann("EMPEROR'S BLESSING", 'gold', isMe(e.g) ? 'You are gilded' : esc(e.g.name) + ' is gilded', 1.3); if (e.g.brain && chance(0.3)) AI.chat(e.g, 'kickoff'); });
     Bus.on('blessSpawn', () => { if (M.active) { Sound.S.blessingSpawn(); HUD.tip("The Emperor's Blessing has appeared at the centre!", 3); } });
     Bus.on('respawn', (e) => { FX.spawn(e.g.pos, TEAM[e.g.team].lite); e.g._hitLog = null; e.g.hitDir = null; if (isMe(e.g)) { HUD.slain(null); slainShown = false; Cam.killer = null; } });
     Bus.on('chat', (e) => { if (M.active) HUD.chat(e.g, e.text); });
