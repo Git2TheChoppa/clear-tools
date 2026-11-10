@@ -344,7 +344,8 @@ body.touch .slain{ top:calc(58% + 84px); font-size:15px; } body.touch .slain sma
 .tbtn[data-b=boost]{ width:70px; height:70px; right:calc(128px + var(--sar)); bottom:calc(20px + var(--sab)); }
 .tbtn[data-b=block]{ width:70px; height:70px; right:calc(124px + var(--sar)); bottom:calc(110px + var(--sab)); }
 .tbtn[data-b=lock]{ width:52px; height:52px; right:calc(210px + var(--sar)); bottom:calc(34px + var(--sab)); font-size:13px; }
-body.touch .fury{ right:auto; left:calc(50% + 70px); bottom:calc(12px + var(--sab)); width:96px; height:96px; }
+body.touch .fury{ left:auto; right:calc(var(--tcw, 290px) + 6px + var(--sar)); bottom:calc(12px + var(--sab)); width:96px; height:96px; }
+body.touch.lefty .fury{ right:auto; left:calc(var(--tcw, 290px) + 6px + var(--sal)); }
 body.touch .f-num{ font-size:34px; } body.touch .f-lbl{ bottom:14px; font-size:11px; }
 body.touch .camtag{ display:none; }
 body.touch .vitals{ left:calc(16px + var(--sal)); bottom:auto; top:calc(12px + var(--sat)); width:min(250px, 30vw); }
@@ -357,6 +358,44 @@ body.touch .acc{ font-size:17px; }
 body.touch .chatlog{ top:calc(70px + var(--sat)); }
 body.touch .chatlog div{ font-size:15px; }
 body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
+/* shell: thumb-arc cluster. Centres (--cx, --cy) and diameters (--d) are in px at scale 1, measured from the bottom-right corner;
+   Input.applyTouchLayout() sets --k (btnScale, clamped to the room available) on #touch and body.portrait / body.landscape / body.lefty. */
+#touch{ --k:1; }
+#touch .tbtn{ --cx:60; --cy:60; --d:70; --ox:14px; --oy:10px; box-sizing:border-box; position:absolute; top:auto; left:auto; margin:0; padding:0; width:calc(var(--d) * var(--k) * 1px); height:calc(var(--d) * var(--k) * 1px); right:calc(var(--sar) + var(--ox) + (var(--cx) - var(--d) / 2) * var(--k) * 1px); bottom:calc(var(--sab) + var(--oy) + (var(--cy) - var(--d) / 2) * var(--k) * 1px); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:calc(2px * var(--k)); border-radius:50%; pointer-events:none; color:#f3e9d6; background:radial-gradient(circle at 50% 28%, rgba(84,57,33,.76), rgba(22,14,9,.76) 72%); border:2px solid rgba(224,165,96,.74); box-shadow:0 4px 14px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,228,170,.24), inset 0 -7px 12px rgba(0,0,0,.28); font-size:calc(10px * var(--k)); transition:transform .07s ease-out, opacity .2s; }
+#touch .tbtn::after{ content:''; position:absolute; inset:-2px; border-radius:50%; background:radial-gradient(circle at 50% 34%, #fff0bd, #f5c045 56%, #c4841a); opacity:0; transition:opacity .06s; }
+#touch .tbtn svg{ position:relative; z-index:1; width:44%; height:44%; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+#touch .tbtn b{ position:relative; z-index:1; font-weight:800; font-size:1em; line-height:1; letter-spacing:.09em; text-transform:uppercase; opacity:.9; text-shadow:0 1px 2px rgba(0,0,0,.5); }
+#touch .tbtn.on{ transform:scale(.9); color:#2a1606; }
+#touch .tbtn.on b{ text-shadow:none; }
+#touch .tbtn.on::after{ opacity:1; }
+#touch .tbtn.dry{ opacity:.4; }
+#touch .tbtn[data-b=atk]{ --cx:68; --cy:68; --d:96; font-size:calc(11px * var(--k)); border-color:rgba(255,170,100,.92); background:radial-gradient(circle at 50% 28%, rgba(156,58,32,.8), rgba(50,15,8,.8) 72%); }
+#touch .tbtn[data-b=atk] svg{ width:46%; height:46%; stroke-width:1.8; }
+#touch .tbtn[data-b=boost]{ --cx:166; --cy:46; }
+#touch .tbtn[data-b=block]{ --cx:156; --cy:142; }
+#touch .tbtn[data-b=jump]{ --cx:56; --cy:166; }
+#touch .tbtn[data-b=lock]{ --cx:236; --cy:104; --d:50; }
+#touch .tbtn[data-b=taunt]{ --cx:128; --cy:226; --d:50; }
+#touch .tbtn[data-b=lock] b,#touch .tbtn[data-b=taunt] b{ font-size:.84em; letter-spacing:.06em; }
+#touch .tbtn[data-b=lock].lk{ border-color:#ffd77a; color:#ffe9b0; box-shadow:0 0 0 3px rgba(245,192,69,.3), 0 4px 14px rgba(0,0,0,.42); }
+#touch .tchg{ position:absolute; inset:-7px; border-radius:50%; border:3px solid #ffcf5a; box-shadow:0 0 14px rgba(255,190,70,.75); opacity:0; transform:scale(.86); pointer-events:none; }
+body.portrait #touch .tbtn{ --ox:12px; --oy:14px; }
+body.portrait #touch .tbtn[data-b=atk]{ --cx:62; --cy:70; --d:100; }
+body.portrait #touch .tbtn[data-b=jump]{ --cx:56; --cy:178; --d:74; }
+body.portrait #touch .tbtn[data-b=boost]{ --cx:160; --cy:40; }
+body.portrait #touch .tbtn[data-b=block]{ --cx:150; --cy:140; }
+body.portrait #touch .tbtn[data-b=lock]{ --cx:150; --cy:232; --d:54; }
+body.portrait #touch .tbtn[data-b=taunt]{ --cx:54; --cy:274; --d:54; }
+body.lefty #touch .tbtn{ right:auto; left:calc(var(--sal) + var(--ox) + (var(--cx) - var(--d) / 2) * var(--k) * 1px); }
+#touch #stickBase{ left:0; top:0; margin:0; width:124px; height:124px; display:block; opacity:0; transform:translate3d(-300px,-300px,0); border:2px solid rgba(243,233,214,.36); background:radial-gradient(circle, rgba(0,0,0,.06) 28%, rgba(0,0,0,.3) 72%); box-shadow:inset 0 0 0 9px rgba(255,255,255,.04), 0 2px 10px rgba(0,0,0,.25); transition:opacity .15s; }
+#touch #stickBase.idle{ opacity:.34; }
+#touch #stickBase.on{ opacity:1; transition:none; }
+#touch #stickKnob{ width:54px; height:54px; margin:-27px 0 0 -27px; background:radial-gradient(circle at 44% 34%, #ffe7a6, #f5c045 58%, #c4841a); box-shadow:0 3px 10px rgba(0,0,0,.5), inset 0 -3px 6px rgba(120,60,0,.35); }
+#touch .stickhint{ left:0; top:0; bottom:auto; width:180px; margin-left:-90px; text-align:center; font-size:14px; letter-spacing:.04em; color:rgba(243,233,214,.78); text-shadow:0 1px 3px rgba(0,0,0,.8); transition:opacity .35s; }
+#touch .stickhint.gone{ opacity:0; }
+.kbd.pad{ border-radius:999px; min-width:1.5em; padding:1px 7px; font-weight:800; }
+.kbd.pad[data-k=A]{ color:#8ee07a; } .kbd.pad[data-k=B]{ color:#ff8a7a; } .kbd.pad[data-k=X]{ color:#7fb8ff; } .kbd.pad[data-k=Y]{ color:#ffd76a; }
+.kbd.tch{ border-radius:999px; padding:1px 8px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; font-size:.78em; color:#ffe9b0; border-color:rgba(224,165,96,.7); background:rgba(28,18,11,.55); }
 
 @media (max-height:520px){
   .screen{ padding-top:calc(10px + var(--sat)); padding-bottom:calc(10px + var(--sab)); }
@@ -545,11 +584,12 @@ body.touch .tip{ bottom:auto; top:66%; font-size:16px; }
   <div id="stickZone"></div><div id="lookZone"></div>
   <div id="stickBase"><div id="stickKnob"></div></div>
   <div class="stickhint" id="stickHint">Drag to move</div>
-  <div class="tbtn" data-b="block">Block</div>
-  <div class="tbtn" data-b="jump">Jump</div>
-  <div class="tbtn" data-b="boost">Boost</div>
-  <div class="tbtn" data-b="lock">Lock</div>
-  <div class="tbtn" data-b="atk">Strike</div>
+  <div class="tbtn" data-b="block"><svg viewBox="0 0 24 24"><path d="M12 2.8l7.2 2.9v5.4c0 4.6-3 8.2-7.2 10.1-4.2-1.9-7.2-5.5-7.2-10.1V5.7z"/><circle cx="12" cy="11.2" r="2.2"/></svg><b>Block</b></div>
+  <div class="tbtn" data-b="jump"><svg viewBox="0 0 24 24"><path d="M6 12.5l6-6 6 6M6 18.5l6-6 6 6"/></svg><b>Jump</b></div>
+  <div class="tbtn" data-b="boost"><svg viewBox="0 0 24 24"><path d="M12.4 2.6c.6 3.6 5.6 5.4 5.6 10.6a6 6 0 0 1-12 0c0-2.9 1.6-4.7 2.9-5.7.1 2 1 3.3 2.2 3.9-.4-3.2.1-6.3 1.3-8.8z"/></svg><b>Boost</b></div>
+  <div class="tbtn" data-b="lock"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.6"/><path d="M12 2.5v4M12 17.5v4M2.5 12h4M17.5 12h4"/></svg><b>Lock</b></div>
+  <div class="tbtn" data-b="taunt"><svg viewBox="0 0 24 24"><path d="M8.2 20.5C3.6 17 3.2 9.6 7.4 4.6M15.8 20.5c4.6-3.5 5-10.9.8-15.9"/><path d="M5.6 16.8l-2.4.3M4.6 12.9l-2.3-.6M5.1 9.1l-2-1.3M18.4 16.8l2.4.3M19.4 12.9l2.3-.6M18.9 9.1l2-1.3"/><path d="M12 7.2l1.3 2.7 2.9.4-2.1 2 .5 2.9-2.6-1.4-2.6 1.4.5-2.9-2.1-2 2.9-.4z"/></svg><b>Taunt</b></div>
+  <div class="tbtn" data-b="atk"><i class="tchg"></i><svg viewBox="0 0 24 24"><path d="M20.2 3.8l-.6 3.4-9.4 9.4-2.8-2.8 9.4-9.4z"/><path d="M5.6 12.4l6 6M7.6 16.4l-3.4 3.4"/><circle cx="3.6" cy="20.4" r="1.1"/></svg><b>Strike</b></div>
 </div>
 
 <div id="loading"><div><h1>GLADIUS</h1><p id="loadMsg">Raking the sand…</p></div></div>
@@ -3929,78 +3969,204 @@ const AI = (() => {
 const Input = (() => {
   const keys = new Set(), mb = [false, false, false], touchB = new Set(), latch = new Set(), cur = {}, prev = {};
   let look = { x: 0, y: 0 }, tMove = { x: 0, y: 0 }, pad = null, padMove = { x: 0, y: 0 }, padLook = { x: 0, y: 0 }, device = IS_TOUCH ? 'touch' : 'kb', enabled = false, canvas;
-  const KM = { KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down', KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', Space: 'jump', ShiftLeft: 'boost', ShiftRight: 'boost', KeyJ: 'atk', KeyK: 'block', KeyQ: 'lock', KeyL: 'lock', Tab: 'board', Escape: 'pause', KeyP: 'pause', Digit1: 'c1', Digit2: 'c2', Digit3: 'c3', Digit4: 'c4', Enter: 'confirm', Backspace: 'back' };
-  const NAMES = ['up', 'down', 'left', 'right', 'jump', 'boost', 'atk', 'block', 'lock', 'board', 'pause', 'c1', 'c2', 'c3', 'c4', 'confirm', 'back'];
+  let padDead = false, padHad = false, wheel = 0, wheelT = 0, hadLock = false, tLook = { x: 0, y: 0 };
+  const KM = { KeyW: 'up', ArrowUp: 'up', KeyS: 'down', ArrowDown: 'down', KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right', Space: 'jump', ShiftLeft: 'boost', ShiftRight: 'boost', KeyJ: 'atk', KeyK: 'block', KeyQ: 'lock', KeyL: 'lock', KeyT: 'taunt', Tab: 'board', Escape: 'pause', KeyP: 'pause', Digit1: 'c1', Digit2: 'c2', Digit3: 'c3', Digit4: 'c4', Enter: 'confirm', Backspace: 'back' };
+  const NAMES = ['up', 'down', 'left', 'right', 'jump', 'boost', 'atk', 'block', 'lock', 'taunt', 'board', 'pause', 'c1', 'c2', 'c3', 'c4', 'confirm', 'back'];
+  const PO = {}; for (const n of NAMES) PO[n] = false;
+  // glyph chips per device (Input.glyph)
+  const GLY = {
+    kb: { move: 'WASD', jump: 'Space', boost: 'Shift', atk: 'LMB', block: 'RMB', lock: 'Q', board: 'Tab', pause: 'Esc', taunt: 'T', c1: '1', c2: '2', c3: '3', c4: '4', confirm: 'Enter', back: 'Backspace' },
+    pad: { move: 'L-stick', jump: 'A', boost: 'B', atk: 'X', block: 'LB', lock: 'Y', board: 'View', pause: 'Start', taunt: 'R3', c1: 'D-pad ↑', c2: 'D-pad →', c3: 'D-pad ↓', c4: 'D-pad ←', confirm: 'A', back: 'B' },
+    touch: { move: 'Stick', jump: 'Jump', boost: 'Boost', atk: 'Strike', block: 'Block', lock: 'Lock', board: 'Score', pause: 'II', taunt: 'Taunt' },
+  };
+  function setDev(d) { if (d === device) return; device = d; try { Bus.emit('device', { device: d }); } catch (e) { /* listener error */ } }
+  // pause the match when the player's hands leave the game (focus, pointer lock or pad lost); never in menus
+  function autoPause() { try { if (typeof Match !== 'undefined' && Match.active && !Match.paused && UI.cur === 'hud' && Match.phase !== 'done' && Match.phase !== 'celebrate') Match.pause(); } catch (e) { /* not booted */ } }
+  // ---------- touch: every finger is tracked by identifier and keeps the job it started with
+  const F = new Map(), BR = [], bcnt = {}, TV = { boost: null, lock: null, taunt: null, chg: -1 };
+  let tz = null, base = null, knob = null, hint = null, btnEls = [], sId = null, sx = 0, sy = 0, lookId = null, hintDone = false, ghostX = 0, ghostY = 0, por = false, lefty = false;
+  const STICK_R = 50, STICK_DZ = 0.14, STICK_FOLLOW = 62;
+  const W = () => innerWidth, H = () => innerHeight, band = () => Math.min(H() * 0.44, 340);
+  function measure() {
+    BR.length = 0;
+    for (const b of btnEls) { const r = b.getBoundingClientRect(); if (!r.width) continue; BR.push({ b, n: b.dataset.b, x: r.left + r.width / 2, y: r.top + r.height / 2, r: b.offsetWidth / 2 }); }
+  }
+  function hitBtn(x, y, slack) { let best = null, bd = slack; for (const o of BR) { const d = Math.hypot(x - o.x, y - o.y) - o.r; if (d < bd) { bd = d; best = o; } } return best; }
+  function press(n) { bcnt[n] = (bcnt[n] || 0) + 1; touchB.add(n); latch.add(n); const o = BR.find((q) => q.n === n); if (o) o.b.classList.add('on'); }
+  function release(n) { bcnt[n] = Math.max(0, (bcnt[n] || 0) - 1); if (bcnt[n]) return; touchB.delete(n); for (const b of btnEls) if (b.dataset.b === n) b.classList.remove('on'); }
+  function zoneOf(x, y) {
+    const xs = lefty ? W() - x : x;
+    if (por) return xs < W() * 0.5 && y > H() - band() - 70 ? 'stick' : 'look';
+    return xs < W() * 0.44 && y > 56 ? 'stick' : 'look';
+  }
+  function placeBase(x, y) { base.style.transform = `translate3d(${(x - 62).toFixed(0)}px,${(y - 62).toFixed(0)}px,0)`; }
+  function placeGhost() {
+    if (!base) return; const b = band();
+    ghostX = por ? W() * 0.25 : Math.max(120, W() * 0.16); ghostY = por ? H() - b * 0.42 : H() - 118;
+    if (lefty) ghostX = W() - ghostX;
+    if (sId === null) { placeBase(ghostX, ghostY); knob.style.transform = ''; }
+    hint.style.transform = `translate3d(${ghostX.toFixed(0)}px,${(ghostY + 74).toFixed(0)}px,0)`;
+  }
+  function stickStart(id, x, y) {
+    sId = id; F.set(id, { k: 'stick' });
+    sx = clamp(x, 64, W() - 64); sy = clamp(y, 64, H() - 64);
+    placeBase(sx, sy); knob.style.transform = ''; base.classList.add('on'); base.classList.remove('idle');
+    if (!hintDone) { hintDone = true; hint.classList.add('gone'); }
+  }
+  function stickMove(x, y) {
+    let dx = x - sx, dy = y - sy, l = Math.hypot(dx, dy);
+    if (l > STICK_FOLLOW) { const f = (l - STICK_FOLLOW) / l; sx += dx * f; sy += dy * f; dx = x - sx; dy = y - sy; l = STICK_FOLLOW; placeBase(sx, sy); } // the base follows a thumb that drags past its edge
+    const m = clamp((l / STICK_R - STICK_DZ) / (1 - STICK_DZ), 0, 1), kl = Math.min(l, STICK_R) / (l || 1);
+    tMove.x = l ? (dx / l) * m : 0; tMove.y = l ? (-dy / l) * m : 0;
+    knob.style.transform = `translate3d(${(dx * kl).toFixed(1)}px,${(dy * kl).toFixed(1)}px,0)`;
+  }
+  function endFinger(id) {
+    const f = F.get(id); if (!f) return; F.delete(id);
+    if (f.k === 'stick') { sId = null; tMove.x = tMove.y = 0; base.classList.remove('on'); if (enabled) base.classList.add('idle'); placeGhost(); }
+    else if (f.k === 'look') lookId = null;
+    else if (f.k === 'btn') release(f.o.n);
+  }
+  function releaseAll() { for (const id of Array.from(F.keys())) endFinger(id); for (const n in bcnt) bcnt[n] = 0; touchB.clear(); for (const b of btnEls) b.classList.remove('on'); tMove.x = tMove.y = 0; tLook.x = tLook.y = 0; }
+  function initTouch() {
+    tz = $('#touch'); base = $('#stickBase'); knob = $('#stickKnob'); hint = $('#stickHint'); btnEls = $$('#touch .tbtn');
+    const opt = { passive: false };
+    tz.addEventListener('touchstart', (e) => {
+      e.preventDefault(); setDev('touch'); measure();
+      const live = new Set(); for (const t of e.touches) live.add(t.identifier);
+      for (const id of Array.from(F.keys())) if (!live.has(id)) endFinger(id); // a lost touchend never leaves a finger stuck down
+      for (const t of e.changedTouches) {
+        const id = t.identifier, x = t.clientX, y = t.clientY; if (F.has(id)) continue;
+        const h = hitBtn(x, y, 16); // generous invisible hit area: up to 16 px outside the nearest button's rim
+        if (h) { F.set(id, { k: 'btn', o: h }); press(h.n); continue; }
+        if (zoneOf(x, y) === 'stick' && sId === null) { stickStart(id, x, y); continue; }
+        if (lookId === null) { lookId = id; F.set(id, { k: 'look', x, y }); } // further fingers are ignored: nothing steals a gesture
+      }
+    }, opt);
+    tz.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      for (const t of e.changedTouches) {
+        const f = F.get(t.identifier); if (!f) continue; const x = t.clientX, y = t.clientY;
+        if (f.k === 'stick') stickMove(x, y);
+        else if (f.k === 'look') { const s = por ? 2.6 : 2.2; tLook.x += (x - f.x) * s; tLook.y += (y - f.y) * s; f.x = x; f.y = y; }
+        else { // slide-to-press: a thumb rolling off one button onto a neighbour switches to it
+          const h = hitBtn(x, y, 6);
+          if (h && h !== f.o && Math.hypot(x - f.o.x, y - f.o.y) - f.o.r > 4) { release(f.o.n); f.o = h; press(h.n); }
+        }
+      }
+    }, opt);
+    const end = (e) => { e.preventDefault(); for (const t of e.changedTouches) endFinger(t.identifier); Sound.init(); };
+    tz.addEventListener('touchend', end, opt); tz.addEventListener('touchcancel', end, opt);
+    document.addEventListener('gesturestart', (e) => { if (enabled) e.preventDefault(); }, opt); // iOS pinch-zoom
+    canvas.style.touchAction = 'none';
+    Bus.on('matchStart', () => { hintDone = false; hint.classList.remove('gone'); releaseAll(); });
+  }
+  // touch button looks that follow game state (Boost dims at 0 fury, Lock lit while locked, Taunt dims on cooldown, Strike shows the heavy charge)
+  function touchVis() {
+    const M = Match, me = M.me; if (!me) return;
+    const dry = me.fury < 1; if (dry !== TV.boost) { TV.boost = dry; tz.querySelector('[data-b=boost]').classList.toggle('dry', dry); }
+    const lk = !!M.lockOn; if (lk !== TV.lock) { TV.lock = lk; tz.querySelector('[data-b=lock]').classList.toggle('lk', lk); }
+    const tc = !me.alive || Sim.time - (me.tauntT == null ? -99 : me.tauntT) < 6; if (tc !== TV.taunt) { TV.taunt = tc; tz.querySelector('[data-b=taunt]').classList.toggle('dry', tc); }
+    const c = me.st === 'charge' ? Math.round((me.charge || 0) * 10) / 10 : 0;
+    if (c !== TV.chg) { TV.chg = c; const r = tz.querySelector('.tchg'); r.style.opacity = c ? (0.35 + c * 0.65).toFixed(2) : '0'; r.style.transform = `scale(${(0.86 + c * 0.14).toFixed(2)})`; }
+  }
+  function applyTouchLayout() {
+    const b = document.body, w = W(), h = H(), S = Game.settings || {};
+    por = h > w; lefty = !!S.lefty;
+    b.classList.toggle('portrait', por); b.classList.toggle('landscape', !por); b.classList.toggle('lefty', lefty);
+    const bs = clamp(+S.btnScale || 1, 0.8, 1.4);
+    const k = Math.max(0.7, por ? Math.min(bs, (band() - 16) / 302, (w * 0.56) / 200) : Math.min(bs, (h - 96) / 252, (w * 0.36) / 262));
+    if (tz) tz.style.setProperty('--k', k.toFixed(3));
+    b.style.setProperty('--tcw', Math.round((por ? 200 : 262) * k + 14) + 'px'); // cluster width, for HUD elements that sit beside it
+    placeGhost(); return k;
+  }
   function init(cv) {
     canvas = cv;
     addEventListener('keydown', (e) => {
       const n = KM[e.code]; if (n && enabled && (e.code === 'Tab' || e.code === 'Space' || e.code.startsWith('Arrow'))) e.preventDefault();
-      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
-      keys.add(e.code); if (n) latch.add(n); device = 'kb';
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA')) return;
+      keys.add(e.code); if (n) latch.add(n); setDev('kb');
+      if (e.code === 'KeyF' && !e.repeat && !e.ctrlKey && !e.metaKey) fullscreen();
     });
     addEventListener('keyup', (e) => keys.delete(e.code));
-    addEventListener('blur', () => { keys.clear(); mb.fill(false); touchB.clear(); });
-    cv.addEventListener('mousedown', (e) => { if (!enabled) return; mb[e.button] = true; latch.add(['atk', 'lock', 'block'][e.button] || 'atk'); device = 'kb'; if (!document.pointerLockElement && cv.requestPointerLock) { try { const p = cv.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) { /* sandboxed */ } } });
+    addEventListener('blur', () => { keys.clear(); mb.fill(false); releaseAll(); setTimeout(() => { if (!document.hasFocus || !document.hasFocus()) autoPause(); }, 120); });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) return; keys.clear(); mb.fill(false); releaseAll(); if (typeof Match !== 'undefined' && Match.active && Match.paused && Match.resumeT > 0) Match.pause(); });
+    cv.addEventListener('mousedown', (e) => { if (!enabled) return; mb[e.button] = true; latch.add(['atk', 'lock', 'block'][e.button] || 'atk'); setDev('kb'); if (!document.pointerLockElement && cv.requestPointerLock) { try { const p = cv.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (err) { /* sandboxed */ } } });
     addEventListener('mouseup', (e) => { mb[e.button] = false; });
     cv.addEventListener('contextmenu', (e) => e.preventDefault());
     addEventListener('mousemove', (e) => { if (!enabled || IS_TOUCH) return; if (document.pointerLockElement === cv || mb[0] || mb[2]) { look.x += e.movementX || 0; look.y += e.movementY || 0; } });
-    // touch
-    const tz = $('#touch'), sz = $('#stickZone'), lz = $('#lookZone'), base = $('#stickBase'), knob = $('#stickKnob');
-    let sid = null, sx = 0, sy = 0, lid = null, lx = 0, ly = 0;
-    const opt = { passive: false };
-    sz.addEventListener('touchstart', (e) => { e.preventDefault(); device = 'touch'; const t = e.changedTouches[0]; sid = t.identifier; sx = t.clientX; sy = t.clientY; base.style.left = sx + 'px'; base.style.top = sy + 'px'; base.classList.add('on'); knob.style.transform = ''; $('#stickHint').style.display = 'none'; }, opt);
-    lz.addEventListener('touchstart', (e) => { e.preventDefault(); device = 'touch'; const t = e.changedTouches[0]; lid = t.identifier; lx = t.clientX; ly = t.clientY; }, opt);
-    tz.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      for (const t of e.changedTouches) {
-        if (t.identifier === sid) { let dx = t.clientX - sx, dy = t.clientY - sy; const l = Math.hypot(dx, dy), R = 56; if (l > R) { dx *= R / l; dy *= R / l; } tMove.x = dx / R; tMove.y = -dy / R; knob.style.transform = `translate(${dx}px,${dy}px)`; }
-        else if (t.identifier === lid) { look.x += (t.clientX - lx) * 2.2; look.y += (t.clientY - ly) * 2.2; lx = t.clientX; ly = t.clientY; }
-      }
-    }, opt);
-    const end = (e) => { for (const t of e.changedTouches) { if (t.identifier === sid) { sid = null; tMove.x = tMove.y = 0; base.classList.remove('on'); } if (t.identifier === lid) lid = null; } };
-    tz.addEventListener('touchend', end); tz.addEventListener('touchcancel', end);
-    for (const b of $$('.tbtn')) {
-      const n = b.dataset.b;
-      b.addEventListener('touchstart', (e) => { e.preventDefault(); e.stopPropagation(); touchB.add(n); latch.add(n); b.classList.add('on'); device = 'touch'; Sound.init(); }, opt);
-      const up = (e) => { e.preventDefault(); touchB.delete(n); b.classList.remove('on'); };
-      b.addEventListener('touchend', up, opt); b.addEventListener('touchcancel', up, opt);
-    }
-    addEventListener('gamepadconnected', () => { device = 'pad'; });
+    cv.addEventListener('wheel', (e) => { if (!enabled) return; e.preventDefault(); const now = performance.now(); if (Math.abs(e.deltaY) < 4 || now - wheelT < 140) return; wheelT = now; wheel += Math.sign(e.deltaY); }, { passive: false });
+    document.addEventListener('pointerlockchange', () => { const on = document.pointerLockElement === cv; if (!on && hadLock && enabled && !IS_TOUCH) autoPause(); hadLock = on; });
+    initTouch();
+    addEventListener('gamepadconnected', () => { padHad = true; setDev('pad'); });
+    addEventListener('gamepaddisconnected', () => { if (device === 'pad') autoPause(); });
+    const relayout = () => { applyTouchLayout(); setTimeout(applyTouchLayout, 260); }; // iOS reports the new size a little late
+    addEventListener('resize', relayout); addEventListener('orientationchange', relayout);
+    applyTouchLayout();
   }
   function pollPad() {
     pad = null; padMove.x = padMove.y = padLook.x = padLook.y = 0;
-    const gps = navigator.getGamepads ? navigator.getGamepads() : []; if (!gps) return {};
+    if (padDead || !navigator.getGamepads) return null;
+    let gps; try { gps = navigator.getGamepads(); } catch (e) { padDead = true; return null; } // SecurityError in sandboxed frames: stop polling for good
+    if (!gps) return null;
     for (const g of gps) if (g && g.connected) { pad = g; break; }
-    if (!pad) return {};
-    const dz = (v) => (Math.abs(v) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82), ax = pad.axes, B = (i) => !!(pad.buttons[i] && (pad.buttons[i].pressed || pad.buttons[i].value > 0.4));
+    if (!pad) return null;
+    const dz = (v) => (Math.abs(v) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82), ax = pad.axes, bt = pad.buttons, B = (i) => !!(bt[i] && (bt[i].pressed || bt[i].value > 0.4));
     padMove.x = dz(ax[0] || 0); padMove.y = -dz(ax[1] || 0); padLook.x = dz(ax[2] || 0); padLook.y = dz(ax[3] || 0);
-    const o = { jump: B(0), boost: B(1) || B(5), atk: B(2) || B(7), block: B(4) || B(6), lock: B(3), pause: B(9), board: B(8), up: B(12) || padMove.y > 0.6, down: B(13) || padMove.y < -0.6, left: B(14), right: B(15), confirm: B(0), back: B(1), c1: B(12), c2: B(15), c3: B(13), c4: B(14) };
-    if (Object.values(o).some(Boolean) || Math.hypot(padMove.x, padMove.y) > 0.3) device = 'pad';
+    const o = PO; let any = false;
+    o.jump = B(0); o.boost = B(1) || B(5); o.atk = B(2) || B(7); o.block = B(4) || B(6); o.lock = B(3); o.taunt = B(11); o.pause = B(9); o.board = B(8);
+    // the d-pad navigates menus (and is quick chat in a match); it never moves the gladiator
+    o.up = B(12) || padMove.y > 0.6; o.down = B(13) || padMove.y < -0.6; o.left = B(14) || padMove.x < -0.6; o.right = B(15) || padMove.x > 0.6;
+    o.confirm = B(0); o.back = B(1); o.c1 = B(12); o.c2 = B(15); o.c3 = B(13); o.c4 = B(14);
+    for (const n of NAMES) if (o[n]) { any = true; break; }
+    if (any || Math.hypot(padMove.x, padMove.y) > 0.3 || Math.hypot(padLook.x, padLook.y) > 0.3) setDev('pad');
     return o;
   }
   function poll() {
     const p = pollPad();
     for (const n of NAMES) prev[n] = cur[n];
-    for (const n of NAMES) cur[n] = !!p[n] || touchB.has(n);
+    for (const n of NAMES) cur[n] = (p ? p[n] : false) || touchB.has(n);
     for (const k of keys) { const n = KM[k]; if (n) cur[n] = true; }
     if (enabled) { if (mb[0]) cur.atk = true; if (mb[2]) cur.block = true; if (mb[1]) cur.lock = true; }
     for (const n of latch) cur[n] = true; latch.clear();
+    if (enabled && IS_TOUCH && tz && !tz.hidden) touchVis();
   }
   function move() {
-    let x = (cur.right && keys.size ? 1 : 0) - (cur.left && keys.size ? 1 : 0), y = (cur.up && keys.size ? 1 : 0) - (cur.down && keys.size ? 1 : 0);
-    if (!keys.size) { x = 0; y = 0; }
-    else { x = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0); y = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0); }
+    let x = 0, y = 0;
+    if (keys.size) { x = (keys.has('KeyD') || keys.has('ArrowRight') ? 1 : 0) - (keys.has('KeyA') || keys.has('ArrowLeft') ? 1 : 0); y = (keys.has('KeyW') || keys.has('ArrowUp') ? 1 : 0) - (keys.has('KeyS') || keys.has('ArrowDown') ? 1 : 0); }
     x += padMove.x + tMove.x; y += padMove.y + tMove.y;
     const l = Math.hypot(x, y); if (l > 1) { x /= l; y /= l; }
     return { x, y };
   }
-  function takeLook(dt) { const o = { x: look.x * 0.0022 + padLook.x * 2.6 * dt, y: look.y * 0.0022 + padLook.y * 1.8 * dt }; look.x = look.y = 0; return o; }
+  const _lk = { x: 0, y: 0 };
+  function takeLook(dt) {
+    const a = 1 - Math.exp(-28 * dt), tx = tLook.x * a, ty = tLook.y * a; tLook.x -= tx; tLook.y -= ty; // a touch of smoothing on finger look
+    _lk.x = (look.x + tx) * 0.0022 + padLook.x * 2.6 * dt; _lk.y = (look.y + ty) * 0.0022 + padLook.y * 1.8 * dt; look.x = look.y = 0; return _lk;
+  }
+  function takeWheel() { const w = wheel; wheel = 0; return w; }
+  function glyph(a, dev) {
+    const d = dev || device, v = (GLY[d] || GLY.kb)[a]; if (!v) return '';
+    return d === 'pad' ? `<span class="kbd pad" data-k="${esc(v)}">${esc(v)}</span>` : d === 'touch' ? `<span class="kbd tch">${esc(v)}</span>` : `<span class="kbd">${esc(v)}</span>`;
+  }
+  function fullscreen(on) {
+    try {
+      const d = document, de = d.documentElement, isFs = !!(d.fullscreenElement || d.webkitFullscreenElement), want = on == null ? !isFs : !!on;
+      const f = want ? (isFs ? null : de.requestFullscreen || de.webkitRequestFullscreen) : (isFs ? d.exitFullscreen || d.webkitExitFullscreen : null);
+      if (f) { const p = f.call(want ? de : d); if (p && p.catch) p.catch(() => {}); }
+      return want && !!(de.requestFullscreen || de.webkitRequestFullscreen);
+    } catch (e) { return false; }
+  }
   return {
-    init, poll, move, takeLook,
+    init, poll, move, takeLook, takeWheel, glyph, fullscreen, applyTouchLayout,
     down: (n) => !!cur[n], pressed: (n) => !!cur[n] && !prev[n], released: (n) => !cur[n] && !!prev[n],
-    enable(on) { enabled = on; if (!on) { mb.fill(false); if (document.pointerLockElement) try { document.exitPointerLock(); } catch (e) { /* ignore */ } } },
+    enable(on) {
+      enabled = on;
+      if (!on) { mb.fill(false); if (document.pointerLockElement) try { document.exitPointerLock(); } catch (e) { /* ignore */ } }
+      if (base) { base.classList.toggle('idle', on && sId === null); if (on) placeGhost(); }
+    },
     get device() { return device; }, get enabled() { return enabled; },
-    clearTouch() { touchB.clear(); tMove.x = tMove.y = 0; $$('.tbtn').forEach((b) => b.classList.remove('on')); },
+    get fullscreenOK() { try { return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled); } catch (e) { return false; } },
+    get portrait() { return por; },
+    clearTouch() { releaseAll(); },
   };
 })();
 
@@ -4020,6 +4186,8 @@ const Cam = (() => {
   const motionK = () => (Game.settings ? Game.settings.shake : 1) * (REDUCED_MOTION ? 0.3 : 1);
   function kick(dir, amt) { C.kickV.addScaledVector(dir, amt * motionK()); }
   function fovPunch(v) { C.fovK += v * motionK(); }
+  let vOff = 0, vW = 0, vH = 0; // shell: off-axis shift of the image (fraction of the screen height), only for portrait touch play
+  function viewOff(want, dt) { vOff = Math.abs(want - vOff) < 0.002 ? want : damp(vOff, want, 5, dt); if (cam && (vOff !== cam.__vo || innerWidth !== vW || innerHeight !== vH)) { cam.__vo = vOff; vW = innerWidth; vH = innerHeight; if (vOff) cam.setViewOffset(vW, vH, 0, vOff * vH, vW, vH); else if (cam.view && cam.view.enabled) cam.clearViewOffset(); } }
   function update(dt, P, T, lockOn) {
     C.t += dt; const wantPos = _v, wantLook = _w; let fov = 70, k = 5;
     if (C.lock > 0) C.lock = Math.max(0, C.lock - dt);
@@ -4054,17 +4222,30 @@ const Cam = (() => {
         if (C.idle > 1.0 && sp > 3) C.yaw = dampA(C.yaw, Math.atan2(P.vel.x, P.vel.z), 1.8, dt);
         C.pitch = C.idle > 2 ? damp(C.pitch, 0.22, 1, dt) : C.pitch;
       }
-      const sp = Math.hypot(P.vel.x, P.vel.z), dist = 5.6 + clamp(sp - 10, 0, 9) * 0.12 + (tgt ? 0.6 : 0) + (kcam ? 1.4 : 0);
-      C.piv.set(P.pos.x, P.pos.y * 0.85 + 1.55, P.pos.z);
+      // comfort: Game.settings.camDist scales the chase distance; a tall portrait screen pulls the camera back and up a little,
+      // widens the FOV and (on touch) shifts the image up so the fight sits above the thumbs (view offset, applied after the mode chain)
+      const tall = innerHeight > innerWidth * 1.05, camK = clamp(+Game.settings.camDist || 1, 0.8, 1.4) * (tall ? 1.16 : 1);
+      const sp = Math.hypot(P.vel.x, P.vel.z), dist = (5.6 + clamp(sp - 10, 0, 9) * 0.12 + (tgt ? 0.6 : 0) + (kcam ? 1.4 : 0)) * camK;
+      C.piv.set(P.pos.x, P.pos.y * 0.85 + 1.55 + (tall ? 0.2 : 0), P.pos.z);
       const fx = Math.sin(C.yaw), fz = Math.cos(C.yaw), cp = Math.cos(C.pitch), spn = Math.sin(C.pitch);
       wantPos.set(C.piv.x - fx * dist * cp, C.piv.y + dist * spn + 0.4, C.piv.z - fz * dist * cp);
+      // keep the lens out of a body standing between the camera and the player: lift over it (damped, so a passer-by never pops the view)
+      let lift = 0; const sx = wantPos.x - C.piv.x, sy = wantPos.y - C.piv.y, sz = wantPos.z - C.piv.z, sl = sx * sx + sy * sy + sz * sz;
+      for (const o of Sim.glads) {
+        if (o === P || !o.alive) continue; const ox = o.pos.x - C.piv.x, oy = o.pos.y + 1 - C.piv.y, oz = o.pos.z - C.piv.z, t = (ox * sx + oy * sy + oz * sz) / sl;
+        if (t < 0.2 || t > 1.08) continue; const lx = ox - sx * t, ly = oy - sy * t, lz = oz - sz * t, lat = Math.sqrt(lx * lx + ly * ly + lz * lz);
+        if (lat < 1.05) lift = Math.max(lift, (1.05 - lat) * 1.7 * t);
+      }
+      C.lift = damp(C.lift || 0, lift, lift > (C.lift || 0) ? 10 : 3, dt); wantPos.y += C.lift;
+      C.vOffW = tall && IS_TOUCH ? 0.13 : 0;
       if (tgt) { _n.set(tgt.pos.x, tgt.pos.y + 1.2, tgt.pos.z).sub(C.piv); const L = Math.min(_n.length(), 10); _n.setLength(L * 0.3); wantLook.copy(C.piv).add(_n); }
       else wantLook.set(C.piv.x + fx * 1.8, C.piv.y + 0.1, C.piv.z + fz * 1.8);
-      fov = 72 + clamp((sp - 10) / 9, 0, 1) * 12 + (P.ss ? 3 : 0) + (P.boosting ? 4 : 0); k = 14;
+      fov = 72 + (tall ? 16 : 0) + clamp((sp - 10) / 9, 0, 1) * 12 + (P.ss ? 3 : 0) + (P.boosting ? 4 : 0); k = 14;
     } else if (C.mode === 'end') {
       C.orbit += dt * 0.35; const f = C.focus, oR = C.orbitR || 7.5;
       wantPos.set(f.x + Math.sin(C.orbit) * oR, 2.4, f.z + Math.cos(C.orbit) * oR); wantLook.set(f.x, 1.3, f.z); fov = 60; k = 3;
     } else { wantPos.set(0, 14, 30); wantLook.set(0, 0, 0); }
+    viewOff(C.mode === 'play' || C.mode === 'dead' ? C.vOffW || 0 : 0, dt); // shell: portrait-touch framing
     clampIn(wantPos);
     if (C.snap) { C.pos.copy(wantPos); C.lookS.copy(wantLook); C.fov = fov; C.snap = false; }
     C.pos.x = damp(C.pos.x, wantPos.x, k, dt); C.pos.y = damp(C.pos.y, wantPos.y, k, dt); C.pos.z = damp(C.pos.z, wantPos.z, k, dt);
@@ -6029,10 +6210,16 @@ const Match = (() => {
     Sound.music('menu'); UI.results(res, M); M.active = false;
     Arena.gesture = 0; Arena.excite = 0.25;
   }
-  function pause() { if (!M.active || M.phase === 'celebrate' || M.phase === 'done') return; M.paused = true; UI.show('pause'); Sound.boost(false, 0); }
-  function resume() { M.paused = false; UI.show('hud'); }
+  function pause() { if (!M.active || M.phase === 'celebrate' || M.phase === 'done') return; M.paused = true; M.resumeT = 0; M.resumeN = 0; UI.show('pause'); Sound.boost(false, 0); }
+  // resume runs a short 3-2-1 with the sim still frozen (M.paused stays true until it ends); `now` skips it. resumeGuard eats the
+  // pause press that triggered the resume, which Match.update sees later in the same frame (frame order: Input.poll → UI.update → Match.update).
+  function resume(now) {
+    M.resumeGuard = true; Sound.init();
+    if (now === true || !M.active || !M.paused) { M.paused = false; M.resumeT = 0; UI.show('hud'); return; }
+    M.resumeT = Input.device === 'touch' ? 1 : 1.35; M.resumeT0 = M.resumeT; M.resumeN = 0; UI.show('hud');
+  }
   function forfeit() {
-    if (!M.active) return; M.paused = false; UI.show('hud');
+    if (!M.active) return; M.paused = false; M.resumeT = 0; UI.show('hud');
     if (M.phase === 'end') { celebrate(); finish(); return; } // the result is already decided (a pause can land in the final blow): keep it
     M.forfeited = M.mode !== 'training'; M.winner = M.mode === 'training' ? -1 : 1 - M.me.team; finish();
   }
@@ -6050,13 +6237,41 @@ const Match = (() => {
   // ---------- player control
   function nearestEnemy(maxD, cone, dirYaw) {
     const me = M.me; let best = null, bd = maxD;
-    for (const e of M.glads) { if (!e.alive || e.team === me.team) continue; const dx = e.pos.x - me.pos.x, dz = e.pos.z - me.pos.z, d = Math.hypot(dx, dz); if (cone && Math.abs(angDiff(dirYaw, Math.atan2(dx, dz))) > cone) continue; const sc = d + (cone ? 0 : Math.abs(angDiff(Cam.yaw, Math.atan2(dx, dz))) * 4); if (sc < bd) { bd = sc; best = e; } }
+    for (const e of M.glads) { if (!e.alive || e.team === me.team) continue; const dx = e.pos.x - me.pos.x, dz = e.pos.z - me.pos.z, d = Math.hypot(dx, dz); if (cone && Math.abs(angDiff(dirYaw, Math.atan2(dx, dz))) > cone) continue; const sc = d + (cone ? 0 : Math.abs(angDiff(Cam.yaw, Math.atan2(dx, dz))) * 4 - (e.target === me ? 2.5 : 0)); if (sc < bd) { bd = sc; best = e; } } // cone 0: favour what is in front of the camera and what is coming for you
     return best;
   }
-  function playerCtl() {
-    const g = M.me, I = g.inp, live = M.phase === 'play' || M.phase === 'ot' || (M.phase === 'count' && false);
-    if (Input.pressed('lock')) { M.lockOn = !M.lockOn; M.lockT = M.lockOn ? nearestEnemy(60, 0) : null; Sound.S.ui('click'); }
+  // next living enemy by screen angle, left → right (dir +1) or right → left (dir -1), wrapping; null when there is nobody else
+  function cycleTarget(dir) {
+    const me = M.me, L = []; if (!me) return null;
+    for (const e of M.glads) { if (!e.alive || e.team === me.team) continue; const dx = e.pos.x - me.pos.x, dz = e.pos.z - me.pos.z; if (Math.hypot(dx, dz) > 60) continue; L.push({ e, a: angDiff(Cam.yaw, Math.atan2(dx, dz)) }); }
+    if (!L.length) return null;
+    L.sort((p, q) => q.a - p.a); // positive angle = left of the camera's forward
+    let i = L.findIndex((o) => o.e === M.lockT); if (i < 0) return nearestEnemy(60, 0);
+    return L[(i + (dir < 0 ? -1 : 1) + L.length) % L.length].e;
+  }
+  M.cycleTarget = cycleTarget;
+  // Lock: off → press locks on. While locked: tap cycles to the next enemy (toggles off when there is no other), hold ≥ 0.35 s releases
+  // to free look; the mouse wheel cycles. A dead target is replaced by the nearest threat; on touch the lock drifts to a much closer
+  // attacker unless the player picked the target in the last 3 s.
+  const LK = { p: 0, fresh: false, done: false, manual: 0, auto: 0 };
+  function lockCtl(me) {
+    const now = performance.now();
+    if (Input.pressed('lock')) { LK.p = now; LK.fresh = !M.lockOn; LK.done = false; if (!M.lockOn) { M.lockOn = true; M.lockT = nearestEnemy(60, 0); LK.manual = now; Sound.S.ui('click'); } }
+    if (LK.p) {
+      if (Input.down('lock')) { if (!LK.fresh && !LK.done && now - LK.p >= 350) { LK.done = true; M.lockOn = false; M.lockT = null; Sound.S.ui('click'); } }
+      else { if (!LK.fresh && !LK.done && M.lockOn) { const n = cycleTarget(1); if (n && n !== M.lockT) { M.lockT = n; LK.manual = now; } else { M.lockOn = false; M.lockT = null; } Sound.S.ui('click'); } LK.p = 0; }
+    }
+    const wh = Input.takeWheel ? Input.takeWheel() : 0;
+    if (wh && M.lockOn) { const n = cycleTarget(wh); if (n) { M.lockT = n; LK.manual = now; Sound.S.ui('click'); } }
     if (M.lockOn && (!M.lockT || !M.lockT.alive)) M.lockT = nearestEnemy(60, 0);
+    else if (M.lockOn && M.lockT && Input.device === 'touch' && now - LK.manual > 3000 && now - LK.auto > 700) {
+      LK.auto = now; const b = nearestEnemy(60, 0);
+      if (b && b !== M.lockT) { const dc = Math.hypot(M.lockT.pos.x - me.pos.x, M.lockT.pos.z - me.pos.z), db = Math.hypot(b.pos.x - me.pos.x, b.pos.z - me.pos.z); if (db < 7 && dc > db * 1.8 + 2) M.lockT = b; }
+    }
+  }
+  function playerCtl() {
+    const g = M.me, I = g.inp, live = M.phase === 'play' || M.phase === 'ot';
+    lockCtl(g);
     if (!live || !g.alive) { I.mx = I.mz = 0; I.boost = I.atk = I.block = I.jump = false; return; }
     const m = Input.move(), fx = Math.sin(Cam.yaw), fz = Math.cos(Cam.yaw);
     I.mx = fx * m.y - fz * m.x; I.mz = fz * m.y + fx * m.x;
@@ -6068,8 +6283,14 @@ const Match = (() => {
   }
   // ---------- per-frame
   function update(dt) {
-    const me = M.me, playing = M.active && !M.paused;
-    if (M.active && Input.pressed('pause') && (M.phase === 'play' || M.phase === 'ot' || M.phase === 'count' || M.phase === 'intro')) { pause(); return; }
+    const me = M.me, playing = M.active && !M.paused, guard = M.resumeGuard;
+    M.resumeGuard = false; if (!M.paused) M.resumeT = 0;
+    if (M.active && !guard && Input.pressed('pause') && (!M.paused || M.resumeT > 0) && (M.phase === 'play' || M.phase === 'ot' || M.phase === 'count' || M.phase === 'intro')) { pause(); return; }
+    if (M.paused && M.resumeT > 0) { // resume countdown: the sim stays frozen below (M.paused) until it runs out
+      M.resumeT -= dt; const n = Math.max(1, Math.ceil((M.resumeT / M.resumeT0) * 3));
+      if (M.resumeT <= 0) { M.paused = false; M.resumeT = 0; HUD.ann('', 'count', '', 0.01); }
+      else if (n !== M.resumeN) { M.resumeN = n; HUD.ann(String(n), 'count', '', 0.7); Sound.S.count(n); }
+    }
     let sdt = dt;
     if (M.active && !M.paused) {
       M.t += dt;
@@ -6311,7 +6532,6 @@ const Match = (() => {
       afterKo(e);
     });
   }
-  let NAMEPOOL = null;
   function NAMESHUF() { const a = Prog.NAMES.slice(); for (let i = a.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [a[i], a[j]] = [a[j], a[i]]; } return Meta.seat(a, M); } // Meta seats rivals where the enemy team pops its names
   return Object.assign(M, { init, queue, start, rematch, update, pause, resume, forfeit, toMenu, startAttract, stopAttract });
 })();
