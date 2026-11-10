@@ -878,10 +878,14 @@ body.touch #hud .scoreboard{ max-height:calc(100% - 20px); overflow:hidden; padd
 @keyframes fmpad{ 0%{ box-shadow:0 0 0 0 rgba(255,214,110,.9); } 100%{ box-shadow:0 0 0 8px rgba(255,214,110,0); } }
 
 /* phone lanes (integration): one message at a time in the middle of a small screen */
+body.touch #hud .hints .hn{ display:none; white-space:nowrap; }
+body.touch #hud .hints[data-i="0"] .hn:nth-child(1), body.touch #hud .hints[data-i="1"] .hn:nth-child(2), body.touch #hud .hints[data-i="2"] .hn:nth-child(3){ display:block; }
+@media (orientation: portrait){ body.touch #hud .hints{ bottom:calc(var(--cb) + 4px + var(--sab)); font-size:12.5px; max-width:96vw; } }
 body.touch #hud.slainon .tip, body.touch #hud.slainon .hints{ opacity:0; }
 @media (orientation: landscape){
   body.touch #hud .objective:not([hidden]) ~ .announce{ top:29%; }
   body.touch #hud .tip, body.touch #hud .hints{ left:45%; max-width:min(360px, 42vw); }
+  body.touch #hud .hints, body.touch #hud.hintson .tip{ bottom:calc(122px + var(--sab)); }
   body.touch #hud .respawn{ top:47%; width:auto; left:50%; margin:0; transform:translateX(-50%); flex-direction:row; gap:8px; }
   body.touch #hud .respawn svg{ width:46px; height:46px; } body.touch #hud .respawn b{ width:46px; height:46px; line-height:46px; right:auto; font-size:22px; }
   body.touch #hud .rs-l{ margin:0; font-size:12px; } body.touch #hud .respawn small{ margin:0; font-size:12px; }
@@ -4918,14 +4922,15 @@ const HUD = (() => {
     E.scoreboard.innerHTML = `<table class="board"><tr><th>Gladiator</th><th>Score</th><th>KOs</th><th>Ast</th><th>Dmg</th><th>Demos</th><th>Parries</th><th>Deaths</th></tr>${rows(0)}<tr class="gap"><td colspan="8"></td></tr>${rows(1)}</table>`;
   }
   // first-match hints: a compact strip of controls for the device in hand, the first ~20 s of play while the player has fewer than 3 matches
-  const HN = { t: 0, on: false, dev: '' };
+  const HN = { t: 0, on: false, dev: '', i: -1 };
   function hintChip(a, w) { const K = { kb: { move: 'WASD', jump: 'Space', boost: 'Shift', atk: 'LMB', block: 'RMB', lock: 'Q' }, pad: { move: 'L-stick', jump: 'A', boost: 'B', atk: 'X', block: 'LB', lock: 'Y' } }; let g = ''; if (Input.glyph) { try { g = Input.glyph(a) || ''; } catch (e) { g = ''; } } return `<span class="hn">${g || `<b>${(K[Input.device] || K.kb)[a] || a}</b>`} ${w}</span>`; }
   function hints(dt) {
     const S = Prog.S, ok = S && S.stats && (S.stats.matches || 0) < 3 && Match.mode !== 'training' && (Match.phase === 'play' || Match.phase === 'count');
     if (!ok) { if (HN.on) { HN.on = false; cls(E.hints, 'on', false); cls(E.hud, 'hintson', false); } return; }
     if (Match.phase === 'play') HN.t += dt;
-    const want = HN.t > 0.6 && HN.t < 20;
-    if (want && HN.dev !== Input.device) { HN.dev = Input.device; hid(E.hints, false); E.hints.innerHTML = Input.device === 'touch' ? '<span class="hn">Drag the left side to move · <b>Strike</b> tap, hold for heavy</span><span class="hn"><b>Block</b> as a blow lands to parry · <b>Boost</b> to go supersonic</span>' : hintChip('move', 'move') + hintChip('atk', 'strike · hold heavy') + hintChip('block', 'block · parry') + hintChip('boost', 'boost') + hintChip('jump', 'jump') + hintChip('lock', 'target cam'); }
+    const touch = Input.device === 'touch', want = HN.t > 0.6 && HN.t < 20 && !(touch && tipT > 0); // on a phone the hints share the tip's lane: one message at a time, one line at a time
+    if (touch && want) { const i = ((HN.t / 5.5) | 0) % 3; if (i !== HN.i) { HN.i = i; E.hints.dataset.i = i; } }
+    if (want && HN.dev !== Input.device) { HN.dev = Input.device; hid(E.hints, false); E.hints.innerHTML = Input.device === 'touch' ? '<span class="hn"><b>Strike</b> tap to strike · hold for a heavy blow</span><span class="hn"><b>Block</b> just as a blow lands to parry</span><span class="hn"><b>Boost</b> to go supersonic and demolish</span>' : hintChip('move', 'move') + hintChip('atk', 'strike · hold heavy') + hintChip('block', 'block · parry') + hintChip('boost', 'boost') + hintChip('jump', 'jump') + hintChip('lock', 'target cam'); }
     if (want !== HN.on) { HN.on = want; cls(E.hints, 'on', want); cls(E.hud, 'hintson', want); }
   }  let numN = 0, numT = 0;
   function num(pos, text, cls) {
