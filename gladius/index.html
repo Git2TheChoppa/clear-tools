@@ -533,8 +533,9 @@ body.touch #hud .scoreboard{ max-height:calc(100% - 20px); overflow:hidden; padd
   body.touch #hud .feed div{ font-size:12px; }
   body.touch #hud .chatlog{ left:calc(10px + var(--sal)); top:calc(284px + var(--sat)); max-width:56vw; }
   body.touch #hud .chatlog div{ font-size:12px; }
-  body.touch #hud .accolades{ top:calc(284px + var(--sat)); right:calc(10px + var(--sar)); }
-  body.touch #hud .acc{ font-size:14px; }
+  body.touch #hud .accolades{ top:calc(232px + var(--sat)); right:calc(10px + var(--sar)); }
+  body.touch #hud .acc{ font-size:14px; } body.touch #hud .acc:nth-last-child(n+3){ display:none; } body.touch #hud .acc .ki{ width:14px; height:14px; }
+  body.touch #hud .acc-tot{ bottom:auto; top:100%; margin:2px 0 0; }
   body.touch #hud .combo{ left:calc(10px + var(--sal)); top:calc(226px + var(--sat)); transform-origin:0 0; }
   body.touch #hud .announce{ top:calc(214px + var(--sat)); padding:0 8px; }
   body.touch #hud .respawn{ top:auto; bottom:calc(var(--cb) + 84px + var(--sab)); width:auto; left:50%; margin:0; transform:translateX(-50%); flex-direction:row; gap:8px; }
