@@ -5515,7 +5515,7 @@ const UI = (() => {
     bind('sPost', (e) => { G.post = e.checked; try { const P = __G.Post; if (P && P.setEnabled) P.setEnabled(e.checked); } catch (err) { console.error(err); } }); bind('sDyn', (e) => (G.dynRes = e.checked));
     bind('sHud', (e) => { G.hudScale = e.value / 100; hud(); }); bind('sRadar', (e) => { G.radar = e.checked; hud(); });
     bind('sName', (e) => (S.name = e.value.trim().slice(0, 14) || 'You')); bind('sArena', (e) => (G.arena = e.value));
-    $('#sQ').onchange = (e) => { G.quality = +e.target.value; Prog.save(); location.reload(); };
+    $('#sQ').onchange = (e) => { G.quality = +e.target.value; if (G.quality < 0) delete G.autoQ; Prog.save(); location.reload(); }; // choosing Auto again forgets a tier the frame-rate governor settled on
     // Two-click confirm instead of confirm(): browser dialogs are blocked in sandboxed/embedded pages.
     let resetArm = 0;
     $('#sReset').onclick = () => {
