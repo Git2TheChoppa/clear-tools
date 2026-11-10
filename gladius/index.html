@@ -4824,7 +4824,7 @@ const Cam = (() => {
         if (lat < 1.05) lift = Math.max(lift, (1.05 - lat) * 1.7 * t);
       }
       C.lift = damp(C.lift || 0, lift, lift > (C.lift || 0) ? 10 : 3, dt); wantPos.y += C.lift;
-      C.vOffW = tall && IS_TOUCH ? 0.13 : 0;
+      C.vOffW = tall && IS_TOUCH ? 0.13 : IS_TOUCH && typeof Tutorial !== 'undefined' && Tutorial.active ? -0.17 : 0; // a landscape lesson card sits top-centre: frame the gladiator below it
       if (tgt) { _n.set(tgt.pos.x, tgt.pos.y + 1.2, tgt.pos.z).sub(C.piv); const L = Math.min(_n.length(), 10); _n.setLength(L * 0.3); wantLook.copy(C.piv).add(_n); }
       else wantLook.set(C.piv.x + fx * 1.8, C.piv.y + 0.1, C.piv.z + fz * 1.8);
       fov = 72 + (tall ? 16 : 0) + clamp((sp - 10) / 9, 0, 1) * 12 + (P.ss ? 3 : 0) + (P.boosting ? 4 : 0); k = 14;
@@ -5359,7 +5359,8 @@ const Prog = (() => {
     }
     if (ranked) { S.streak = r.win ? Math.max(1, S.streak + 1) : Math.min(-1, S.streak - 1); S.bestStreak = Math.max(S.bestStreak, S.streak); }
     res.streak = training ? 0 : S.streak;
-    T.matches++; if (r.win && !training) T.wins++; T.ko += st.ko; T.de += st.de; T.as += st.as; T.demo += st.demo; T.par += st.par; T.bless += st.bless; T.dmg += st.dmg; if (r.mvp && !training) T.mvp++; T.time += r.time || 0;
+    if (!training) { T.matches++; if (r.win) T.wins++; T.ko += st.ko; T.de += st.de; T.as += st.as; T.demo += st.demo; T.par += st.par; T.bless += st.bless; T.dmg += st.dmg; if (r.mvp) T.mvp++; } // practice on the dummies is not a career match
+    T.time += r.time || 0;
     res.drops = S.pending.slice(); res.next = nextUp(r.mode); res.pityLeft = pityLeft();
     save(); return res;
   }
@@ -5631,9 +5632,9 @@ const Meta = (() => {
     m.contracts = int(m.contracts); m.sweeps = int(m.sweeps);
   });
   // today's three contracts (rolled on first use each day; the same day always rolls the same three)
-  function daily() { const d = D(), t = today(); if (!d.daily || d.daily.day !== t) d.daily = rollDaily(t); return d.daily; }
+  function daily() { const d = D(), t = today(); if (!d.daily || t > d.daily.day) d.daily = rollDaily(t); return d.daily; } // only ever rolls forward: a clock set back keeps the stored day (and what it already paid)
   // the streak as it stands today: lit (fought today), risk (fought yesterday, not yet today) or cold
-  function streakNow() { const s = D().streak, gap = today() - s.last; return gap === 0 ? { n: s.n, st: 'lit' } : gap === 1 && s.n > 0 ? { n: s.n, st: 'risk' } : { n: 0, st: 'cold' }; }
+  function streakNow() { const s = D().streak, gap = today() - s.last; return gap <= 0 ? { n: s.n, st: 'lit' } : gap === 1 && s.n > 0 ? { n: s.n, st: 'risk' } : { n: 0, st: 'cold' }; }
   const streakXp = (n) => (n >= 2 ? 5 * Math.min(n, 10) : 0);
   function resetsIn() { const t = clock(), m = Math.max(1, Math.round((new Date(t.getFullYear(), t.getMonth(), t.getDate() + 1) - t) / 6e4)); return m >= 60 ? `${Math.floor(m / 60)}h ${String(m % 60).padStart(2, '0')}m` : `${m} min`; }
   onStart.push((L, M) => { // evergreen "Win a Spectacle match": applyMatch reads me.stats[key], so the stat is computed when it is asked for
@@ -5754,7 +5755,7 @@ const Meta = (() => {
   careerSecs.push({ id: 'feats', order: 40, html: featsCareer });
   // a toast for each feat, one after another once the results are up
   function toast(f, i) {
-    setTimeout(() => { const t = el('div', 'mt-toast', `${ICON.star}<div><b>Feat · ${esc(f.n)}</b><span>${esc(f.t)} · ${esc(rewardText(f.rw))}</span></div>`); document.body.appendChild(t); sfx('equip'); setTimeout(() => t.remove(), 3700); }, 900 + i * 3900);
+    setTimeout(() => { if (UI.cur !== 'results') return; const t = el('div', 'mt-toast', `${ICON.star}<div><b>Feat · ${esc(f.n)}</b><span>${esc(f.t)} · ${esc(rewardText(f.rw))}</span></div>`); document.body.appendChild(t); sfx('equip'); setTimeout(() => t.remove(), 3700); }, 900 + i * 3900);
   }
   // ---------- the Emperor's Bounty: one marked enemy (the Nemesis first, then a rival) pays +100 score and bonus XP to the first KO you land on them
   const BOUNTY_XP = 75;
@@ -5773,7 +5774,7 @@ const Meta = (() => {
     const b = L.bounty; if (!b || b.paid || e.by !== me || e.v !== b.g) return;
     b.paid = true; b.g.bounty = false; b.g.titleName = b.g.preBounty; bonus(me, "Emperor's Bounty", 100);
   });
-  onEnd.push((L, M, res) => { const b = L.bounty; if (!b) return; b.g.bounty = false; if (b.paid && !M.forfeited) Prog.addXp(BOUNTY_XP, res, "Emperor's Bounty"); });
+  onEnd.push((L, M, res) => { const b = L.bounty; if (!b) return; b.g.bounty = false; if (!b.paid) b.g.titleName = b.g.preBounty; if (b.paid && !M.forfeited) Prog.addXp(BOUNTY_XP, res, "Emperor's Bounty"); });
   // results: call-outs go right under the title, the detail cards after the grid (both are Meta's own elements inside #scr-results .res)
   Bus.on('results', () => {
     const host = document.querySelector('#scr-results .res'); if (!host) return;
@@ -6081,7 +6082,7 @@ const UI = (() => {
       + grp('Camera', 'cam', rng('sCam', 'Camera distance', Math.round(num('camDist', 1) * 100), 80, 140, 1) + rng('sShake', 'Screen shake', Math.round(G.shake * 100), 0, 100, 1))
       + grp('Graphics', 'gfx', sel('sQ', 'Quality', '<option value="-1">Auto</option><option value="0">Low</option><option value="1">Medium</option><option value="2">High</option>') + chk('sPost', 'Bloom &amp; grading', on('post', true), 'Glow and filmic colour') + chk('sDyn', 'Dynamic resolution', on('dynRes', true), 'Keeps the frame rate smooth') + sel('sArena', 'Lighting', `<option value="random">Random</option>${Object.entries(PRESETS).map(([k, p]) => `<option value="${k}">${p.label}</option>`).join('')}`))
       + grp('Interface', 'hud', rng('sHud', 'HUD size', Math.round(num('hudScale', 1) * 100), 80, 130, 1) + chk('sRadar', 'Radar', on('radar', true), 'Mini map of the sand') + chk('sDmg', 'Damage numbers', G.dmgNums))
-      + grp('Profile', 'career', `<label class="srow"><span class="sl">Name</span><span class="sc"><input type="text" id="sName" maxlength="14" value="${esc(S.name)}"></span></label><p class="snote">${Store.persistent ? 'Progress saves in this browser.' : 'This browser blocks storage, so progress lasts until you close the page.'}</p><button class="btn sm" id="sReset"><span>Reset all progress</span></button>`);
+      + grp('Profile', 'career', `<label class="srow"><span class="sl">Name</span><span class="sc"><input type="text" id="sName" maxlength="14" value="${esc(S.name)}"></span></label><p class="snote">${Store.persistent ? 'Progress saves in this browser.' : 'This browser blocks storage, so progress lasts until you close the page.'}</p>${Match.active ? '<p class="snote">Finish or forfeit the match to reset progress.</p>' : '<button class="btn sm" id="sReset"><span>Reset all progress</span></button>'}`);
     $('#sArena').value = G.arena; $('#sQ').value = String(G.quality);
     const bind = (id, f) => { const e = $('#' + id); if (!e) return; e.oninput = e.onchange = () => { const o = $('#' + id + 'o'); if (o) o.textContent = o.dataset.f === '1' ? pct(e.value) : e.value; f(e); Prog.save(); }; };
     const hud = () => { try { if (HUD.applyScale) HUD.applyScale(); } catch (e) { console.error(e); } }, tl = () => { try { if (Input.applyTouchLayout) Input.applyTouchLayout(); } catch (e) { console.error(e); } };
@@ -6098,7 +6099,7 @@ const UI = (() => {
     }
     // Two-click confirm instead of confirm(): browser dialogs are blocked in sandboxed/embedded pages.
     let resetArm = 0;
-    $('#sReset').onclick = () => {
+    if ($('#sReset')) $('#sReset').onclick = () => {
       const b = $('#sReset'), lab = b.querySelector('span');
       if (performance.now() - resetArm > 4000) { resetArm = performance.now(); lab.textContent = (IS_TOUCH ? 'Tap' : 'Click') + ' again to erase level, ranks, items and stats'; b.classList.add('arm'); Sound.S.ui('back'); setTimeout(() => { if (b.isConnected && performance.now() - resetArm >= 3900) { lab.textContent = 'Reset all progress'; b.classList.remove('arm'); } }, 4000); return; }
       resetArm = 0; Prog.reset(); refreshDisplay(); renderSettings(); Sound.S.ui('back');
@@ -6423,10 +6424,12 @@ body.touch .ld-act{ min-height:44px; padding:0 18px; font-size:16px; } body.touc
 body.touch .ld-yard button{ min-height:44px; justify-content:center; }
 @media (orientation: landscape){
   body.touch #ludus{ --ld-top:calc(62px + var(--sat)); }
-  body.touch .ld-wrap,body.touch .ld-yard,body.touch .ld-offer{ left:var(--sal); right:calc(300px + var(--sar)); } /* the action buttons own the right 300 px */
-  body.touch .ld-wrap{ width:min(420px, calc(100vw - 332px - var(--sal) - var(--sar))); }
-  body.touch .ld-yard{ max-width:calc(100vw - 316px - var(--sal) - var(--sar)); flex-wrap:wrap; justify-content:center; }
-  body.touch .ld-offer{ top:var(--ld-top); bottom:auto; width:min(500px, calc(100vw - 332px - var(--sal) - var(--sar))); }
+  body.touch .ld-wrap,body.touch .ld-yard,body.touch .ld-offer{ left:calc(196px + var(--sal)); right:calc(300px + var(--sar)); } /* the HUD's left column and the action buttons (right 300 px) stay clear */
+  body.touch #hud.ld-on .radar{ display:none; } body.touch #hud.ld-on .announce{ top:64%; }
+  body.touch .ld-text{ font-size:15px; line-height:1.25; }
+  body.touch .ld-wrap{ width:min(420px, calc(100vw - 508px - var(--sal) - var(--sar))); }
+  body.touch .ld-yard{ max-width:calc(100vw - 504px - var(--sal) - var(--sar)); flex-wrap:wrap; justify-content:center; }
+  body.touch .ld-offer{ top:var(--ld-top); bottom:auto; width:min(500px, calc(100vw - 508px - var(--sal) - var(--sar))); }
   body.touch .ld-grad{ padding-top:calc(60px + var(--sat)); }
 }
 @media (orientation: portrait){
@@ -6550,8 +6553,8 @@ body.touch .ld-yard button{ min-height:44px; justify-content:center; }
     if (hide) return;
     const W = innerWidth, H = innerHeight; _m.set(x, (g ? g.pos.y : 0) + o.h, z).project(__G.camera);
     // the edge arrow keeps out of the HUD's top band and, on a portrait phone, out of the controls band at the bottom
-    // (on a portrait phone the lesson card sits under that band: the pin stays below the card; its box is measured twice a second, not per frame)
-    if (Sim.time - (o.cbT || -9) > 0.5 || o.cbT > Sim.time) { o.cbT = Sim.time; o.cb = IS_TOUCH && H > W && E.card && !E.wrap.hidden ? E.card.getBoundingClientRect().bottom + 26 : 0; }
+    // (on a phone the lesson card sits under that band: the pin stays below the card; its box is measured twice a second, not per frame)
+    if (Sim.time - (o.cbT || -9) > 0.5 || o.cbT > Sim.time) { o.cbT = Sim.time; o.cb = IS_TOUCH && E.card && !E.wrap.hidden ? Math.min(E.card.getBoundingClientRect().bottom + 26, H - 96) : 0; }
     const port = IS_TOUCH && H > W, lo = Math.max(port ? 175 : IS_TOUCH ? 110 : 150, o.cb || 0), hi = port ? H - Math.min(H * 0.44, 340) - 34 : H - 70;
     let sx = (_m.x * 0.5 + 0.5) * W, sy = (-_m.y * 0.5 + 0.5) * H; const front = _m.z < 1 && _m.z > -1, off = !(front && sx > 50 && sx < W - 50 && sy > lo && sy < H - 40);
     if (off) { let ax = sx - W / 2, ay = sy - (lo + hi) / 2; if (!front) { ax = -ax; ay = -ay; } const a = Math.atan2(ay, ax); sx = W / 2 + Math.cos(a) * (W / 2 - 60); sy = (lo + hi) / 2 + Math.sin(a) * Math.max(10, (hi - lo) / 2); E.edge.style.setProperty('--a', (a * 180 / Math.PI + 90).toFixed(0) + 'deg'); }
@@ -7866,7 +7869,9 @@ __G.Post = Post;
     o.querySelector('button').addEventListener('click', () => { try { Prog.save(); } catch (err) { /* storage refused */ } location.reload(); });
     document.body.appendChild(o);
   });
-  document.addEventListener('visibilitychange', () => { if (document.hidden) { if (Match.active && !Match.paused && Match.phase !== 'done') Match.pause(); Sound.suspend(); } else { Sound.resume(); const d = Post.dyn; d.cool = Math.max(d.cool, 3); d.acc = 0; d.n = 0; } });
+  // a phone may never bring a hidden page back: write the career down whenever the page is hidden or unloaded
+  addEventListener('pagehide', () => { try { Prog.save(); } catch (e) { /* storage refused */ } });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) { try { Prog.save(); } catch (e) { /* storage refused */ } if (Match.active && !Match.paused && Match.phase !== 'done') Match.pause(); Sound.suspend(); } else { Sound.resume(); const d = Post.dyn; d.cool = Math.max(d.cool, 3); d.acc = 0; d.n = 0; } });
   Object.assign(__G, { Sim, Match, UI, Prog, Arena, Cam, FX, HUD, Input, Sound, Rig, Tex, Game, TUNE, Bus, renderer, scene, camera }); Object.defineProperty(__G, 'display', { get() { return display; }, configurable: true });
   next();
 })();
