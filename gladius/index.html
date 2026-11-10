@@ -1396,7 +1396,7 @@ const PRESETS = {
 const Arena = (() => {
   const { A, B, WALL } = ARENA;
   const R = { pads: [], braziers: [], preset: 'dusk', fire: 0.85, fireL: 0, crowdU: null, gatesOpen: 1, gateY: 0, excite: 0.2, cheer: [0, 0], wave: -1, waveT: 0, gesture: 0, gestT: 0 };
-  let scene, renderer, Q, group, sky, sun, hemi, envRT = null, pmrem, padMesh, padState, orbMesh, amphorae = [], blessG, beam, beamMat, wreath, emperorArm, bars = [], nightLights = [], coalMat, floorMat;
+  let scene, renderer, Q, group, sky, sun, hemi, envRT = null, envCache = {}, pmrem, padMesh, padState, orbMesh, amphorae = [], blessG, beam, beamMat, wreath, emperorArm, bars = [], nightLights = [], coalMat, floorMat;
   let D = null, BOX = null, velMat = null, clothU = null; const keepOut = [];
   const eP = (t) => [A * Math.cos(t), B * Math.sin(t)];
   const eN = (t) => { const nx = Math.cos(t) / A, nz = Math.sin(t) / B, l = Math.hypot(nx, nz); return [nx / l, nz / l]; };
@@ -2135,11 +2135,10 @@ void main(){ vec3 d = normalize(vDir), sdir = normalize(uSunDir); float y = d.y;
     velMat.emissiveIntensity = p.velGlow != null ? p.velGlow : 0.2; clothU.uWind.value = p.wind != null ? p.wind : 1;
     R.crowdU.uFill.value.fromArray(p.fill || [0.18, 0.15, 0.13]);
     Ambience.setPreset(p, R.arc);
-    if (envRT) envRT.dispose();
-    envRT = makeEnv(p); scene.environment = envRT.texture;
+    envRT = envCache[name] || (envCache[name] = makeEnv(p)); scene.environment = envRT.texture; // baked once per preset: a PMREM pass compiles a throwaway program each time it runs
     R.fire = p.fire;
   }
-  const _m = M4(), _q = new THREE.Quaternion(), _v = V3();
+  const _m = M4(), _q = new THREE.Quaternion(), _v = V3(), _sc = V3();
   function update(dt, t, sim) {
     R.crowdU.uTime.value = t; clothU.uTime.value = t;
     R.crowdU.uExcite.value = damp(R.crowdU.uExcite.value, R.excite, 2, dt);
@@ -2153,7 +2152,7 @@ void main(){ vec3 d = normalize(vDir), sdir = normalize(uSunDir); float y = d.y;
       if (!p.big) {
         const s = p.active ? 1 : 0;
         _q.setFromAxisAngle(_v.set(0.3, 1, 0.2).normalize(), t * 2 + p.i);
-        _m.compose(_v.set(p.x, 0.55 + Math.sin(t * 3 + p.i) * 0.08, p.z), _q, V3(s, s, s)); orbMesh.setMatrixAt(si++, _m);
+        _m.compose(_v.set(p.x, 0.55 + Math.sin(t * 3 + p.i) * 0.08, p.z), _q, _sc.setScalar(s)); orbMesh.setMatrixAt(si++, _m);
       }
     }
     padMesh.geometry.attributes.aState.needsUpdate = true; orbMesh.instanceMatrix.needsUpdate = true; padMesh.material.uniforms.uTime.value = t;
@@ -2372,6 +2371,7 @@ void main(){ vec3 f = mix(vec3(1.0), texture2D(uMap, vUv).rgb, vF); gl_FragColor
   }
   function update(dt, sim) {
     if (!mesh) return;
+    if (typeof Match !== 'undefined' && Match.active && Match.paused) return; // marks do not age behind the pause menu
     clock += dt; U.uTime.value = clock;
     rateT += dt; if (rateT >= 1) { rate = rate * 0.6 + (made / rateT) * 0.4; made = 0; rateT = 0; }
     if (sim && sim.glads && sim.glads.length) trails(sim.glads);
@@ -5643,6 +5643,7 @@ const Mutators = (() => {
     if (Match.me && Math.hypot(Match.me.pos.x - s.x, Match.me.pos.z - s.z) < 14) FX.shake(0.2);
   }
   function update(dt, glads) {
+    if (cur && cur.id === 'jupiter' && Sim.frozen && strikes.length) { strikes.length = 0; t = Math.max(t, 2.5); }
     if (!cur || cur.id !== 'jupiter' || Sim.frozen || !Sim.play) return;
     t -= dt;
     if (t <= 0) {
@@ -5776,10 +5777,16 @@ const Favor = (() => {
     const g = e.by; if (!g || !g.brain || g.passive) return;
     if (g.swagger == null) { let h = 0; for (const c of g.name) h = (h * 31 + c.charCodeAt(0)) % 997; g.swagger = 0.1 + (h % 36) / 100; }
     if (!chance(g.swagger * (e.v.human ? 1.7 : 1))) return;
-    const attempt = (n) => { if (!g.alive) return; const clear = !Sim.glads.some((o) => o.alive && o.team !== g.team && Math.hypot(o.pos.x - g.pos.x, o.pos.z - g.pos.z) < 9); if (clear && Sim.taunt(g, g.cos.emote || 'e_salute')) return; if (n > 0) g.brain.at(0.3, () => attempt(n - 1)); };
-    g.brain.at(Sim.glads.length === 2 ? 0.15 : 0.6, () => attempt(5)); // a duel's aftermath is short: start at once
+    g.showTry = 6; g.showAt = Sim.time + (Sim.glads.length === 2 ? 0.15 : 0.6); // a duel's aftermath is short: start at once
   }
-  return Object.assign(F, { update, gain, reset });
+  // one try every 0.3 s (Match.update calls this), kept off the brain's action queue so the bot goes on fighting between tries
+  function showTick(g) {
+    if (!g.alive) { g.showTry = 0; return; }
+    const clear = !Sim.glads.some((o) => o.alive && o.team !== g.team && Math.hypot(o.pos.x - g.pos.x, o.pos.z - g.pos.z) < 9);
+    if (clear && Sim.taunt(g, g.cos.emote || 'e_salute')) { g.showTry = 0; return; }
+    g.showTry--; g.showAt = Sim.time + 0.3;
+  }
+  return Object.assign(F, { update, gain, reset, showTick });
 })();
 __G.Favor = Favor;
 
@@ -5803,7 +5810,8 @@ const Grade = (() => {
     const g = rate(M), S = Prog.S, G = S.grades && typeof S.grades === 'object' ? S.grades : (S.grades = { best: {}, s: 0 });
     if (!G.best || typeof G.best !== 'object') G.best = {};
     const prev = G.best[M.mode]; g.isBest = !(prev >= g.idx); if (g.isBest) G.best[M.mode] = g.idx; if (g.idx === 4) G.s = (G.s | 0) + 1;
-    if (XP[g.idx]) Prog.addXp(XP[g.idx], res, 'Grade ' + g.letter); else Prog.save();
+    if (XP[g.idx]) Prog.addXp(XP[g.idx], res, 'Grade ' + g.letter);
+    Prog.save();
     res.grade = g; last = g;
   });
   Bus.on('results', () => {
@@ -5902,7 +5910,7 @@ const Match = (() => {
     if (!skipEl) {
       skipEl = el('button', 'btn sm skipbtn', '<span>Skip ▸</span>'); skipEl.id = 'skipBtn'; HUD.E.hud.appendChild(skipEl);
       skipEl.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); M.skipReq = true; });
-      $('#c').addEventListener('pointerdown', () => { if (M.active && (M.phase === 'end' || M.phase === 'celebrate')) M.skipReq = true; });
+      $('#c').addEventListener('pointerdown', () => { if (M.active && (M.phase === 'celebrate' || (M.phase === 'end' && M.t > 1.2))) M.skipReq = true; });
     }
     if (skipEl.classList.contains('on') === !!on) return;
     skipEl.classList.toggle('on', !!on);
@@ -5987,7 +5995,7 @@ const Match = (() => {
     const win = winner === M.me.team; HUD.ann(win ? 'VICTORY' : 'DEFEAT', win ? 'gold' : 'red', '', 3);
     Sound.S.fanfare(win); Sound.cheer(1.5); Arena.excite = 1; Arena.cheer[winner] = 1.2; Arena.waveT = 6; Arena.wave = 0;
     M.slowT = 1.0;
-    for (const g of M.glads) if (g.brain && chance(0.5)) setTimeout(() => AI.chat(g, g.team === winner ? 'win' : 'lose', true), rand(600, 3000));
+    for (const g of M.glads) if (g.brain && chance(0.5)) MT.set('endChat' + g.id, () => AI.chat(g, g.team === winner ? 'win' : 'lose', true), rand(600, 3000));
     endFeel(win);
   }
   // match-deciding KO cinematic tail (feel-10): extend the 'end' hold by 1.2 s and re-announce the result after the 'GAME-WINNING KO' title;
@@ -6012,7 +6020,8 @@ const Match = (() => {
   }
   function finish() {
     M.phase = 'done'; HUD.show(false); Input.enable(false); skipBtn(false); MT.clearAll(); Mutators.restore(); Decree.reset(false);
-    for (const g of M.glads) g.pose = null;
+    Sim.play = false; Sim.frozen = true; Sim.respawns = false; // a forfeit arrives here without endMatch/celebrate: nothing may keep fighting behind the results
+    for (const g of M.glads) { g.pose = null; g.showTry = 0; const I = g.inp; if (I) { I.mx = I.mz = 0; I.jump = I.jumpP = I.boost = I.atk = I.atkP = I.atkR = I.block = I.blockP = false; } }
     const me = M.me, training = M.mode === 'training';
     if (M.roster) { const bots = M.glads.filter((g) => !g.human); M.roster.bots.forEach((b, i) => { b.grudge = !!(bots[i] && bots[i].lastKiller === me && bots[i].team !== me.team); }); }
     const res = Prog.applyMatch({ mode: M.mode, win: !training && M.winner === me.team && !M.forfeited, forfeit: M.forfeited, me, mvp: M.mvpId === me.id, time: M.time, margin: training ? 0 : M.score[me.team] - M.score[1 - me.team], rematch: M.isRematch });
@@ -6022,7 +6031,11 @@ const Match = (() => {
   }
   function pause() { if (!M.active || M.phase === 'celebrate' || M.phase === 'done') return; M.paused = true; UI.show('pause'); Sound.boost(false, 0); }
   function resume() { M.paused = false; UI.show('hud'); }
-  function forfeit() { if (!M.active) return; M.paused = false; UI.show('hud'); M.forfeited = M.mode !== 'training'; M.winner = M.mode === 'training' ? -1 : 1 - M.me.team; finish(); }
+  function forfeit() {
+    if (!M.active) return; M.paused = false; UI.show('hud');
+    if (M.phase === 'end') { celebrate(); finish(); return; } // the result is already decided (a pause can land in the final blow): keep it
+    M.forfeited = M.mode !== 'training'; M.winner = M.mode === 'training' ? -1 : 1 - M.me.team; finish();
+  }
   function toMenu() { MT.clearAll(); Mutators.restore(); Decree.reset(false); clearGlads(); M.active = false; M.phase = 'none'; startAttract(); UI.show('title'); Sound.music('menu'); }
   // ---------- attract mode (bots sparring behind the menus)
   function startAttract() {
@@ -6093,7 +6106,7 @@ const Match = (() => {
     }
     if (M.paused) { renderRigs(0); Cam.update(0, me, M.lockT, M.lockOn); return; }
     // brains
-    for (const g of M.glads) if (g.brain) g.brain.update(dt);
+    for (const g of M.glads) if (g.brain) { g.brain.update(dt); if (g.showTry > 0 && Sim.time >= g.showAt) Favor.showTick(g); }
     // time control
     // hitstop curve (feel-1): hard stop for the first 60% of the freeze, ramp out to half speed, then hand off to slow-mo at M.slowK
     if (M.freeze > 0) { M.freeze -= dt; const fk = clamp(1 - M.freeze / (M.freezeDur || 0.05), 0, 1); sdt = fk < 0.6 ? 0 : dt * ((fk - 0.6) / 0.4) * 0.5; }
@@ -6263,7 +6276,7 @@ const Match = (() => {
     Bus.on('matchStart', () => { M.slowK = 0.3; M.freezeDur = 0; M.deciding = null; tippedGB = false; Cam.killer = null; Cam.lock = 0; HUD.slain(null); slainShown = false; document.body.classList.remove('dramatic', 'impact'); });
     Bus.on('matchEnd', () => { Cam.lock = 0; document.body.classList.remove('dramatic'); });
     Bus.on('pad', (e) => { FX.pad(e.p, e.p.big); Sound.S.pad(V3(e.p.x, 0.5, e.p.z), e.p.big); });
-    Bus.on('bless', (e) => { FX.bless(e.g.pos); Sound.S.blessing(e.g.pos); award(e.g, "Emperor's Blessing", 50); Sound.cheer(0.8); Arena.gesture = 2; setTimeout(() => (Arena.gesture = 0), 2500); if (M.active) HUD.ann("EMPEROR'S BLESSING", 'gold', esc(e.g.name) + ' is gilded', 1.3); if (e.g.brain && chance(0.3)) AI.chat(e.g, 'kickoff'); });
+    Bus.on('bless', (e) => { FX.bless(e.g.pos); Sound.S.blessing(e.g.pos); award(e.g, "Emperor's Blessing", 50); Sound.cheer(0.8); Arena.gesture = 2; MT.set('blessWave', () => { if (Arena.gesture === 2) Arena.gesture = 0; }, 2500); if (M.active) HUD.ann("EMPEROR'S BLESSING", 'gold', esc(e.g.name) + ' is gilded', 1.3); if (e.g.brain && chance(0.3)) AI.chat(e.g, 'kickoff'); });
     Bus.on('blessSpawn', () => { if (M.active) { Sound.S.blessingSpawn(); HUD.tip("The Emperor's Blessing has appeared at the centre!", 3); } });
     Bus.on('respawn', (e) => { FX.spawn(e.g.pos, TEAM[e.g.team].lite); e.g._hitLog = null; e.g.hitDir = null; if (isMe(e.g)) { HUD.slain(null); slainShown = false; Cam.killer = null; } });
     Bus.on('chat', (e) => { if (M.active) HUD.chat(e.g, e.text); });
@@ -6316,7 +6329,7 @@ const Post = (() => {
   const P = { on: false, wanted: false, scale: 1, height: 0, target: null, strain: 0, LOOKS };
   let R, scene, camera, Q = 2, hdr = null, mips = [], soft = [], fsScene, fsCam, tri, mPre, mDown, mUp, mOut, type, t = 0, checked = false, lookName = null, L = LOOKS.dusk;
   let blurA = 0, lowA = 0, pulse = 0, focusA = 0, samples = 0, frames = 0, probe = 0, black = 0;
-  const shock = { x: 0.5, y: 0.5, t: 1, amp: 0 }, dyn = { acc: 0, n: 0, cool: 3, good: 0, back: 8, probe: false, floor: 0, drops: 0, flat: 0, last: 0, s1: 1, s2: 1, hard: 0, steps: 0 }, _sz = new THREE.Vector2(), _pv = new THREE.Vector3();
+  const shock = { x: 0.5, y: 0.5, t: 1, amp: 0 }, dyn = { acc: 0, n: 0, cool: 3, good: 0, back: 8, probe: false, floor: 0, drops: 0, flat: 0, last: 0, s1: 1, s2: 1, hard: 0, steps: 0, prevRatio: 0 }, _sz = new THREE.Vector2(), _pv = new THREE.Vector3();
   const VS = 'varying vec2 vUv; void main(){ vUv = position.xy * 0.5 + 0.5; gl_Position = vec4(position.xy, 0.0, 1.0); }';
   const mat = (fs, uniforms, add) => new THREE.ShaderMaterial({ vertexShader: VS, fragmentShader: fs, uniforms, depthTest: false, depthWrite: false, toneMapped: false, blending: add ? THREE.AdditiveBlending : THREE.NoBlending });
   const FS_PRE = `uniform sampler2D tSrc; uniform vec2 uTexel; uniform float uThresh, uKnee, uHaze; varying vec2 vUv;
@@ -6419,12 +6432,12 @@ void main(){ vec2 uv = vUv;
     dyn.acc += dt; dyn.n++; dyn.cool -= dt; if (dyn.acc < 1) return;
     const ms = 1000 * dyn.acc / dyn.n; dyn.acc = 0; dyn.n = 0; if (dyn.cool > 0 || document.hidden) return;
     if (ms <= 27) { dyn.hard = 0; return; }
-    if (dyn.steps > 0 && ms > dyn.last * 0.94) { dyn.steps = 2; return; } // the first step bought nothing: pixels are not the limit
+    if (dyn.steps > 0 && ms > dyn.last * 0.94) { if (dyn.prevRatio) R.setPixelRatio(dyn.prevRatio); dyn.steps = 2; return; } // the last step bought nothing: pixels are not the limit, give them back
     if (++dyn.hard < 4) return;
-    dyn.hard = 0; dyn.last = ms; dyn.steps++; dyn.cool = 3; R.setPixelRatio(Math.max(0.7, R.getPixelRatio() * 0.82));
+    dyn.hard = 0; dyn.last = ms; dyn.prevRatio = R.getPixelRatio(); dyn.steps++; dyn.cool = 3; R.setPixelRatio(Math.max(0.7, dyn.prevRatio * 0.82));
   }
   // the governor's last step: leave the pipeline for good (call between matches: on-screen programs differ and must compile)
-  function shed() { if (!P.on) return; P.on = false; P.scale = 1; R.setRenderTarget(null); dyn.acc = 0; dyn.n = 0; dyn.hard = 0; dyn.cool = 4; }
+  function shed() { if (!P.on) return; P.on = false; R.setRenderTarget(null); R.setPixelRatio(Math.max(0.7, R.getPixelRatio() * P.scale)); P.scale = 1; drop(); dyn.acc = 0; dyn.n = 0; dyn.hard = 0; dyn.cool = 4; dyn.steps = 0; dyn.prevRatio = 0; }
   function kick(pos, amp) { if (!P.on || REDUCED_MOTION || !pos) return; _pv.set(pos.x, (pos.y || 0) + 1, pos.z).project(camera); if (_pv.z > 1) return; shock.x = _pv.x * 0.5 + 0.5; shock.y = _pv.y * 0.5 + 0.5; shock.t = 0; shock.amp = amp; pulse = Math.max(pulse, amp); }
   function pass(m, src, dst) { m.uniforms.tSrc.value = src.texture; m.uniforms.uTexel.value.set(1 / src.width, 1 / src.height); tri.material = m; R.setRenderTarget(dst); R.render(fsScene, fsCam); }
   function render(dt) {
@@ -6453,9 +6466,9 @@ void main(){ vec2 uv = vUv;
       const gl = R.getContext(), px = new Uint8Array(4); let sum = 0; R.getDrawingBufferSize(_sz);
       for (const f of [[0.5, 0.5], [0.3, 0.4], [0.7, 0.62], [0.5, 0.8]]) { gl.readPixels((_sz.x * f[0]) | 0, (_sz.y * f[1]) | 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px); sum += px[0] + px[1] + px[2]; }
       probe++; if (sum === 0) black++;
-      if (probe === 2 && black === 2) { console.warn('post pipeline drew black; drawing directly from now on'); P.on = false; Game.settings.post = false; Prog.save(); }
+      if (probe === 2 && black === 2) { console.warn('post pipeline drew black; drawing directly from now on'); P.on = false; drop(); Game.settings.post = false; Prog.save(); }
     }
-    if (!checked) { checked = true; for (const m of [mPre, mDown, mUp, mOut]) { const pr = R.properties.get(m).currentProgram; if (pr && pr.diagnostics && pr.diagnostics.runnable === false) { console.warn('post shader failed; falling back to direct rendering'); P.on = false; } } }
+    if (!checked) { checked = true; for (const m of [mPre, mDown, mUp, mOut]) { const pr = R.properties.get(m).currentProgram; if (pr && pr.diagnostics && pr.diagnostics.runnable === false) { console.warn('post shader failed; falling back to direct rendering'); P.on = false; } } if (!P.on) drop(); }
   }
   // compile scene programs for the HDR target up front (tone mapping/colour space differ from on-screen programs)
   function prewarm() { if (P.on) { R.setRenderTarget(hdr); R.compile(scene, camera); R.setRenderTarget(null); } else R.compile(scene, camera); }
@@ -6524,7 +6537,7 @@ __G.Post = Post;
         // menu gladiator: rests in G.basePose (set by UI per screen), with an occasional flourish unless G.noFlourish
         flourT -= dt; const G = display.fakeG; if (flourT < 0) { const fl = !G.flourishing && !G.noFlourish; G.flourishing = fl; G.pose = fl ? pick(G.flourishes || ['flourish', 'salute', 'victory']) : (G.basePose || null); flourT = fl ? 3.2 : rand(4, 7); } else if (!G.flourishing && G.pose !== (G.basePose || null)) G.pose = G.basePose || null;
         display.animate(dt, G);
-      }
+      } else if (display && display.shadow && display.shadow.visible) display.shadow.visible = false; // animate() is what syncs the blob shadow: hide it with the rig
       Arena.update(dt, now / 1000, Sim);
       FX.update(dt, camera, renderer);
       Post.render(dt);
